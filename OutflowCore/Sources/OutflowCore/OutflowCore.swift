@@ -1,5 +1,5 @@
-/// Package-level constants. The real content (Ports, Capture, Speech, Session, SmartRead,
-/// Settings) lands in T3 onward; see docs/designs/outflow-v1.md, Implementation Tasks.
-public enum OutflowCore {
+/// Package-level constants. Named differently from the module so `OutflowCore.X` in the
+/// app always means the module, never this enum.
+public enum OutflowCoreInfo {
     public static let version = "0.1.0"
 }

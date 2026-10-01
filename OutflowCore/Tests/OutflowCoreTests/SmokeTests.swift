@@ -6,6 +6,6 @@ import Testing
 /// ProvidersTests, SmartReadTests, PresetsTests.
 @Suite struct SmokeTests {
     @Test func versionIsSet() {
-        #expect(!OutflowCore.version.isEmpty)
+        #expect(!OutflowCoreInfo.version.isEmpty)
     }
 }

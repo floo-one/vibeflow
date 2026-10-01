@@ -14,4 +14,18 @@
 **Priority:** P3
 **Depends on:** v1 shipped and in daily use; evidence of >40k selections being attempted.
 
+## Interaction
+
+### Conversational mode: talk with an AI through Outflow and Flow
+
+**What:** A flowing back-and-forth where Outflow speaks an AI reply, you answer by voice (Wispr Flow) or by selecting text, and the conversation keeps context across turns: follow-up questions about what was just read, "more detail", "read the original", "what should I reply".
+
+**Why:** Florian after the first working build (2026-10-01): "a more communicative and flowy way of interacting with an AI using this software". Smart read is one-shot; this makes Outflow the voice of an assistant rather than a reader.
+
+**Context:** Builds on the smart read pipeline (AnthropicClient, guarded prompts) and the Codex "depth dial" idea in docs/designs/outflow-v1.md. Open questions to settle in /office-hours: where the conversation state lives, how a turn starts (hotkey, hold-to-talk, auto after Flow dictation), how to interrupt mid-answer, and whether Flow can be detected or the mic is read directly. Start with a design session, not code.
+
+**Effort:** L
+**Priority:** P2
+**Depends on:** v1 shipped; one week of daily use of smart read.
+
 ## Completed

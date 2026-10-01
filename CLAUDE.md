@@ -38,6 +38,7 @@ Xcode 26.6 installed and selected (2026-10-01). The .xcodeproj is generated and 
 - Core tests: `cd OutflowCore && swift test` (Swift Testing)
 - Built app: build/DerivedData/Build/Products/Debug/Outflow.app
 - Signing: automatic, personal team Y798SH49X3 (Apple ID in Xcode). Accessibility grant verified to survive rebuilds.
+- If xcodebuild fails at CodeSign with errSecInternalComponent, the login keychain is locked: run `security unlock-keychain ~/Library/Keychains/login.keychain-db` in a terminal (asks for the login password).
 - Read app logs with `/usr/bin/log show --last 5m --predicate 'subsystem == "one.floo.outflow"'` (plain `log` is a zsh builtin and silently does nothing). Use `.notice`, not `.info`, for lines that must persist.
 - Swift 6 gotcha: `kAXTrustedCheckOptionPrompt` is a non-Sendable global; use the literal key "AXTrustedCheckOptionPrompt".
 
