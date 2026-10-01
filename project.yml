@@ -1,6 +1,6 @@
 # XcodeGen spec. Regenerate the .xcodeproj with:  xcodegen generate
 # The .xcodeproj is a build artifact; this file is the source of truth.
-name: Outflow
+name: VibeFlow
 
 options:
   bundleIdPrefix: one.floo
@@ -23,8 +23,8 @@ settings:
     SWIFT_EMIT_LOC_STRINGS: NO
 
 packages:
-  OutflowCore:
-    path: OutflowCore
+  VibeFlowCore:
+    path: VibeFlowCore
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     from: 3.1.0
@@ -33,21 +33,21 @@ packages:
     from: 4.2.2
 
 targets:
-  Outflow:
+  VibeFlow:
     type: application
     platform: macOS
     sources:
-      - path: Outflow
+      - path: VibeFlow
         excludes:
           - "Info.plist"
     dependencies:
-      - package: OutflowCore
+      - package: VibeFlowCore
       - package: KeyboardShortcuts
       - package: KeychainAccess
     info:
-      path: Outflow/Info.plist
+      path: VibeFlow/Info.plist
       properties:
-        CFBundleDisplayName: Outflow
+        CFBundleDisplayName: VibeFlow
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
         LSUIElement: true            # agent app: no Dock icon, no focus steal
@@ -55,19 +55,19 @@ targets:
         NSHumanReadableCopyright: "MIT License"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: one.floo.outflow
-        PRODUCT_NAME: Outflow
+        PRODUCT_BUNDLE_IDENTIFIER: one.floo.vibeflow
+        PRODUCT_NAME: VibeFlow
         GENERATE_INFOPLIST_FILE: NO
         # No App Sandbox: the Accessibility API cannot read other apps from inside the sandbox.
 
 schemes:
-  Outflow:
+  VibeFlow:
     build:
       targets:
-        Outflow: all
+        VibeFlow: all
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - package: OutflowCore/OutflowCoreTests
+        - package: VibeFlowCore/VibeFlowCoreTests

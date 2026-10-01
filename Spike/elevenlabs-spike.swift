@@ -1,4 +1,4 @@
-// Outflow T1: ElevenLabs PCM streaming spike.
+// VibeFlow T1: ElevenLabs PCM streaming spike.
 //
 // Measures, over N runs, the two numbers the whole app depends on:
 //   first audio  = request start -> first PCM buffer playing   (target <= 1.5 s)
@@ -27,7 +27,7 @@ struct Options {
     var quiet = false
 
     static let sampleText = """
-    Outflow reads whatever you select, in a voice you actually want to listen to. \
+    VibeFlow reads whatever you select, in a voice you actually want to listen to. \
     This paragraph is about five hundred characters long, which is a typical email or a \
     couple of paragraphs from an article. It mixes short sentences with longer ones, a number \
     like 1,250, a date such as 3 October 2026, and an abbreviation like e.g. so that we can \
@@ -247,7 +247,7 @@ func main() async -> Int32 {
     let key: String
     do { key = try loadAPIKey() } catch { print(error); return 2 }
 
-    print("Outflow T1 spike: \(opts.runs) runs, speed \(opts.speed), voice \(opts.voiceID), \(opts.text.count) chars, stop after \(opts.stopAfter) s")
+    print("VibeFlow T1 spike: \(opts.runs) runs, speed \(opts.speed), voice \(opts.voiceID), \(opts.text.count) chars, stop after \(opts.stopAfter) s")
     print(String(repeating: "-", count: 78))
     print(String(format: "%-5@ %-6@ %12@ %13@ %9@ %7@ %10@ %8@", "run", "state", "first audio", "request done", "stop", "lines", "audio KB", "chars"))
 

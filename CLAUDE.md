@@ -1,7 +1,7 @@
-# Outflow
+# VibeFlow
 
 Native macOS menu bar app: select text anywhere, press a global shortcut, hear it read
-aloud in a natural voice. The counterpart to Wispr Flow (speech in); Outflow is speech out.
+aloud in a natural voice. The counterpart to Wispr Flow (speech in); VibeFlow is speech out.
 
 ## Stack and decisions
 
@@ -19,7 +19,7 @@ aloud in a natural voice. The counterpart to Wispr Flow (speech in); Outflow is 
   local Kokoro are later additions.
 - Playback: one ElevenLabs streaming request per selection (stream/with-timestamps,
   pcm_24000) into AVAudioPlayerNode. No chunking in v1; size cap fixed at 40,000 chars.
-  Same hotkey stops. Design and all review decisions: docs/designs/outflow-v1.md
+  Same hotkey stops. Design and all review decisions: docs/designs/vibeflow-v1.md
   (Decision ledger D1 to D16, Implementation Tasks T1 to T12). Start at T1, the audio spike.
 
 ## Skills to use
@@ -33,13 +33,13 @@ aloud in a natural voice. The counterpart to Wispr Flow (speech in); Outflow is 
 Xcode 26.6 installed and selected (2026-10-01). The .xcodeproj is generated and gitignored; project.yml is the source of truth.
 
 - Regenerate the project after editing project.yml: `xcodegen generate`
-- Build: `xcodebuild -project Outflow.xcodeproj -scheme Outflow -configuration Debug -derivedDataPath build/DerivedData build`
+- Build: `xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug -derivedDataPath build/DerivedData build`
   (until a signing identity exists, append `CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=` for an ad-hoc build)
-- Core tests: `cd OutflowCore && swift test` (Swift Testing)
-- Built app: build/DerivedData/Build/Products/Debug/Outflow.app
+- Core tests: `cd VibeFlowCore && swift test` (Swift Testing)
+- Built app: build/DerivedData/Build/Products/Debug/VibeFlow.app
 - Signing: automatic, personal team Y798SH49X3 (Apple ID in Xcode). Accessibility grant verified to survive rebuilds.
 - If xcodebuild fails at CodeSign with errSecInternalComponent, the login keychain is locked: run `security unlock-keychain ~/Library/Keychains/login.keychain-db` in a terminal (asks for the login password).
-- Read app logs with `/usr/bin/log show --last 5m --predicate 'subsystem == "one.floo.outflow"'` (plain `log` is a zsh builtin and silently does nothing). Use `.notice`, not `.info`, for lines that must persist.
+- Read app logs with `/usr/bin/log show --last 5m --predicate 'subsystem == "one.floo.vibeflow"'` (plain `log` is a zsh builtin and silently does nothing). Use `.notice`, not `.info`, for lines that must persist.
 - Swift 6 gotcha: `kAXTrustedCheckOptionPrompt` is a non-Sendable global; use the literal key "AXTrustedCheckOptionPrompt".
 
 ## gstack (REQUIRED — global install)
