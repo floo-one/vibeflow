@@ -42,7 +42,7 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("Settings…") { openSettings() }
+        Button("Settings…") { SettingsWindow.present(openSettings, container: container) }
             .keyboardShortcut(",")
         Button("Quit VibeFlow") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
@@ -58,7 +58,7 @@ struct MenuBarView: View {
 
     private func perform(_ action: ErrorAction) {
         switch action {
-        case .openKeys: openSettings()
+        case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .keys)
         case .readOriginal: session.readOriginal()
         case .grantAccessibility: NSWorkspace.shared.open(Accessibility.settingsURL)
         }

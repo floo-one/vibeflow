@@ -31,6 +31,7 @@ struct SettingsView: View {
                 .tag(SettingsTab.keys)
         }
         .frame(width: 600, height: 480)
+        .background(SettingsWindowConfigurator())
     }
 }
 
