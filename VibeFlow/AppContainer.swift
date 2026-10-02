@@ -21,6 +21,7 @@ final class AppContainer {
 
     init() {
         LegacyMigration.runIfNeeded()
+        SystemVoiceCatalog.preload()
         preferences = Preferences()
         presets = AppPresetStore()
         secrets = KeychainSecretsStore()

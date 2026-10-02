@@ -298,33 +298,14 @@ private struct PresetEditor: View {
         }
 
         Section("Speed and language") {
-            LabeledContent("Speed") {
-                HStack {
-                    Slider(value: $preset.speed, in: 0.7...2.0, step: 0.05)
-                    Text(preset.speed.formatted(.number.precision(.fractionLength(2)))).monospacedDigit().frame(width: 40)
-                }
-            }
+            SpeedSlider(speed: $preset.speed)
             TextField("Language override (BCP-47, e.g. de-DE), empty = detect", text: Binding(
                 get: { preset.languageOverride ?? "" },
                 set: { preset.languageOverride = $0.isEmpty ? nil : $0 }
             ))
         }
 
-        Section("Apple voice per language") {
-            ForEach(voiceLanguages, id: \.self) { language in
-                Picker(language, selection: Binding(
-                    get: { preset.appleVoiceByLanguage[language] ?? "" },
-                    set: { id in
-                        if id.isEmpty { preset.appleVoiceByLanguage[language] = nil } else { preset.appleVoiceByLanguage[language] = id }
-                    }
-                )) {
-                    Text("System default").tag("")
-                    ForEach(container.voices.voices().filter { $0.language == language }, id: \.identifier) { voice in
-                        Text(voice.name).tag(voice.identifier)
-                    }
-                }
-            }
-        }
+        AppleVoiceSection(map: $preset.appleVoiceByLanguage, voices: container.voices.voices(), systemLanguage: container.voices.systemLanguage)
 
         if showSmartRead {
             Section("Smart read") {
@@ -339,16 +320,82 @@ private struct PresetEditor: View {
             }
         }
     }
+}
 
-    /// Languages that have at least one installed voice, system language first.
-    private var voiceLanguages: [String] {
-        let system = container.voices.systemLanguage
-        let all = Set(container.voices.voices().map(\.language))
-        return all.sorted { a, b in
-            if a == system { return true }
-            if b == system { return false }
+// MARK: - Speed slider
+
+/// Drags update local state only; the preset (and its persistence and every observer) is
+/// written once, when the drag ends.
+private struct SpeedSlider: View {
+    @Binding var speed: Double
+    @State private var draft: Double?
+
+    var body: some View {
+        LabeledContent("Speed") {
+            HStack {
+                Slider(value: Binding(get: { draft ?? speed }, set: { draft = $0 }), in: 0.7...2.0, step: 0.05) { editing in
+                    if !editing, let value = draft {
+                        speed = value
+                        draft = nil
+                    }
+                }
+                Text((draft ?? speed).formatted(.number.precision(.fractionLength(2))))
+                    .monospacedDigit()
+                    .frame(width: 40)
+            }
+        }
+    }
+}
+
+// MARK: - Apple voice per language
+
+/// Shows only the languages that matter: the system language, any language with a chosen
+/// voice, plus a menu to add another. 49 pickers with 180 voices was too heavy to render.
+private struct AppleVoiceSection: View {
+    @Binding var map: [String: String]
+    let voices: [AppleVoice]
+    let systemLanguage: String
+
+    private var byLanguage: [String: [AppleVoice]] { Dictionary(grouping: voices, by: \.language) }
+
+    private var shownLanguages: [String] {
+        var langs = Set(map.keys)
+        langs.insert(systemLanguage)
+        return langs.sorted { a, b in
+            if a == systemLanguage { return true }
+            if b == systemLanguage { return false }
             return a < b
         }
+    }
+
+    var body: some View {
+        let grouped = byLanguage
+        Section("Apple voice per language") {
+            ForEach(shownLanguages, id: \.self) { language in
+                Picker(languageName(language), selection: Binding(
+                    get: { map[language] ?? "" },
+                    set: { id in map[language] = id.isEmpty ? nil : id }
+                )) {
+                    Text("System default").tag("")
+                    ForEach(grouped[language] ?? [], id: \.identifier) { voice in
+                        Text(voice.name).tag(voice.identifier)
+                    }
+                }
+            }
+            Menu("Add a voice for another language") {
+                ForEach(grouped.keys.sorted().filter { !shownLanguages.contains($0) }, id: \.self) { language in
+                    Button(languageName(language)) {
+                        if let first = grouped[language]?.first { map[language] = first.identifier }
+                    }
+                }
+            }
+            .fixedSize()
+        }
+    }
+
+    private func languageName(_ code: String) -> String {
+        let name = Locale.current.localizedString(forIdentifier: code) ?? code
+        return "\(name) (\(code))"
     }
 }
 

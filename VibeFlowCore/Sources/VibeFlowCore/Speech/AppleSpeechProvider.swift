@@ -20,12 +20,24 @@ public protocol AppleVoiceCatalog: Sendable {
     var systemLanguage: String { get }
 }
 
+/// Installed system voices, read from macOS once per launch. `speechVoices()` costs
+/// 50 to 130 ms per call (180 voices), so it must never run inside a view body or per read.
 public struct SystemVoiceCatalog: AppleVoiceCatalog {
     public init() {}
-    public func voices() -> [AppleVoice] {
-        AVSpeechSynthesisVoice.speechVoices().map { AppleVoice(identifier: $0.identifier, language: $0.language, name: $0.name) }
+
+    /// Lazily loaded on first use; `static let` initialization is thread-safe.
+    private static let cached: [AppleVoice] = AVSpeechSynthesisVoice.speechVoices()
+        .map { AppleVoice(identifier: $0.identifier, language: $0.language, name: $0.name) }
+        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    private static let cachedSystemLanguage = AVSpeechSynthesisVoice.currentLanguageCode()
+
+    public func voices() -> [AppleVoice] { Self.cached }
+    public var systemLanguage: String { Self.cachedSystemLanguage }
+
+    /// Warms the cache off the main thread so the first Settings open or Apple read is instant.
+    public static func preload() {
+        Task.detached(priority: .utility) { _ = cached; _ = cachedSystemLanguage }
     }
-    public var systemLanguage: String { AVSpeechSynthesisVoice.currentLanguageCode() }
 }
 
 /// Pure selection and mapping rules (design: Speed, Language, D7).
