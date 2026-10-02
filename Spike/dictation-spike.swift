@@ -88,11 +88,13 @@ func record(seconds: Double) throws -> Data {
         let ratio = target.sampleRate / inFormat.sampleRate
         let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 16
         guard let out = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: capacity) else { return }
-        var fed = false
+        // The converter calls this synchronously; a lock-free box keeps Swift 6 happy.
+        final class Once: @unchecked Sendable { var fed = false }
+        let once = Once()
         var error: NSError?
         converter.convert(to: out, error: &error) { _, status in
-            if fed { status.pointee = .noDataNow; return nil }
-            fed = true
+            if once.fed { status.pointee = .noDataNow; return nil }
+            once.fed = true
             status.pointee = .haveData
             return buffer
         }
