@@ -129,6 +129,9 @@ private struct SmartReadTab: View {
                 case .failed(let reason):
                     Label(reason, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
                     Button("Retry") { container.catalogs.refreshModels() }
+                case .limited(let reason):
+                    Label(reason, systemImage: "info.circle")
+                    TextField("Anthropic model id", text: $prefs.smartReadModel)
                 case .loaded:
                     SearchablePicker(
                         title: "Model",
@@ -270,6 +273,26 @@ private struct PresetEditor: View {
                         items: container.catalogs.voices.map { ($0.id, $0.name, $0.description) },
                         selection: $preset.elevenLabsVoiceID
                     )
+                case .limited(let reason):
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "info.circle").foregroundStyle(.blue)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(reason).font(.callout)
+                            HStack {
+                                Link("Open ElevenLabs API keys", destination: URL(string: "https://elevenlabs.io/app/settings/api-keys")!)
+                                Button("Check again") { container.catalogs.refreshVoices() }
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .background(.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                    SearchablePicker(
+                        title: "Voice",
+                        items: container.catalogs.voices.map { ($0.id, $0.name, $0.description) },
+                        selection: $preset.elevenLabsVoiceID
+                    )
+                    TextField("Or paste a voice id from your ElevenLabs library", text: $preset.elevenLabsVoiceID)
+                        .textFieldStyle(.roundedBorder)
                 }
             }
         }
