@@ -56,18 +56,21 @@ Ruled out: ElevenLabs Scribe only (paid, no offline); Apple only (weak on names 
 | AudioRecorder | AVAudioEngine input tap, 16 kHz mono, WAV in memory | scripted audio, can fail with "no mic permission" |
 | Transcriber | GroqTranscriber (OpenAI-compatible /audio/transcriptions, base URL configurable), AppleTranscriber (on-device) | scripted text or failure |
 | TextInserter | snapshot clipboard text, write transcript, press Edit > Paste via Accessibility in the frozen app, restore after 300 ms | records inserts and target app |
-| PushToTalkKey | CGEventTap, see Push-to-talk capture | manual down and up |
+| RecordTrigger | KeyboardShortcuts key-down and key-up for `.record`, see Record shortcut | manual down and up |
 
-### Push-to-talk capture
+### Record shortcut (revised 2026-10-02)
 
-- Supported keys are modifier-only: Fn, Right Option, Right Command, Right Control. They are read from flagsChanged events using device-dependent flags, so left and right are distinguishable. Modifier-only keys never type characters and never auto-repeat, so nothing needs consuming. Ordinary character keys are not offered; KeyboardShortcuts is not used for push-to-talk.
-- A press counts only when the modifier is pressed alone. If another key is pressed while it is held, the press is a normal shortcut and is ignored.
-- Default: Fn if the spike shows the tap sees it reliably on macOS 26 with the system Fn action set to "Do nothing" (Settings > Dictation explains and links to the system setting); otherwise Right Option.
-- Under Secure Event Input (password fields) the tap is blind. VibeFlow detects this with IsSecureEventInputEnabled at key down and shows "Dictation unavailable in secure fields" instead of recording.
+Florian's layout: Option + . read, Option + , smart read, Option + - record. Recording therefore uses an ordinary shortcut through KeyboardShortcuts, the same library as the read shortcuts, instead of a modifier-only key read from a CGEventTap. This supersedes the earlier modifier-only design (Fn, Right Option) and its spike.
+
+- Clipboard variants (added 2026-10-02): Shift + Option + . reads the clipboard and Shift + Option + , smart-reads it, with the default preset; pressing the same shortcut again confirms a long clipboard or stops playback. Implemented in v1 already.
+- Name `.record`, default Option-Minus, rebindable in Settings > General next to the read shortcuts. New installs default to Option + . / , / - for read, smart read and record; existing saved bindings are kept.
+- Hold and tap, from KeyboardShortcuts' key-down and key-up callbacks: key down starts recording at once. Released after 0.3 s or more: push-to-talk, stop and paste. Released sooner: the recording keeps running hands-free until the next press of the shortcut, the 2-minute cap, or the read hotkey cancels it.
+- Registered hotkeys are consumed by the system: the shortcut never types its character (Option-Minus would otherwise type an en dash) and does not auto-repeat while held.
+- Secure fields: registered hotkeys are expected to keep firing under Secure Event Input. The spike verifies this; if dictation into a password field is possible, VibeFlow pastes nothing there and shows "Dictation unavailable in secure fields" (checked with IsSecureEventInputEnabled at key up).
 
 ### Mode rule: dictate or ask
 
-One rule decides what the push-to-talk key does: it means ask only while a conversation is open and its panel is visible; otherwise it dictates. The menu bar icon and the panel header show the mode ("Listening" with a microphone, or "Asking" with a speech bubble). Holding Shift together with the key forces dictation even during a conversation. Switching to another app ends the conversation, so the key returns to dictation the moment focus leaves.
+The record shortcut means ask only while a conversation is open and its panel is visible; otherwise it dictates. The menu bar icon and the panel header show the mode ("Listening" with a microphone, or "Asking" with a speech bubble). Switching to another app ends the conversation, so the shortcut returns to dictation the moment focus leaves. There is no separate force-dictation chord.
 
 ### Dictation state machine (milestone 1)
 
@@ -105,9 +108,9 @@ Every fallback shows a one-line status ("Transcribed on device: Groq unavailable
 
 ### Review resolutions (round 2, applied 2026-10-01)
 
-- Shift exception (R2-1): Shift is the one allowed companion. Shift held at key down, in either order within 150 ms, forces dictation; the mode is fixed at key down and releasing Shift mid-recording changes nothing.
-- Chord cancel (R2-2): the tap also watches keyDown. Any non-Shift key pressed while the push-to-talk modifier is held cancels the recording silently (no transcription, no status). All events pass through unchanged, so the app still receives its shortcut.
-- Secure Event Input (R2-3): the spike checks whether flagsChanged still reaches the tap under secure input. If it does, show "Dictation unavailable in secure fields". If not, VibeFlow polls IsSecureEventInputEnabled every second and greys the menu bar icon while it is on; key presses are then a silent no-op.
+- Shift exception (R2-1), superseded 2026-10-02 by the record shortcut (no force-dictation chord): Shift is the one allowed companion. Shift held at key down, in either order within 150 ms, forces dictation; the mode is fixed at key down and releasing Shift mid-recording changes nothing.
+- Chord cancel (R2-2), superseded 2026-10-02 (registered shortcuts need no chord handling): the tap also watches keyDown. Any non-Shift key pressed while the push-to-talk modifier is held cancels the recording silently (no transcription, no status). All events pass through unchanged, so the app still receives its shortcut.
+- Secure Event Input (R2-3), revised 2026-10-02 per the Record shortcut section; original text: the spike checks whether flagsChanged still reaches the tap under secure input. If it does, show "Dictation unavailable in secure fields". If not, VibeFlow polls IsSecureEventInputEnabled every second and greys the menu bar icon while it is on; key presses are then a silent no-op.
 - Panel focus (R2-4): the panel is a non-activating NSPanel that can become key without activating VibeFlow. "Switching apps" means the frontmost app changes to anything other than the conversation's source app; VibeFlow's own windows never count.
 - Conversation overlaps (R2-5): key down during answer TTS synthesis cancels it and keeps the answer text in context marked "(interrupted)"; key down while a question is transcribing is ignored; Shift-forced dictation stops any playback first, then records.
 - Answer audio (R2-6): answers use the same streaming ElevenLabs path as reads, so playback starts on the first audio chunk. Budget for 3 s: transcription about 0.7 s, Haiku answer about 1.5 s, first audio about 0.3 s, overhead under 0.5 s.
@@ -119,13 +122,13 @@ Every fallback shows a one-line status ("Transcribed on device: Groq unavailable
 
 ### Settings additions
 
-- Dictation tab: push-to-talk key (Fn, Right Option, Right Command, Right Control), transcriber (Groq / custom OpenAI-compatible URL / Apple) with the Apple language asset status and a download button, cleanup on or off, custom vocabulary.
+- Dictation tab: transcriber (Groq / custom OpenAI-compatible URL / Apple) with the Apple language asset status and a download button, cleanup on or off, custom vocabulary.
 - Keys tab: Groq key, with the missing-key callout.
 - Conversation: on or off, inactivity timeout.
 
 ## Open Questions (resolved by the day-one spike)
 
-- Fn as push-to-talk on macOS 26 with the system Fn action set to "Do nothing": does flagsChanged see it reliably? Pick Fn or Right Option as the default.
+- Does the Option-Minus hotkey keep firing under Secure Event Input, and does hold versus tap feel right at the 0.3 s threshold?
 - Apple on-device transcriber: does it need Speech Recognition authorization, how are language assets downloaded and detected, and how does it do on ten real German-English dictations against Groq?
 - Paste reliability in Electron apps and terminals: capture-matrix style check as in v1.
 
@@ -144,8 +147,8 @@ Unchanged from v1: local Xcode build. Notarized DMG remains later distribution w
 
 ## Next Steps
 
-1. Day-one spike: push-to-talk via flagsChanged on Fn and Right Option, Secure Event Input detection, Apple on-device transcriber permissions and assets.
-2. Ports and fakes: AudioRecorder, Transcriber, TextInserter, PushToTalkKey.
+1. Day-one spike: record shortcut hold and tap behavior, Secure Event Input, Apple on-device transcriber permissions and assets.
+2. Ports and fakes: AudioRecorder, Transcriber, TextInserter, RecordTrigger.
 3. Dictation state machine, transcribers with the fallback table, guarded cleanup with the sanity check, paste with clipboard restore, menu states. Tests first.
 4. Dictation QA across the app matrix; one week of daily use.
 5. Conversation: mode rule, turn list, panel, barge-in, timeout, errors, conversation eval.

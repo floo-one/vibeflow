@@ -4,12 +4,13 @@ Select text anywhere on your Mac, press a shortcut, hear it read aloud in a voic
 actually want to listen to. VibeFlow is the counterpart to speech-to-text tools like
 Wispr Flow: speech out instead of speech in.
 
-- **Read** (Control-Option-R by default): the selection, spoken with an ElevenLabs voice,
+- **Read** (Option + . by default): the selection, spoken with an ElevenLabs voice,
   first audio in well under a second. Apple's built-in voices are the free, offline fallback.
-- **Smart read** (Control-Option-S): the selection goes through Claude first, as a short
+- **Smart read** (Option + ,): the selection goes through Claude first, as a short
   spoken brief or a cleanup that reads well aloud, then is spoken.
 - **Per-app presets**: a calm narrator for PDFs, a fast voice for Slack, or "Apple only, no
   smart read" for apps whose text must never leave the Mac.
+- **Clipboard**: add Shift (Shift + Option + . or ,) to read or smart read whatever is on the clipboard.
 - Press the shortcut again to stop. Everything lives in the menu bar.
 
 Native Swift 6 / SwiftUI, macOS 15 or later. No accounts, no server, no telemetry. Bring your

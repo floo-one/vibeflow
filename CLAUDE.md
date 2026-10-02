@@ -1,16 +1,15 @@
 # VibeFlow
 
 Native macOS menu bar app: select text anywhere, press a global shortcut, hear it read
-aloud in a natural voice. The counterpart to Wispr Flow (speech in); VibeFlow is speech out.
+aloud in a natural voice. v1 (shipped locally) is speech out; VibeFlow 2 adds FreeFlow-style
+dictation and a conversation mode (docs/designs/vibeflow-2-dictation-conversation.md).
+Default shortcuts: Option + . read, Option + , smart read, Shift adds clipboard, Option + - record.
 
 ## Stack and decisions
 
 - Swift 6 / SwiftUI, `MenuBarExtra` for the menu bar UI, a Settings window for voice,
   speed and shortcuts. No Electron, no Tauri, no server, no database.
-- Xcode project (Option A, chosen 2026-10-01). Xcode is NOT installed yet on this Mac,
-  only Command Line Tools (Swift 6.3.2). Install Xcode from the App Store before the first
-  build. Keep the project file generated from `project.yml` via XcodeGen so it stays
-  text-reviewable.
+- Xcode project generated from `project.yml` via XcodeGen so it stays text-reviewable.
 - Selection capture: Accessibility API first, simulated Cmd+C + pasteboard as fallback.
   Needs the Accessibility permission; sign with a stable identity so TCC keeps the grant
   across rebuilds (ad-hoc signing revokes it on every build).
@@ -19,8 +18,10 @@ aloud in a natural voice. The counterpart to Wispr Flow (speech in); VibeFlow is
   local Kokoro are later additions.
 - Playback: one ElevenLabs streaming request per selection (stream/with-timestamps,
   pcm_24000) into AVAudioPlayerNode. No chunking in v1; size cap fixed at 40,000 chars.
-  Same hotkey stops. Design and all review decisions: docs/designs/vibeflow-v1.md
-  (Decision ledger D1 to D16, Implementation Tasks T1 to T12). Start at T1, the audio spike.
+  Same hotkey stops. v1 design and review decisions: docs/designs/vibeflow-v1.md
+  (Decision ledger D1 to D16, Implementation Tasks T1 to T12, all done).
+- Performance rule: never call AVSpeechSynthesisVoice.speechVoices() or other system
+  enumerations in a SwiftUI body; SystemVoiceCatalog caches them once per launch.
 
 ## Skills to use
 

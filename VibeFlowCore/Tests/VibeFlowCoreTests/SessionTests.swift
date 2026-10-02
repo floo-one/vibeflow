@@ -431,3 +431,54 @@ struct SmartReadTests {
         #expect(LanguageDetector.detect("   ") == nil)
     }
 }
+
+@Suite("ReadSession: clipboard shortcuts") @MainActor
+struct ClipboardHotkeyTests {
+    static let long = String(repeating: "word ", count: 2_500)
+
+    @Test func shiftShortcutSpeaksTheClipboardWithTheDefaultPreset() async throws {
+        let h = SessionHarness {
+            $0.presets.byBundle["com.apple.Safari"] = AppPreset(bundleID: "com.apple.Safari", elevenLabsVoiceID: "safari-voice")
+            $0.presets.defaultPreset = AppPreset(elevenLabsVoiceID: "default-voice")
+        }
+        h.session.clipboardHotkey(.read, text: "From the clipboard.")
+        await h.settle()
+        #expect(h.elevenLabs.requests.first?.text == "From the clipboard.")
+        #expect(h.elevenLabs.requests.first?.voiceID == "default-voice")
+        #expect(h.capture.calls.isEmpty, "never captures the selection")
+    }
+
+    @Test func pressingItAgainConfirmsALongClipboard() async throws {
+        let h = SessionHarness()
+        h.session.clipboardHotkey(.read, text: Self.long)
+        guard case .awaitingConfirm(.read, .clipboardHotkey, _) = h.session.state else { Issue.record("expected confirm"); return }
+        #expect(h.session.status.contains("Press the shortcut again within 5 s"))
+        h.session.clipboardHotkey(.read, text: Self.long)
+        await h.settle()
+        #expect(h.elevenLabs.requests.count == 1)
+    }
+
+    @Test func pressingItWhileSpeakingStops() async throws {
+        let h = SessionHarness()
+        h.session.clipboardHotkey(.read, text: "Short.")
+        await h.settle()
+        h.session.clipboardHotkey(.read, text: "Short.")
+        #expect(h.session.state == .idle)
+        #expect(h.session.status == "Stopped")
+    }
+
+    @Test func theSelectionShortcutCancelsAClipboardConfirmation() async throws {
+        let h = SessionHarness()
+        h.session.clipboardHotkey(.read, text: Self.long)
+        h.session.hotkey(.read)
+        #expect(h.session.state == .idle)
+        #expect(h.elevenLabs.requests.isEmpty)
+    }
+
+    @Test func smartReadClipboardRunsTheTransform() async throws {
+        let h = SessionHarness()
+        h.session.clipboardHotkey(.smartRead, text: "A paragraph to explain.")
+        await h.settle()
+        #expect(h.smartRead.requests.first?.text == "A paragraph to explain.")
+    }
+}

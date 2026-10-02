@@ -11,6 +11,8 @@ public enum ReadKind: Sendable, Equatable {
 public enum ReadOrigin: Sendable, Equatable {
     case hotkey
     case menu
+    /// Shift + the read shortcut: reads the clipboard; pressing it again confirms a long text.
+    case clipboardHotkey
 }
 
 /// The working states. Error and warning are display states over `idle` (see `iconState`).
@@ -175,12 +177,28 @@ public final class ReadSession {
     }
 
     /// Menu items "Speak clipboard" and "Smart read clipboard". Uses the global default preset.
+    /// Shift + read or smart read shortcut: speak the clipboard with the default preset.
+    /// Idle: start. Waiting to confirm this same clipboard read: confirm. Otherwise: stop.
+    public func clipboardHotkey(_ kind: ReadKind, text: String) {
+        if case .awaitingConfirm(let pendingKind, .clipboardHotkey, _) = state, pendingKind == kind {
+            confirm()
+            return
+        }
+        guard state == .idle else { cancel(status: "Stopped"); return }
+        startClipboardRead(kind, text: text, origin: .clipboardHotkey)
+    }
+
     public func menuRead(_ kind: ReadKind, text: String) {
         guard state == .idle else { cancel(status: "Stopped"); return }
+        startClipboardRead(kind, text: text, origin: .menu)
+    }
+
+    private func startClipboardRead(_ kind: ReadKind, text: String, origin: ReadOrigin) {
+        accessibilityTrusted = accessibility.isTrusted
         lastError = nil
         stickyStatus = false
         let preset = presets.preset(for: nil)
-        let session = Current(kind: kind, origin: .menu, app: nil, preset: preset)
+        let session = Current(kind: kind, origin: origin, app: nil, preset: preset)
         current = session
         proceedAfterCapture(session, text: text, note: nil)
     }
@@ -258,9 +276,9 @@ public final class ReadSession {
 
     private func awaitConfirmation(_ session: Current, characters: Int) {
         state = .awaitingConfirm(kind: session.kind, origin: session.origin, characters: characters)
-        let window = session.origin == .hotkey ? configuration.hotkeyConfirmWindow : configuration.menuConfirmWindow
+        let window = session.origin != .menu ? configuration.hotkeyConfirmWindow : configuration.menuConfirmWindow
         let seconds = Int(window.components.seconds)
-        status = session.origin == .hotkey
+        status = session.origin != .menu
             ? "Selection too long (\(formatted(characters)) characters). Press the shortcut again within \(seconds) s to read anyway"
             : "Selection too long (\(formatted(characters)) characters). Click Read anyway within \(seconds) s"
         let token = session.token

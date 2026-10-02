@@ -45,6 +45,8 @@ final class AppContainer {
 
         KeyboardShortcuts.onKeyUp(for: .read) { [weak self] in self?.hotkey(.read) }
         KeyboardShortcuts.onKeyUp(for: .smartRead) { [weak self] in self?.hotkey(.smartRead) }
+        KeyboardShortcuts.onKeyUp(for: .readClipboard) { [weak self] in self?.clipboardHotkey(.read) }
+        KeyboardShortcuts.onKeyUp(for: .smartReadClipboard) { [weak self] in self?.clipboardHotkey(.smartRead) }
 
         warmElevenLabsConnection()
     }
@@ -52,6 +54,11 @@ final class AppContainer {
     private func hotkey(_ kind: ReadKind) {
         session.configuration = preferences.sessionConfiguration
         session.hotkey(kind)
+    }
+
+    private func clipboardHotkey(_ kind: ReadKind) {
+        session.configuration = preferences.sessionConfiguration
+        session.clipboardHotkey(kind, text: NSPasteboard.general.string(forType: .string) ?? "")
     }
 
     /// Menu reads use the clipboard text and the default preset.

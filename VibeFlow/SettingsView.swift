@@ -73,6 +73,9 @@ private struct GeneralTab: View {
             Section("Shortcuts") {
                 KeyboardShortcuts.Recorder("Read selection", name: .read)
                 KeyboardShortcuts.Recorder("Smart read selection", name: .smartRead)
+                KeyboardShortcuts.Recorder("Read clipboard", name: .readClipboard)
+                KeyboardShortcuts.Recorder("Smart read clipboard", name: .smartReadClipboard)
+                KeyboardShortcuts.Recorder("Dictate (coming in VibeFlow 2)", name: .record)
                 Text("Press the same shortcut again to stop.")
                     .font(.caption).foregroundStyle(.secondary)
             }
