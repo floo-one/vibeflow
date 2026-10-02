@@ -289,3 +289,711 @@ Stop: CONVERGENCE
 
 > Cleanup and answer models are named (claude-haiku-4-5, non-streaming), but the original obligation also asked whether TTS streams, and the document still does not say.
 <!-- gstack:office-hours:concerns:end -->
+
+## Decision ledger (eng review, milestone 1)
+
+Eng review target: docs/designs/vibeflow-2-dictation-conversation.md (plan). Report file: this document. Started 2026-10-02.
+
+### Scope record (Scope Challenge B)
+feature answers: D1 = A) Dictation only now (user answer, 2026-10-02); structure: D2 = B) Smaller arrangement (user answer, 2026-10-02); accepted scope: milestone 1 dictation exactly as designed (record shortcut hold and tap, Groq and Apple transcribers with the fallback table, guarded cleanup with sanity check, paste with clipboard restore, no-speech detection, Settings and Groq key); milestone 2 conversation is out of this review and gets its own eng review after a week of dictation use; arrangement: new ports AudioRecorder and Transcriber only; paste reuses Pasteboard and AccessibilityBridge (new method: press the plain Cmd-V menu item) and a ClipboardSnapshot type extracted from PasteboardCapture; record shortcut calls recordDown() and recordUp() directly; files: Ports.swift, Capture/ClipboardSnapshot, Dictation/{DictationSession, GroqTranscriber, AppleTranscriber, TextInsertion}, SmartReadPrompts (cleanup prompt), LiveAudioRecorder, LiveServices, SettingsView, AppContainer, 3 test files; pending remedies: none.
+Scope Challenge result: scope reduced per recommendation (conversation deferred to its own review).
+
+### Facts verified (no decision needed)
+- KeyboardShortcuts 3.1.0 exposes onKeyDown(for:) and onKeyUp(for:) (KeyboardShortcuts.swift:556 and :584), so hold and tap on Option + - need no event tap.
+- Groq transcriptions: verbose_json returns per-segment no_speech_prob; uploads up to 25 MB (console.groq.com docs). A 2-minute 16 kHz mono 16-bit WAV is about 3.8 MB.
+- Apple SpeechAnalyzer and SpeechTranscriber (macOS 26) need the locale model installed through AssetInventory before first use; authorization requirements to be confirmed in the spike.
+- Required implementation (not a choice): project.yml has ENABLE_HARDENED_RUNTIME: YES, so microphone access needs the com.apple.security.device.audio-input entitlement and an NSMicrophoneUsageDescription in Info.plist; without them AVAudioEngine input returns silence. Added to the milestone 1 tasks.
+
+### R1: Record while a read is speaking
+Finding: #A1, P1, confidence 8/10, design "Dictation state machine" (no rule for key down while ReadSession is speaking), reviewer: plan-eng-review (Claude)
+Plan baseline: design says the read hotkey cancels dictation; the reverse, record during playback, is unspecified.
+Runtime evidence: ReadSession and the new DictationSession share no state today; the microphone would capture the TTS voice from the speakers.
+Comparison grid:
+| Choice | Current | A | B |
+|---|---|---|---|
+| R1 record during playback | unspecified | record key down stops any playback first (ReadSession.stop()), then records | playback continues while recording |
+Question D3:
+D3 — What happens if you press record while VibeFlow is reading aloud?
+Project/branch/task: vibeflow on main, eng review Section 1, milestone 1 dictation.
+ELI10: The microphone hears the speakers. If a read is still playing when you start dictating, the voice ends up in your recording and Whisper transcribes it as if you said it. Stopping playback the moment you press record avoids that and matches what you almost certainly want.
+Stakes if we pick wrong: dictations that contain sentences from the article VibeFlow was reading.
+Recommendation: A because nobody dictates while wanting to keep listening, and it is one call.
+Note: options differ in kind, not coverage — no completeness score.
+Pros / cons:
+A) Record stops playback first (recommended)
+  ✅ Clean recordings; the read stops instantly, the same as pressing its shortcut again
+  ✅ One call to the existing ReadSession.stop(), one test
+  ❌ You cannot keep a read playing while you dictate a note about it
+B) Keep playing
+  ✅ Lets a read continue in headphones while you dictate
+  ❌ With speakers, the voice bleeds into the recording and gets transcribed
+Net: clean recordings versus listening and dictating at once.
+Header: Record vs read
+Options:
+A) Record stops playback (recommended)
+Record key down calls ReadSession.stop() before recording starts. DictationTests: record during speaking stops playback and then records.
+B) Keep playing
+No interaction between the two sessions.
+
+State: approved
+Actual answer: A) Record stops playback (user answer to D3, 2026-10-02)
+Accepted scope: Record key down calls ReadSession.stop() before recording starts. DictationTests: record during speaking stops playback and then records.
+History: none
+
+### R2: Cleanup provider
+Finding: #A2, P1, confidence 7/10, design "Dictation cleanup" (claude-haiku-4-5) against "Success Criteria" (key up to text at or under 1.5 s), reviewer: plan-eng-review (Claude)
+Plan baseline: cleanup via AnthropicClient with claude-haiku-4-5 (approved design).
+Runtime evidence: unmeasured. Groq whisper-large-v3-turbo transcription of 10 s audio is typically well under 1 s; a Haiku round trip adds roughly 0.8 to 1.5 s; Groq-hosted chat models usually answer short prompts in a few hundred ms. FreeFlow cleans with the Groq chat API on the same key.
+Comparison grid:
+| Choice | Current | A | B |
+|---|---|---|---|
+| R2 cleanup provider | Anthropic Haiku | Groq chat (OpenAI-compatible /chat/completions, default model configurable, e.g. llama-3.3-70b-versatile), same guarded prompt and sanity check; Anthropic selectable | Anthropic Haiku as designed |
+| Keys needed for dictation with cleanup | Groq + Anthropic | Groq only | Groq + Anthropic |
+Question D4:
+D4 — Clean up dictation with Groq's chat model or with Claude?
+Project/branch/task: vibeflow on main, eng review Section 1, milestone 1 dictation.
+ELI10: After Whisper writes down what you said, a language model fixes punctuation and mishearings. The design uses Claude Haiku. Groq also runs fast chat models on the same key you are getting anyway, and they usually answer in a few hundred milliseconds, which matters for the 1.5 second target. Claude stays available as an option in Settings.
+Stakes if we pick wrong: dictation that feels sluggish, or a second key needed just to get clean punctuation.
+Recommendation: A because one key covers dictation and the latency target becomes comfortable; the spike measures both before code depends on it.
+Note: options differ in kind, not coverage — no completeness score.
+Pros / cons:
+A) Groq chat by default, Claude optional (recommended) (human: ~half day / CC: ~15 min)
+  ✅ Dictation needs only the Groq key; cleanup latency drops to a few hundred ms
+  ✅ Same pattern FreeFlow ships with; same guarded prompt and sanity check
+  ❌ A small OpenAI-compatible chat client next to AnthropicClient
+B) Claude Haiku as designed
+  ✅ Reuses AnthropicClient unchanged; Claude follows the do-not-answer rule well
+  ✅ No new client code
+  ❌ Likely 0.8 to 1.5 s extra per dictation, and two keys for full dictation
+Net: speed and one key versus reusing the existing client.
+Header: Cleanup model
+Options:
+A) Groq chat default (recommended)
+Add an OpenAI-compatible chat client (Groq base URL, model setting) used for cleanup by default; Anthropic Haiku selectable in Settings > Dictation. Same delimited prompt, length sanity check and raw-text fallback. The spike measures both providers on ten dictations.
+B) Claude Haiku as designed
+Cleanup via AnthropicClient and claude-haiku-4-5 as written.
+
+State: approved
+Actual answer: A) Groq chat default (user answer to D4, 2026-10-02)
+Accepted scope: Add an OpenAI-compatible chat client (Groq base URL, model setting) used for cleanup by default; Anthropic Haiku selectable in Settings > Dictation. Same delimited prompt, length sanity check and raw-text fallback. The spike measures both providers on ten dictations.
+History: none
+
+### R3: Per-app privacy for dictation
+Finding: #A3, P1, confidence 8/10, design "Constraints" and v1 presets (provider Apple plus smart read off keeps an app local) against "Transcriber fallback" (Groq default for every app), reviewer: plan-eng-review (Claude)
+Plan baseline: no per-app rule for dictation; Groq is used everywhere.
+Runtime evidence: v1 Settings tells the user "Turning smart read off and choosing the Apple provider keeps this app's text on this Mac." Dictation into that app would still send audio to Groq.
+Comparison grid:
+| Choice | Current | A | B | C |
+|---|---|---|---|---|
+| R3 dictation privacy | none | explicit per-preset toggle "Dictate on this Mac only": Apple transcriber, no cloud cleanup; Settings copy updated | infer local from provider Apple plus smart read off | no per-app rule |
+Question D5:
+D5 — Should a "keep this app local" preset also keep dictation local?
+Project/branch/task: vibeflow on main, eng review Section 1, milestone 1 dictation.
+ELI10: In v1 you can mark an app so its text never leaves your Mac. Dictation is new: by default it sends your voice to Groq. If you dictate into an app you marked as private, the audio would still go to the cloud. An explicit switch per app, "Dictate on this Mac only", makes that choice visible instead of guessing it from other settings.
+Stakes if we pick wrong: dictating a confidential note into an app you thought was local, and the audio goes to Groq.
+Recommendation: A because explicit beats inferred for privacy, and the Settings sentence promising local stays true.
+Note: options differ in kind, not coverage — no completeness score.
+Pros / cons:
+A) Explicit per-app toggle (recommended)
+  ✅ "Dictate on this Mac only" uses Apple's on-device recognizer and skips cloud cleanup for that app
+  ✅ Nothing is inferred; the Settings text says exactly what leaves the Mac
+  ❌ One more switch in the per-app preset
+B) Infer it from the existing local settings
+  ✅ No new switch; an app marked local is local for everything
+  ❌ Hidden coupling: changing the voice provider silently changes where dictation goes
+C) No per-app rule
+  ✅ Simplest; Groq everywhere
+  ❌ The v1 promise that an app's text stays on the Mac becomes false for dictation
+Net: one explicit switch versus a hidden rule or a broken promise.
+Header: Dictation privacy
+Options:
+A) Explicit toggle (recommended)
+AppPreset gains dictationLocalOnly (default false, decodes as false for old presets). When true for the frozen app: Apple transcriber, no cloud cleanup, raw on-device text pasted. Settings per-app section and the local-only sentence updated. Tests: preset routing and decoding.
+B) Infer from local settings
+Provider Apple plus smart read off implies local dictation.
+C) No per-app rule
+Groq for every app.
+
+State: approved
+Actual answer: A) Explicit toggle (user answer to D5, 2026-10-02)
+Accepted scope: AppPreset gains dictationLocalOnly (default false, decodes as false for old presets). When true for the frozen app: Apple transcriber, no cloud cleanup, raw on-device text pasted. Settings per-app section and the local-only sentence updated. Tests: preset routing and decoding.
+History: none
+
+### Section 2 notes (no decision needed)
+- ClipboardSnapshot extraction (D2): PasteboardCapture's text-only snapshot, 200 ms detached read, transient restore and changeCount guard move into one type used by both capture and paste. The 13 existing CaptureTests are the regression contract and must pass unchanged.
+- Cmd-V lookup reuses LiveAccessibility's menu walk (LiveServices.swift:35 pressCopyMenuItem, :55 isCommandC) generalized to a command character, so paste works in any UI language (round-2 resolution R2-8).
+- AppPreset.dictationLocalOnly is a non-optional Bool, so AppPreset needs a custom init(from:) using decodeIfPresent to keep old saved presets loading (the existing PresetsTests decoding test covers it).
+
+### R4: Clipboard restore delay after paste
+Finding: #C1, P2, confidence 7/10, design "Recommended Approach" ports table (TextInserter: restore after 300 ms), reviewer: plan-eng-review (Claude)
+Plan baseline: restore 300 ms after pressing Cmd-V (approved design).
+Runtime evidence: unmeasured. The target app reads the pasteboard when it handles the paste; slow apps can take longer than 300 ms. The existing changeCount guard only protects against later writes, not against restoring before the app has read.
+Comparison grid:
+| Choice | Current | A | B |
+|---|---|---|---|
+| R4 restore delay | 300 ms fixed | 750 ms fixed, changeCount guard kept; the paste spike measures the slowest app in the matrix and the constant is raised if needed | 300 ms as designed |
+Question D6:
+D6 — How long to wait before putting your clipboard back after pasting?
+Project/branch/task: vibeflow on main, eng review Section 2, milestone 1 dictation.
+ELI10: Dictation pastes by putting the text on the clipboard and pressing paste for you, then restoring what you had copied. The app only reads the clipboard when it gets round to handling the paste. If the restore happens first, the app pastes your old clipboard instead of what you said. 300 ms is tight for slower apps; 750 ms is still invisible to you.
+Stakes if we pick wrong: occasionally the wrong text appears in Slack or VS Code instead of your dictation.
+Recommendation: A because the cost of waiting longer is nothing you can notice, and the failure it prevents is confusing.
+Note: options differ in kind, not coverage — no completeness score.
+Pros / cons:
+A) 750 ms, verified in the paste spike (recommended)
+  ✅ Comfortable margin for Electron apps and terminals
+  ✅ The spike measures the slowest app and raises the constant if even that is too short
+  ❌ Copying something yourself within 0.75 s of a dictation skips the restore, by design of the existing guard
+B) 300 ms as designed
+  ✅ Clipboard comes back sooner
+  ❌ Risk of pasting the old clipboard in slow apps
+Net: an invisible half second against occasional wrong pastes.
+Header: Restore delay
+Options:
+A) 750 ms (recommended)
+TextInsertion restores the snapshot 750 ms after pressing Cmd-V, only if changeCount is unchanged since its own write. The paste spike times the slowest app in the matrix and raises the constant if needed. Test: restore waits the delay on the fake clock and is skipped on a foreign write.
+B) 300 ms as designed
+No change.
+
+State: approved
+Actual answer: A) 750 ms (user answer to D6, 2026-10-02)
+Accepted scope: TextInsertion restores the snapshot 750 ms after pressing Cmd-V, only if changeCount is unchanged since its own write. The paste spike times the slowest app in the matrix and raises the constant if needed. Test: restore waits the delay on the fake clock and is skipped on a foreign write.
+History: none
+
+### R5: Microphone choice and Bluetooth headphones
+Finding: #C2, P2, confidence 7/10, design "Recommended Approach" ports table (AudioRecorder: AVAudioEngine input tap on the default input), reviewer: plan-eng-review (Claude)
+Plan baseline: always record from the system default input.
+Runtime evidence: when a Bluetooth headset's microphone is opened, macOS switches it from its high-quality profile to the hands-free call profile for both input and output until the mic closes. Reads right after a dictation would play in call quality.
+Comparison grid:
+| Choice | Current | A | B |
+|---|---|---|---|
+| R5 input device | system default only | Settings > Dictation microphone picker: "Automatic" (default: built-in microphone when the current output is Bluetooth, else system default), or a specific device | system default only |
+Question D7:
+D7 — Which microphone should dictation use, especially with AirPods in?
+Project/branch/task: vibeflow on main, eng review Section 2, milestone 1 dictation.
+ELI10: When an app opens the microphone of AirPods or other Bluetooth headphones, macOS switches them into phone-call mode: the mic works, but everything you hear becomes low quality until the mic closes. If VibeFlow records from the Mac's built-in mic whenever you're listening on Bluetooth, your reads keep sounding good. A picker in Settings lets you choose a specific mic too.
+Stakes if we pick wrong: every read right after a dictation sounds like a bad phone line while AirPods are in.
+Recommendation: A because it keeps the voice quality that is the point of VibeFlow, and the picker covers anyone with a better external mic.
+Note: options differ in kind, not coverage — no completeness score.
+Pros / cons:
+A) Automatic choice plus a picker (recommended) (human: ~half day / CC: ~15 min)
+  ✅ AirPods stay in high-quality mode; the built-in mic is used while output is Bluetooth
+  ✅ A specific mic, such as a USB podcast mic, can be chosen in Settings
+  ❌ The built-in mic picks up more room noise than the AirPods' mic
+B) System default only
+  ✅ No device logic or setting
+  ❌ AirPods drop to call quality after every dictation
+Net: device logic and a picker versus degraded audio with Bluetooth headphones.
+Header: Microphone
+Options:
+A) Automatic plus picker (recommended)
+Settings > Dictation gets a microphone picker with "Automatic" (built-in mic when the default output is Bluetooth, else the system default input) and every available input device. LiveAudioRecorder sets the engine input device accordingly. Test: device selection rule against a fake device list.
+B) System default only
+No change.
+
+State: approved
+Actual answer: A) Automatic plus picker (user answer to D7, 2026-10-02)
+Accepted scope: Settings > Dictation gets a microphone picker with "Automatic" (built-in mic when the default output is Bluetooth, else the system default input) and every available input device. LiveAudioRecorder sets the engine input device accordingly. Test: device selection rule against a fake device list.
+History: none
+
+### Section 3: Test review
+Framework: Swift Testing in VibeFlowCore, fakes for every port (existing pattern, Tests/VibeFlowCoreTests). No dictation code exists yet, so every path is a GAP by construction. Regression contract: the 13 CaptureTests and 105 existing tests must pass unchanged through the ClipboardSnapshot extraction (D2).
+
+```
+CODE PATHS (proposed)                                       USER FLOWS
+[+] Dictation/DictationSession                              [+] Hold to dictate
+  ├── recordDown()                                            ├── [GAP] hold Option+-, talk, release -> text at cursor (manual, ≤1.5 s)
+  │   ├── [GAP] read speaking -> ReadSession.stop() first (D3) ├── [GAP] text pastes into the app frozen at key down
+  │   ├── [GAP] busy (transcribing/cleaning/pasting) -> ignore └── [GAP] clipboard text back after 750 ms (D6)
+  │   ├── [GAP] mic permission missing -> prompt, no record   [+] Tap for hands-free
+  │   └── [GAP] frozen app + preset captured                   ├── [GAP] tap <0.3 s keeps recording, next press stops
+  ├── recordUp()                                               └── [GAP] 2-minute cap stops and transcribes
+  │   ├── [GAP] <0.3 s -> hands-free mode                     [+] Private app (D5)
+  │   ├── [GAP] ≥0.3 s -> stop and transcribe                  └── [GAP] dictationLocalOnly -> Apple only, no cloud cleanup
+  │   └── [GAP] hands-free second press -> stop               [+] Error states
+  ├── cancel() via read hotkey                                 ├── [GAP] 401 Groq -> "Groq key rejected" + Keys action
+  │   └── [GAP] in-flight transcription/cleanup cancelled      ├── [GAP] offline -> "Transcribed on device: Groq unavailable"
+  └── [GAP] 2-minute cap                                       ├── [GAP] silence -> "Didn't catch that", nothing pasted
+[+] Dictation/GroqTranscriber                                  └── [GAP] app lost focus -> text on clipboard + status
+  ├── [GAP] multipart WAV upload, verbose_json
+  ├── [GAP] no_speech_prob > 0.6 on all segments -> no speech
+  ├── [GAP] hallucination list ("Thank you.", ZDF line) -> no speech
+  ├── [GAP] fallback table: offline/timeout/429/5xx -> Apple; 401/403/other 4xx -> error
+  └── [GAP] custom URL without key allowed; 401 -> "Endpoint needs a key"
+[+] Dictation/AppleTranscriber
+  ├── [GAP] assets missing -> error with download action
+  └── [GAP] empty final result -> no speech
+[+] Cleanup (Groq chat default, Anthropic optional, D4)
+  ├── [GAP] [→EVAL] delimited prompt, never answers a question in the dictation
+  ├── [GAP] sanity: empty, >1.3x, <0.7x, stop != end -> raw text
+  └── [GAP] no key / cleanup off -> raw text
+[+] Dictation/TextInsertion + Capture/ClipboardSnapshot
+  ├── [GAP] Cmd-V item found by command char; fallback synthesized Cmd-V
+  ├── [GAP] restore after 750 ms only if changeCount unchanged (D6)
+  ├── [GAP] non-text clipboard -> overwritten, status note
+  └── [★★★ TESTED] snapshot/restore rules: 13 CaptureTests (must stay green)
+[+] Microphone selection (D7)
+  └── [GAP] Automatic -> built-in when output is Bluetooth; picker honours a fixed device
+[+] AppPreset.dictationLocalOnly
+  └── [GAP] old JSON without the key decodes as false
+
+COVERAGE: 1/34 paths tested (3%)  |  Code paths: 1/25  |  User flows: 0/9
+QUALITY: ★★★:1  |  GAPS: 33 (1 eval, 2 manual)
+```
+Legend: ★★★ behavior + edge + error | ★★ happy path | ★ smoke | [→EVAL] needs LLM eval
+
+Tests to add (required proof of approved behavior: design approval 2026-10-01 plus D1 to D7):
+- DictationTests (unit): state machine rows, D3 stop-playback, hands-free, cap, cancel, frozen target, lost focus, local-only routing. Value: protects=dictation state machine and paste target; fails_when=a press during cleanup starts a second recording or text pastes into the wrong app; why_new=no tests exist; seam=none (fakes via ports)
+- TranscriberTests (unit): Groq request shape, no-speech rules, full fallback table, custom URL, Apple asset error. Value: protects=fallback contract and silence handling; fails_when=a 401 silently falls back or silence pastes "Thank you."; why_new=no tests exist; seam=none
+- TextInsertionTests (unit, beside CaptureTests): Cmd-V lookup, 750 ms restore, foreign write skip, non-text note, cleanup sanity check. Value: protects=clipboard restore and paste correctness; fails_when=restore runs before the delay or over a foreign write; why_new=paste path is new; seam=none
+- LiveEvalTests (eval, gated like v1): cleanup prompt goldens: question-shaped dictation is cleaned not answered; numbers and names preserved. Value: protects=guarded cleanup prompt; fails_when=the model answers "what is the capital of France" instead of pasting it; why_new=new prompt; seam=none
+- PresetsTests: dictationLocalOnly decoding row added to the existing decoding test.
+- Manual QA: latency over ten runs, paste matrix (Safari, Mail, Notes, VS Code, Slack, Terminal) including a German-locale app, AirPods mic switching.
+Tests made obsolete: none. Test decisions pending: none.
+Test Plan Artifact: /Users/floo/.gstack/projects/vibeflow/floo-main-eng-review-test-plan-20261002-160146.md
+
+### Section 4: Performance review (notes, no decision needed)
+- #P1 (8/10) Recorder: AVAudioEngine input tap converted to 16 kHz mono Int16 in memory; a 2-minute cap bounds memory at about 3.8 MB. The input engine is separate from PCMStreamPlayer's output engine, so reads and recordings never share a graph.
+- #P2 (7/10) Latency: open a HEAD request to api.groq.com at launch, as v1 does for ElevenLabs, so the first dictation is warm. Groq transcription and Groq chat cleanup run back to back, no extra hops.
+- #P3 (7/10) No main-thread work: WAV encoding, upload and cleanup run in Tasks off the main actor; only state changes hop to main (D3 isolation from the v1 review).
+- #P4 (6/10) Groq free-tier rate limits: a 429 falls back to Apple per the fallback table, so heavy use degrades gracefully. Medium confidence, verify against the account's actual limits.
+
+### Outside Voice: Codex (gpt-6-astra) completed, 6 findings (4 P1, 2 P2), all verified against the code
+
+### Factual correction: v1 clipboard snapshot timeout is not enforced (no decision needed)
+Finding: #O3, P1, confidence 9/10, VibeFlowCore/Sources/VibeFlowCore/Capture/PasteboardCapture.swift:71 readSnapshot (withTimeout wrapping `await Task.detached { ... }.value`) and Support/Timeout.swift:16 (withThrowingTaskGroup), reviewer: Codex, confirmed by plan-eng-review.
+The task group cannot return until every child finishes, and the child awaiting a detached task's value is not interrupted by cancellation, so a stalled pasteboard owner still stalls capture past 200 ms. The v1 test slowPasteboardReadIsBoundedAndSkipsTheRestore checks the outcome but not elapsed time. The approved v1 contract (D10: 200 ms bound) requires a fix: race the detached read against the clock with a resume-once continuation instead of a task group, and add a wall-clock assertion to the existing test. Required proof of an approved contract, carried into milestone 1 task T0.
+
+### R6: Apple fallback on macOS 15
+Finding: #O1a, P1, confidence 9/10, project.yml:8 deploymentTarget macOS 15.0 and VibeFlowCore/Package.swift:9 .macOS(.v15) against the design's SpeechAnalyzer (macOS 26 only), reviewer: Codex
+Plan baseline: Apple on-device fallback via SpeechAnalyzer (approved design).
+Runtime evidence: verified: both targets say macOS 15; SpeechAnalyzer and SpeechTranscriber are macOS 26 APIs.
+Comparison grid:
+| Choice | Current | A | B | C | D |
+|---|---|---|---|---|---|
+| R6 Apple fallback platform | SpeechAnalyzer, minimum 15 (does not compile without guards) | keep minimum macOS 15; SpeechAnalyzer behind if #available(macOS 26); on 15 the Apple fallback is unavailable and Settings says so (Groq only) | raise minimum to macOS 26 for the whole app | investigate SFSpeechRecognizer as a macOS 15 fallback before choosing | defer this row |
+Question D8:
+D8 — The Apple fallback needs macOS 26, but VibeFlow supports macOS 15. What do we do?
+Project/branch/task: vibeflow on main, eng review Outside Voice, milestone 1 dictation.
+ELI10: Apple's new on-device recognizer only exists on macOS 26, which you run. VibeFlow is set to support macOS 15 too. Either the fallback simply isn't offered on older Macs, or the whole app requires macOS 26. You lose nothing either way; it only matters for other people using the open source app.
+Stakes if we pick wrong: the code doesn't compile as designed, or VibeFlow drops support for older Macs it could still serve.
+Recommendation: A because it keeps reading aloud working on macOS 15 and costs one availability check.
+Note: options differ in kind, not coverage — no completeness score.
+Pros / cons:
+A) Apply: fallback on macOS 26 only (recommended)
+  ✅ VibeFlow keeps running on macOS 15; dictation there uses Groq only
+  ✅ One availability check; Settings explains why the on-device option is missing
+  ❌ Offline dictation on macOS 15 is not possible
+B) Keep: require macOS 26 for everything
+  ✅ No availability branches anywhere
+  ✅ Simplest code
+  ❌ Drops every macOS 15 user, including for reading aloud, which works fine there
+C) Investigate an older recognizer first
+  ✅ Bounded: half an hour testing SFSpeechRecognizer on-device quality on macOS 15
+  ❌ Delays the build for a platform you don't use
+D) Defer this row
+  ✅ Build continues
+  ❌ The design doesn't compile as written
+Net: one availability check versus dropping macOS 15 entirely.
+Header: macOS version
+Options:
+A) Apply: macOS 26 only fallback (recommended)
+Minimum stays macOS 15. AppleTranscriber is guarded with if #available(macOS 26); on macOS 15 the transcriber list in Settings shows the on-device option as unavailable with the reason, and the fallback table skips Apple (errors surface instead). Tests run the availability branch through a fake.
+B) Keep: raise minimum to macOS 26
+project.yml and Package.swift move to macOS 26; no availability branches.
+C) Investigate before choosing
+Bounded spike of SFSpeechRecognizer on macOS 15; platform choice stays pending.
+D) Defer this proposed change only
+Leave unresolved; other rows unchanged.
+
+State: approved
+Actual answer: A) Apply: macOS 26 only fallback (user answer to D8, 2026-10-02)
+Accepted scope: Minimum stays macOS 15. AppleTranscriber is guarded with if #available(macOS 26); on macOS 15 the transcriber list in Settings shows the on-device option as unavailable with the reason, and the fallback table skips Apple (errors surface instead). Tests run the availability branch through a fake.
+History: none
+
+### R7: Apple language model readiness
+Finding: #O1b, P1, confidence 8/10, design "Transcriber fallback" (assets missing surfaces as an error only when Apple is used), reviewer: Codex
+Plan baseline: language assets are checked on first use of the Apple transcriber; Settings has a download button.
+Runtime evidence: AssetInventory downloads the locale model on request; a missing model discovered during an offline fallback cannot be downloaded at that moment.
+Comparison grid:
+| Choice | Current | A | B | C | D |
+|---|---|---|---|---|---|
+| R7 asset readiness | checked on first use | on macOS 26, when dictation is first enabled and on each launch, check the model for the dictation language and download it in the background if missing; Settings shows ready, downloading or failed | checked on first use only | investigate | defer |
+Question D9:
+D9 — Download Apple's on-device language model ahead of time?
+Project/branch/task: vibeflow on main, eng review Outside Voice, milestone 1 dictation.
+ELI10: The offline fallback needs Apple's speech model for your language on disk. If VibeFlow only checks when Groq has already failed, say on a plane, it's too late to download it. Checking at launch and fetching it in the background means the fallback actually works when you need it.
+Stakes if we pick wrong: the one time you need offline dictation, it fails with "download language".
+Recommendation: A because a fallback that isn't ready when needed is no fallback.
+Note: options differ in kind, not coverage — no completeness score.
+Pros / cons:
+A) Apply: prepare in the background (recommended)
+  ✅ Offline fallback works the first time it is needed
+  ✅ Settings shows ready, downloading or failed, so you know where you stand
+  ❌ A one-time model download of a few hundred MB per language
+B) Keep: check on first use
+  ✅ No download until the fallback is actually used
+  ❌ Fails exactly when offline, the main reason the fallback exists
+C) Investigate first
+  ✅ Bounded: measure model size and download time in the spike
+  ❌ The answer doesn't change the need
+D) Defer this row
+  ✅ Build continues
+  ❌ Offline fallback stays unreliable
+Net: one background download versus a fallback that fails offline.
+Header: Offline model
+Options:
+A) Apply: prepare in background (recommended)
+On macOS 26, at launch and when dictation is enabled, check the AssetInventory model for the dictation language (preset language, else system language) and download it in the background if missing. Settings > Dictation shows ready, downloading or failed with Retry. Tests: readiness states through a fake asset store.
+B) Keep: check on first use
+As designed.
+C) Investigate before choosing
+Measure size and time in the spike; readiness stays pending.
+D) Defer this proposed change only
+Leave unresolved; other rows unchanged.
+
+State: approved
+Actual answer: A) Apply: prepare in background (user answer to D9, 2026-10-02)
+Accepted scope: On macOS 26, at launch and when dictation is enabled, check the AssetInventory model for the dictation language (preset language, else system language) and download it in the background if missing. Settings > Dictation shows ready, downloading or failed with Retry. Tests: readiness states through a fake asset store.
+History: none
+
+### R8: Paste destination check
+Finding: #O2, P1, confidence 8/10, design "Dictation state machine" ("Paste target is the app frozen at key down") and R2-3 secure check at key up, reviewer: Codex
+Plan baseline: only the frontmost app is compared before pasting; secure input checked at key up.
+Runtime evidence: within one app, the focused window or text field can change during transcription and cleanup (about 1 s); the app-level check passes and text lands in the wrong Slack channel or browser tab.
+Comparison grid:
+| Choice | Current | A | B | C | D |
+|---|---|---|---|---|---|
+| R8 destination check | frontmost app only, secure check at key up | capture the focused AX element at key down; immediately before Cmd-V re-read it and re-check secure input; if the element differs, is gone, or secure input is on: no paste, text to clipboard, status "Copied: the text field changed" | app-level check as designed | investigate | defer |
+Question D10:
+D10 — Check the exact text field before pasting, not just the app?
+Project/branch/task: vibeflow on main, eng review Outside Voice, milestone 1 dictation.
+ELI10: While VibeFlow transcribes and cleans up (about a second), you might click into a different Slack channel or browser tab. Today's plan only checks that you're still in Slack, so your dictation could land in the wrong conversation. Remembering the exact text field you were in, and refusing to paste if it changed, sends the text to the clipboard instead with a short note.
+Stakes if we pick wrong: a dictated message lands in the wrong chat or document.
+Recommendation: A because sending text to the wrong person is the worst failure dictation can have, and the check is two Accessibility calls.
+Note: options differ in kind, not coverage — no completeness score.
+Pros / cons:
+A) Apply: check the exact field (recommended)
+  ✅ Text never lands in a field you moved away from; it waits on the clipboard instead
+  ✅ Secure-input check moves to the moment of pasting, where it matters
+  ❌ Apps without Accessibility focus info fall back to the app-level check
+B) Keep: app-level check
+  ✅ Simpler
+  ❌ Wrong-channel pastes within the same app stay possible
+C) Investigate first
+  ✅ Bounded: test focused-element stability in Slack, Safari and VS Code in the spike
+  ❌ The rule is needed regardless
+D) Defer this row
+  ✅ Build continues
+  ❌ Wrong-destination risk ships
+Net: two Accessibility calls versus a dictation in the wrong conversation.
+Header: Paste check
+Options:
+A) Apply: exact field check (recommended)
+Capture the focused AXUIElement at key down. Immediately before Cmd-V, re-read the focused element and secure input. If it differs (CFEqual false), is gone, or secure input is on: no paste, text to clipboard, status "Copied: the text field changed". Apps that expose no focused element use the app-level check. Tests: changed field, same field, missing element, secure input at paste time.
+B) Keep: app-level check
+As designed.
+C) Investigate before choosing
+Spike focused-element stability; rule stays pending.
+D) Defer this proposed change only
+Leave unresolved; other rows unchanged.
+
+State: approved
+Actual answer: A) Apply: exact field check (user answer to D10, 2026-10-02)
+Accepted scope: Capture the focused AXUIElement at key down. Immediately before Cmd-V, re-read the focused element and secure input. If it differs (CFEqual false), is gone, or secure input is on: no paste, text to clipboard, status "Copied: the text field changed". Apps that expose no focused element use the app-level check. Tests: changed field, same field, missing element, secure input at paste time.
+History: none
+
+### R9: Silence phrases need corroboration
+Finding: #O4, P1, confidence 8/10, design R2-10 (phrase list such as "Thank you." treated as no speech unconditionally), reviewer: Codex
+Plan baseline: a transcript matching the hallucination list is discarded (approved round-2 resolution).
+Runtime evidence: "Thank you." is a common real dictation; the list alone cannot tell speech from silence.
+Comparison grid:
+| Choice | Current | A | B | C | D |
+|---|---|---|---|---|---|
+| R9 phrase rule | phrase alone discards | phrase discards only when corroborated: max no_speech_prob above 0.3 or recording RMS below a silence threshold; tests include spoken versions of every listed phrase | phrase alone discards | investigate | defer |
+Question D11:
+D11 — Stop "Thank you." from being thrown away when you actually say it?
+Project/branch/task: vibeflow on main, eng review Outside Voice, milestone 1 dictation.
+ELI10: Whisper sometimes invents "Thank you." when it hears silence, so the plan throws that phrase away. But people really dictate "Thank you." The fix: only throw it away when the audio also looks like silence, either Whisper's own no-speech score or the recording's loudness.
+Stakes if we pick wrong: replying "Thank you." to someone silently does nothing.
+Recommendation: A because a filter that deletes real speech is worse than an occasional hallucination.
+Note: options differ in kind, not coverage — no completeness score.
+Pros / cons:
+A) Apply: require audio evidence (recommended)
+  ✅ Real short replies survive; silence still gets caught
+  ✅ Tests cover spoken versions of every listed phrase
+  ❌ A hallucination over quiet background noise can occasionally slip through
+B) Keep: phrase alone discards
+  ✅ Catches every listed hallucination
+  ❌ Deletes genuine "Thank you." dictations
+C) Investigate first
+  ✅ Bounded: record ten real phrases and ten silences in the spike
+  ❌ The rule needs changing regardless
+D) Defer this row
+  ✅ Build continues
+  ❌ Short replies get eaten
+Net: occasional hallucination versus deleting real speech.
+Header: Silence rule
+Options:
+A) Apply: require audio evidence (recommended)
+A phrase-list match discards the transcript only if the highest segment no_speech_prob is above 0.3 or the recording's RMS level is below the silence threshold. The all-segments-above-0.6 rule stays. Tests: spoken and silent versions of every listed phrase.
+B) Keep: phrase alone discards
+As in R2-10.
+C) Investigate before choosing
+Spike real versus silent samples; rule stays pending.
+D) Defer this proposed change only
+Leave unresolved; other rows unchanged.
+
+State: approved
+Actual answer: A) Apply: require audio evidence (user answer to D11, 2026-10-02)
+Accepted scope: A phrase-list match discards the transcript only if the highest segment no_speech_prob is above 0.3 or the recording's RMS level is below the silence threshold. The all-segments-above-0.6 rule stays. Tests: spoken and silent versions of every listed phrase.
+History: none
+
+### R10: Cleanup failure contract
+Finding: #O5, P2, confidence 8/10, design "Dictation cleanup" and D4 (sanity check only; no deadline or error rule), reviewer: Codex
+Plan baseline: raw text when output fails the sanity check, no key or cleanup off.
+Runtime evidence: cleanup can time out, hit 429, 401 or a connection error; after a Groq transcription failure, cleanup would call the same unavailable Groq service.
+Comparison grid:
+| Choice | Current | A | B | C | D |
+|---|---|---|---|---|---|
+| R10 cleanup errors | unspecified | 1.5 s cleanup deadline; any cleanup error or timeout pastes the raw transcript with status "Pasted without cleanup (reason)"; if transcription already fell back because the cleanup provider is unavailable, cleanup is skipped | unspecified | investigate | defer |
+Question D12:
+D12 — What happens when cleanup fails or is slow?
+Project/branch/task: vibeflow on main, eng review Outside Voice, milestone 1 dictation.
+ELI10: Cleanup is a nice-to-have on top of the transcript. If it's slow or errors, VibeFlow should just paste what Whisper heard rather than make you wait or lose the text. And if Groq just failed for transcription, there's no point asking Groq again for cleanup a moment later.
+Stakes if we pick wrong: dictation hangs or fails because the polishing step had a hiccup.
+Recommendation: A because the raw transcript is always better than nothing, and 1.5 s keeps the overall target honest.
+Note: options differ in kind, not coverage — no completeness score.
+Pros / cons:
+A) Apply: deadline plus raw fallback (recommended)
+  ✅ Dictation always pastes something within the budget
+  ✅ No pointless second call to a provider that just failed
+  ❌ Occasionally you get unpolished punctuation
+B) Keep: unspecified
+  ✅ Nothing to build now
+  ❌ Behavior on a slow or failing cleanup is undefined
+C) Investigate first
+  ✅ Bounded: measure cleanup latency in the spike
+  ❌ The error rule is needed regardless
+D) Defer this row
+  ✅ Build continues
+  ❌ Undefined failure behavior ships
+Net: occasionally rough punctuation versus a dictation that hangs.
+Header: Cleanup errors
+Options:
+A) Apply: deadline + raw fallback (recommended)
+Cleanup has a 1.5 s deadline on the session clock. Timeout, 401, 429, 5xx or connection errors paste the raw transcript with status "Pasted without cleanup (reason)". When the transcriber fell back because the cleanup provider is unreachable, cleanup is skipped. Tests: each error class, timeout, skip after fallback.
+B) Keep: unspecified
+No change.
+C) Investigate before choosing
+Measure latency in the spike; rule stays pending.
+D) Defer this proposed change only
+Leave unresolved; other rows unchanged.
+
+State: approved
+Actual answer: A) Apply: deadline + raw fallback (user answer to D12, 2026-10-02)
+Accepted scope: Cleanup has a 1.5 s deadline on the session clock. Timeout, 401, 429, 5xx or connection errors paste the raw transcript with status "Pasted without cleanup (reason)". When the transcriber fell back because the cleanup provider is unreachable, cleanup is skipped. Tests: each error class, timeout, skip after fallback.
+History: none
+
+### R11: Recovering a failed dictation
+Finding: #O6, P2, confidence 8/10, design "Dictation state machine" and fallback table (errors end the dictation; nothing is kept), reviewer: Codex
+Plan baseline: a failed transcription or paste shows a Last error; the recording is discarded.
+Runtime evidence: a two-minute dictation that hits 401, a bad endpoint or missing assets is lost.
+Comparison grid:
+| Choice | Current | A | B | C | D |
+|---|---|---|---|---|---|
+| R11 failed dictation | discarded | keep the last failed recording (audio) and any transcript in memory only; Last error offers Retry (re-transcribe), Copy text (when a transcript exists) and Discard; replaced by the next dictation, cleared on quit | discarded | investigate | defer |
+Question D13:
+D13 — Keep a failed dictation so you can retry instead of repeating yourself?
+Project/branch/task: vibeflow on main, eng review Outside Voice, milestone 1 dictation.
+ELI10: If you talk for two minutes and then Groq rejects the key or the network drops, today's plan throws the recording away. Keeping just the last failed recording in memory lets you fix the key and press Retry, or copy whatever text was already transcribed. It's never written to disk and disappears with the next dictation or when you quit.
+Stakes if we pick wrong: losing two minutes of speech to a typo in an API key.
+Recommendation: A because repeating yourself is the thing that makes people go back to their old dictation tool.
+Note: options differ in kind, not coverage — no completeness score.
+Pros / cons:
+A) Apply: keep last failure in memory (recommended)
+  ✅ Retry after fixing the problem; Copy recovers text that was transcribed but not pasted
+  ✅ Memory only, one recording, cleared on the next dictation or quit
+  ❌ A few more menu states and tests
+B) Keep: discard
+  ✅ Nothing to build
+  ❌ Failed dictations are lost and must be repeated
+C) Investigate first
+  ✅ Bounded: nothing much to learn; the behavior is a choice
+  ❌ Delay without new information
+D) Defer this row
+  ✅ Build continues
+  ❌ Lost dictations at launch
+Net: a few menu states versus repeating lost speech.
+Header: Failed dictation
+Options:
+A) Apply: keep last failure (recommended)
+Keep the last failed recording and any transcript in memory only. Last error offers Retry (re-transcribe with current settings), Copy text (when a transcript exists) and Discard. Replaced by the next dictation, cleared on quit, never written to disk. Tests: retry after fix, copy after paste failure, discard, replacement by the next dictation.
+B) Keep: discard
+As designed.
+C) Investigate before choosing
+No bounded investigation is useful; choice stays pending.
+D) Defer this proposed change only
+Leave unresolved; other rows unchanged.
+
+State: approved
+Actual answer: A) Apply: keep last failure (user answer to D13, 2026-10-02)
+Accepted scope: Keep the last failed recording and any transcript in memory only. Last error offers Retry (re-transcribe with current settings), Copy text (when a transcript exists) and Discard. Replaced by the next dictation, cleared on quit, never written to disk. Tests: retry after fix, copy after paste failure, discard, replacement by the next dictation.
+History: none
+
+Cross-model synthesis: Codex and the native review agree on all six outside findings; the native review independently confirmed the clipboard timeout defect in v1 code (PasteboardCapture.swift:71, Timeout.swift:16). Outside status: completed, provider codex, 6 findings, 5 accepted as choices (D8 to D13 cover six rows, R6 to R11) and 1 recorded as a required fix of an approved v1 contract.
+
+Approval readiness: PASS. Checked: scope record (D1 A, D2 B), R1 (D3 A), R2 (D4 A), R3 (D5 A), R4 (D6 A), R5 (D7 A), R6 (D8 A), R7 (D9 A), R8 (D10 A), R9 (D11 A), R10 (D12 A), R11 (D13 A). All answers dated 2026-10-02; no deferrals; no pending rows. TODO: existing "Conversational mode" entry updated (milestone 2 needs its own eng review); no new TODO proposed.
+
+## Eng review body (milestone 1)
+
+### NOT in scope
+- Conversation mode (milestone 2): deferred by D1 to its own eng review after a week of dictation use.
+- Reply drafting loop: P3 TODO.
+- Offline dictation on macOS 15: Apple fallback is macOS 26 only (D8).
+- Voice macros and an edit mode for selected text (FreeFlow features): not requested.
+- Streaming transcription while speaking: Groq is called once on key up.
+
+### What already exists
+- KeyboardShortcuts onKeyDown/onKeyUp (dependency, verified) for the record shortcut.
+- PasteboardCapture snapshot and restore, extracted into ClipboardSnapshot (D2), with its 13 tests as the regression contract.
+- LiveAccessibility menu walk by command character (LiveServices.swift:35, :55), generalized from Cmd-C to Cmd-V.
+- SessionClock and withTimeout for every deadline (cleanup 1.5 s, restore 750 ms, transcription 10 s, snapshot 200 ms after the T0 fix).
+- KeychainSecretsStore and the missing-key callout pattern for the Groq key.
+- AppPreset with frozen per-app resolution (v1 D8) for dictationLocalOnly.
+- Spike/elevenlabs-spike.swift as the model for the dictation spike script.
+
+### Dictation flow (after D3 to D13)
+
+```
+Option+- down ──▶ stop any read (D3) ──▶ freeze {app, focused field, preset}
+   │                                         │
+   │                     preset.dictationLocalOnly? ──yes──▶ Apple only, no cleanup (D5)
+   ▼
+recording (mic: Automatic = built-in when output is Bluetooth, D7)
+   │ up < 0.3 s ──▶ hands-free until next press / 2 min cap
+   │ up ≥ 0.3 s
+   ▼
+transcribe: Groq verbose_json (10 s) ──fails: offline/timeout/429/5xx──▶ Apple (macOS 26 only, model prepared at launch, D8/D9)
+   │             └── 401/403/other 4xx ──▶ Last error + keep recording for Retry (D13)
+   ▼
+no speech? all segments > 0.6, or phrase list + audio evidence (D11) ──▶ "Didn't catch that"
+   ▼
+cleanup: Groq chat default (D4), 1.5 s deadline, sanity 0.7x to 1.3x ──any failure──▶ raw text (D12)
+   ▼
+paste: re-check focused field + secure input (D10) ──changed──▶ clipboard + "Copied: the text field changed"
+   │ same
+   ▼
+snapshot clipboard text ──▶ write text ──▶ press Cmd-V item ──▶ restore after 750 ms if changeCount unchanged (D6)
+```
+
+### Failure modes
+| Path | Realistic failure | Handling | Test | User sees |
+|---|---|---|---|---|
+| Mic | entitlement missing under hardened runtime | required entitlement + usage string (T1) | manual first-run check | permission prompt, then recording |
+| Transcribe | wrong Groq key | 401 surfaces, recording kept (D13) | TranscriberTests 401 | "Groq key rejected" + Retry |
+| Transcribe | offline on a plane | Apple fallback, model prepared (D9) | TranscriberTests offline | "Transcribed on device" |
+| Transcribe | silence | no-speech rules (D11) | spoken and silent phrase rows | "Didn't catch that" |
+| Cleanup | model answers the dictated question | guarded prompt + sanity bound | eval golden | the question itself is pasted |
+| Cleanup | slow or 429 | 1.5 s deadline, raw text (D12) | DictationTests timeout | "Pasted without cleanup" |
+| Paste | user clicked another channel | field check (D10) | TextInsertionTests changed field | text on clipboard + note |
+| Paste | slow app reads clipboard late | 750 ms restore (D6) | restore delay test + paste matrix | correct text pasted |
+| Clipboard | stalled pasteboard owner | resume-once timeout fix (T0) | wall-clock assertion | capture never hangs |
+| Audio | AirPods drop to call quality | built-in mic while output is Bluetooth (D7) | selection rule test + manual | reads stay high quality |
+Critical gaps (no test, no handling, silent): 0.
+
+### Worktree parallelization strategy
+| Step | Modules touched | Depends on |
+|------|----------------|------------|
+| T0 clipboard timeout fix + ClipboardSnapshot | VibeFlowCore/Capture, Support | — |
+| T1 spike | Spike/ | — |
+| T2 ports + fakes | VibeFlowCore/Ports, Tests | T0 |
+| T3 transcribers + no-speech | VibeFlowCore/Dictation | T2 |
+| T4 cleanup client + prompt | VibeFlowCore/SmartRead, Dictation | T2 |
+| T5 text insertion | VibeFlowCore/Dictation, Capture | T0, T2 |
+| T6 DictationSession | VibeFlowCore/Dictation, Session | T3, T4, T5 |
+| T7 live recorder, mic picker, entitlement | VibeFlow/ (app), project.yml | T2 |
+| T8 settings, keys, presets, shortcut wiring | VibeFlow/, VibeFlowCore/Settings | T6, T7 |
+| T9 QA matrix + docs | — | T8 |
+Lanes: A: T0 → T5. B: T1 (independent). C: T2 → T3 and T4 in parallel. D: T7 after T2. Merge, then T6, T8, T9. Conflict flags: Ports.swift owned by T2; Dictation/ shared by T3 to T6, keep one file per task.
+
+## Implementation Tasks (milestone 1)
+Synthesized from this review's findings. Ratios: tests ~50x, features ~30x, architecture ~5x.
+
+- [ ] **T0 (P1, human: ~half day / CC: ~15 min)** — Capture — Fix the snapshot timeout and extract ClipboardSnapshot
+  - Surfaced by: Outside Voice factual correction (PasteboardCapture.swift:71, Timeout.swift:16); D2
+  - Files: VibeFlowCore/Sources/VibeFlowCore/Capture/ClipboardSnapshot.swift, Capture/PasteboardCapture.swift, Tests/CaptureTests.swift
+  - Verify: 13 CaptureTests green plus a wall-clock assertion that a 1 s stalled read returns within 250 ms
+- [ ] **T1 (P1, human: ~1 day / CC: ~20 min)** — Spike — Record shortcut feel, secure input, Groq latency, cleanup latency on both providers, Apple model size
+  - Surfaced by: design Open Questions; D4; D9
+  - Files: Spike/dictation-spike.swift
+  - Verify: ten measured dictations; Groq + Groq-chat cleanup median at or under 1.5 s
+- [ ] **T2 (P1, human: ~half day / CC: ~10 min)** — Ports — AudioRecorder and Transcriber protocols with fakes; AccessibilityBridge gains pressPasteMenuItem and focusedElement
+  - Surfaced by: D2; D10
+  - Files: VibeFlowCore/Sources/VibeFlowCore/Ports.swift, Tests/Fakes.swift
+  - Verify: swift build under Swift 6, zero warnings
+- [ ] **T3 (P1, human: ~2 days / CC: ~30 min)** — Transcribers — Groq (multipart WAV, verbose_json, fallback table, custom URL) and Apple (macOS 26 guard, prepared model, readiness states); no-speech rules
+  - Surfaced by: design fallback table; D8; D9; D11
+  - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/GroqTranscriber.swift, Dictation/AppleTranscriber.swift, Tests/TranscriberTests.swift
+  - Verify: TranscriberTests green including spoken and silent phrase rows
+- [ ] **T4 (P1, human: ~1 day / CC: ~20 min)** — Cleanup — OpenAI-compatible chat client (Groq default), dictation cleanup prompt, sanity check, 1.5 s deadline, error to raw text
+  - Surfaced by: D4; D12; design cleanup section
+  - Files: VibeFlowCore/Sources/VibeFlowCore/SmartRead/ChatCompletionsClient.swift, SmartRead/SmartReadPrompts.swift, Tests/LiveEvalTests.swift
+  - Verify: unit rows for each error class; eval golden (question cleaned, not answered) passes with a key
+- [ ] **T5 (P1, human: ~1 day / CC: ~20 min)** — Paste — TextInsertion with field and secure-input check, Cmd-V item or synthesized Cmd-V, 750 ms restore
+  - Surfaced by: D2; D6; D10
+  - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/TextInsertion.swift, Tests/TextInsertionTests.swift
+  - Verify: changed field, same field, missing element, secure input, delay and foreign write rows green
+- [ ] **T6 (P1, human: ~2 days / CC: ~30 min)** — DictationSession — state machine, hold and tap, stop read first, local-only routing, last-failure memory with Retry, Copy and Discard
+  - Surfaced by: D3; D5; D13; design state machine
+  - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/DictationSession.swift, Tests/DictationTests.swift
+  - Verify: DictationTests green for every state row
+- [ ] **T7 (P1, human: ~1 day / CC: ~20 min)** — App audio — LiveAudioRecorder (16 kHz mono), microphone picker with Automatic rule, audio-input entitlement and NSMicrophoneUsageDescription, Groq warm-up request
+  - Surfaced by: required implementation (hardened runtime); D7; perf note P2
+  - Files: VibeFlow/LiveAudioRecorder.swift, VibeFlow/VibeFlow.entitlements, project.yml
+  - Verify: first press shows the mic prompt; second press records non-silent audio
+- [ ] **T8 (P2, human: ~1 day / CC: ~20 min)** — Settings and wiring — Dictation tab, Groq key, per-app "Dictate on this Mac only", record shortcut handlers, menu states
+  - Surfaced by: D5; D7; D9; design Settings additions
+  - Files: VibeFlow/SettingsView.swift, VibeFlow/AppContainer.swift, VibeFlow/MenuBarView.swift, VibeFlowCore/Sources/VibeFlowCore/Settings/AppPreset.swift, Tests/PresetsTests.swift
+  - Verify: old presets decode with dictationLocalOnly false; shortcut drives the session
+- [ ] **T9 (P2, human: ~half day / CC: ~10 min)** — QA and docs — paste matrix incl. a German-locale app, AirPods check, README dictation and data-handling section
+  - Surfaced by: test plan; design success criteria
+  - Files: README.md
+  - Verify: matrix passes; README states what dictation sends where
+
+### Unresolved decisions that may bite you later
+None. All 13 decisions in this review are answered.
+
+### Suppressed findings (appendix)
+None below the display threshold. #P4 (6/10, Groq free-tier limits) shown with the medium-confidence caveat in Section 4.
+
+### Completion summary
+- Step 0: Scope Challenge — scope reduced per recommendation (conversation deferred to its own review)
+- Architecture Review: 4 issues found (3 decided, 1 required implementation)
+- Code Quality Review: 2 issues found (both decided)
+- Test Review: diagram produced, 33 gaps identified (greenfield; 1 eval, 2 manual)
+- Performance Review: 4 issues found (notes within approved scope)
+- NOT in scope: written
+- What already exists: written
+- TODOS.md updates: 0 new items proposed; existing conversation TODO updated
+- Failure modes: 0 critical gaps flagged
+- Unresolved decisions: 0 in this review
+- Outside voice: codex (gpt-6-astra), completed, 6 findings, 6 accepted
+- Parallelization: 4 lanes, 3 parallel / 3 sequential (T6, T8, T9)
+- Lake Score: N/A (all choices differed in kind)
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
+| Outside Review | codex-plan-review via `/plan-eng-review` (codex, gpt-6-astra) | Independent 2nd opinion | 1 | ISSUES OPEN (completed, 6 findings, 6 accepted) | 6 findings, 6/6 resolved by D8 to D13 and a required fix |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | ISSUES OPEN (mapped work, 10 tasks) | 43 issues, 0 critical gaps |
+| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | — |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+
+**OUTSIDE COVERAGE:** codex (gpt-6-astra), phase plan-review, completed 2026-10-02, 6 findings (4 P1, 2 P2), all accepted.
+**CROSS-MODEL:** native Claude review and Codex (external CLI, model gpt-6-astra) agree on all six outside findings; the native pass raised the mic-during-playback, cleanup-provider, per-app privacy, restore-delay and microphone-choice findings that Codex did not.
+**VERDICT:** ENG REVIEWED for milestone 1 with mapped work, 0 unresolved, 0 critical gaps. Status ISSUES OPEN because findings became 10 implementation tasks; eng review required again for milestone 2.
+
+NO UNRESOLVED DECISIONS

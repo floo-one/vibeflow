@@ -18,7 +18,7 @@
 
 ### Conversational mode: talk with an AI through VibeFlow and Flow
 
-**Status:** designed 2026-10-01 in docs/designs/vibeflow-2-dictation-conversation.md (dictation plus conversation in one app).
+**Status:** designed 2026-10-01 in docs/designs/vibeflow-2-dictation-conversation.md (dictation plus conversation in one app). Milestone 1 (dictation) passed eng review 2026-10-02; milestone 2 (conversation) still needs its own eng review after a week of dictation use.
 
 **What:** A flowing back-and-forth where VibeFlow speaks an AI reply, you answer by voice (Wispr Flow) or by selecting text, and the conversation keeps context across turns: follow-up questions about what was just read, "more detail", "read the original", "what should I reply".
 
