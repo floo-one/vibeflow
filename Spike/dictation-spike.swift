@@ -10,7 +10,8 @@
 // Usage (Command Line Tools are enough; macOS asks Terminal for microphone access once):
 //   swift Spike/dictation-spike.swift --record 6            record 6 s from the default mic
 //   swift Spike/dictation-spike.swift --file sample.wav     use an existing 16 kHz mono WAV
-//   options: --runs 10  --chat-model llama-3.3-70b-versatile  --quiet
+//   options: --runs 10  --chat-model qwen/qwen3.8-27b
+//   Each run transcribes with both whisper-large-v3 (FreeFlow's choice) and whisper-large-v3-turbo.
 //
 // Keys come from the environment or ./.env (gitignored): GROQ_API_KEY, optional
 // ANTHROPIC_API_KEY. Never pass keys on the command line.
@@ -24,7 +25,7 @@ struct Options {
     var runs = 10
     var recordSeconds: Double?
     var file: String?
-    var chatModel = "llama-3.3-70b-versatile"
+    var chatModel = "qwen/qwen3.8-27b"
 
     init(_ args: [String]) throws {
         var i = 0
@@ -139,7 +140,7 @@ struct Transcript: Decodable {
     let segments: [Segment]?
 }
 
-func transcribe(_ audio: Data, key: String) async throws -> Transcript {
+func transcribe(_ audio: Data, key: String, model: String) async throws -> Transcript {
     let boundary = "vibeflow-\(UUID().uuidString)"
     var req = URLRequest(url: URL(string: "https://api.groq.com/openai/v1/audio/transcriptions")!)
     req.httpMethod = "POST"
@@ -149,8 +150,9 @@ func transcribe(_ audio: Data, key: String) async throws -> Transcript {
     func field(_ name: String, _ value: String) {
         body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".data(using: .utf8)!)
     }
-    field("model", "whisper-large-v3-turbo")
+    field("model", model)
     field("response_format", "verbose_json")
+    field("service_tier", "on_demand")
     body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"dictation.wav\"\r\nContent-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
     body.append(audio)
     body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
@@ -176,10 +178,19 @@ func groqCleanup(_ text: String, key: String, model: String) async throws -> Str
     req.httpMethod = "POST"
     req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
     req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    req.httpBody = try JSONSerialization.data(withJSONObject: [
-        "model": model, "temperature": 0, "max_tokens": text.count / 3 + 100,
+    var body: [String: Any] = [
+        "model": model, "temperature": 0,
         "messages": [["role": "system", "content": cleanupSystem], ["role": "user", "content": wrapped(text)]],
-    ])
+    ]
+    // Groq's current chat models reason by default; keep that minimal for latency.
+    if model.hasPrefix("openai/gpt-oss") {
+        body["reasoning_effort"] = "low"
+        body["max_tokens"] = text.count / 3 + 600 // room for the short reasoning trace
+    } else {
+        body["reasoning_effort"] = "none"
+        body["max_tokens"] = text.count / 3 + 100
+    }
+    req.httpBody = try JSONSerialization.data(withJSONObject: body)
     let (data, resp) = try await URLSession.shared.data(for: req)
     let status = (resp as? HTTPURLResponse)?.statusCode ?? -1
     guard status == 200 else { throw SpikeError.http(status, String(decoding: data, as: UTF8.self)) }
@@ -220,35 +231,41 @@ func main() async -> Int32 {
         print(String(format: "Audio: %.0f KB. Runs: %d. Chat model: %@%@", Double(audio.count) / 1024, opts.runs, opts.chatModel, anthropic == nil ? "" : ", plus claude-haiku-4-5"))
 
         let clock = ContinuousClock()
-        var tTrans: [Double] = [], tGroq: [Double] = [], tClaude: [Double] = []
-        var lastRaw = "", lastGroq = "", lastClaude = ""
+        var tLarge: [Double] = [], tTurbo: [Double] = [], tGroq: [Double] = [], tClaude: [Double] = []
+        var rawLarge = "", rawTurbo = "", lastGroq = "", lastClaude = ""
         var noSpeech: [Double] = []
         for i in 1...opts.runs {
-            let t0 = clock.now
-            let tr = try await transcribe(audio, key: groq)
-            let t1 = clock.now
-            let cg = try await groqCleanup(tr.text, key: groq, model: opts.chatModel)
-            let t2 = clock.now
-            tTrans.append(ms(t1 - t0)); tGroq.append(ms(t2 - t1))
-            lastRaw = tr.text; lastGroq = cg
-            noSpeech = tr.segments?.compactMap(\.no_speech_prob) ?? []
-            var line = String(format: "run %2d  transcribe %5.0f ms  groq cleanup %5.0f ms  total %5.0f ms", i, ms(t1 - t0), ms(t2 - t1), ms(t2 - t0))
+            let a = clock.now
+            let large = try await transcribe(audio, key: groq, model: "whisper-large-v3")
+            let b = clock.now
+            let turbo = try await transcribe(audio, key: groq, model: "whisper-large-v3-turbo")
+            let c = clock.now
+            let cg = try await groqCleanup(large.text, key: groq, model: opts.chatModel)
+            let d = clock.now
+            tLarge.append(ms(b - a)); tTurbo.append(ms(c - b)); tGroq.append(ms(d - c))
+            rawLarge = large.text; rawTurbo = turbo.text; lastGroq = cg
+            noSpeech = large.segments?.compactMap(\.no_speech_prob) ?? []
+            var line = String(format: "run %2d  large-v3 %5.0f ms  turbo %5.0f ms  cleanup %5.0f ms", i, ms(b - a), ms(c - b), ms(d - c))
             if let anthropic {
-                let t3 = clock.now
-                lastClaude = try await anthropicCleanup(tr.text, key: anthropic)
-                let c = ms(clock.now - t3); tClaude.append(c)
-                line += String(format: "  haiku cleanup %5.0f ms", c)
+                let e = clock.now
+                lastClaude = try await anthropicCleanup(large.text, key: anthropic)
+                let h = ms(clock.now - e); tClaude.append(h)
+                line += String(format: "  haiku %5.0f ms", h)
             }
             print(line)
         }
-        let total = zip(tTrans, tGroq).map { $0 + $1 }
+        let totalLarge = zip(tLarge, tGroq).map { $0 + $1 }
+        let totalTurbo = zip(tTurbo, tGroq).map { $0 + $1 }
+        let total = totalLarge
         print(String(repeating: "-", count: 80))
-        print(String(format: "median transcribe %.0f ms, groq cleanup %.0f ms, total %.0f ms (target <= 1500)", median(tTrans), median(tGroq), median(total)))
+        print(String(format: "median transcribe: large-v3 %.0f ms, turbo %.0f ms; cleanup (%@) %.0f ms", median(tLarge), median(tTurbo), opts.chatModel, median(tGroq)))
+        print(String(format: "median total: large-v3 + cleanup %.0f ms, turbo + cleanup %.0f ms (target <= 1500)", median(totalLarge), median(totalTurbo)))
         if !tClaude.isEmpty { print(String(format: "median haiku cleanup %.0f ms", median(tClaude))) }
-        print("no_speech_prob per segment: \(noSpeech.map { String(format: "%.2f", $0) })")
-        print("raw:   \(lastRaw)")
-        print("groq:  \(lastGroq)")
-        if !lastClaude.isEmpty { print("haiku: \(lastClaude)") }
+        print("no_speech_prob per segment (large-v3): \(noSpeech.map { String(format: "%.2f", $0) })")
+        print("large-v3: \(rawLarge)")
+        print("turbo:    \(rawTurbo)")
+        print("cleaned:  \(lastGroq)")
+        if !lastClaude.isEmpty { print("haiku:    \(lastClaude)") }
         let pass = median(total) <= 1500
         print(pass ? "PASS" : "FAIL")
         return pass ? 0 : 1
