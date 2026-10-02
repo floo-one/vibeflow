@@ -150,6 +150,7 @@ struct CaptureTests {
     @Test func slowPasteboardReadIsBoundedAndSkipsTheRestore() async {
         let pb = FakePasteboard(text: "lazy provider")
         pb.readDelay = .milliseconds(300) // slower than the 200 ms snapshot timeout
+        pb.delayedReads = 1 // the snapshot read stalls; the copied text reads normally
         let h = CaptureHarness(pasteboard: pb)
         h.accessibility.copyProduces = "copied text"
         let result = await h.run()
@@ -177,5 +178,74 @@ struct CaptureTests {
         let result = await h.capture.capture(from: nil)
         #expect(result == .none)
         #expect(h.accessibility.copyPresses.isEmpty)
+    }
+}
+
+@Suite("Clipboard deadline (T0)") @MainActor
+struct ClipboardDeadlineTests {
+    /// Every read stalls, including the copied text: bounded reads give a no-text outcome
+    /// rather than waiting on the owner (previously the copied-text read was unbounded).
+    @Test func clipboardThatStallsEveryReadYieldsNoText() async {
+        let pb = FakePasteboard(text: "lazy provider")
+        pb.readDelay = .milliseconds(400)
+        let h = CaptureHarness(pasteboard: pb)
+        h.accessibility.copyProduces = "copied text"
+        let start = ContinuousClock.now
+        let result = await h.run()
+        #expect(result == .none)
+        #expect(pb.writes.isEmpty, "no restore over an unreadable clipboard")
+        #expect(ContinuousClock.now - start < .milliseconds(900))
+    }
+
+    /// Regression for the v1 defect: withTimeout around a detached task waited for the
+    /// blocking read. A stalled clipboard owner must not hold capture past the deadline.
+    @Test func stalledSnapshotReadReleasesCaptureAtTheDeadline() async {
+        let pb = FakePasteboard(text: "lazy provider")
+        pb.readDelay = .seconds(1)
+        pb.delayedReads = 1 // only the snapshot read stalls
+        let h = CaptureHarness(pasteboard: pb)
+        h.accessibility.copyProduces = "copied text"
+        let start = ContinuousClock.now
+        let result = await h.run()
+        let elapsed = ContinuousClock.now - start
+        #expect(result.text == "copied text")
+        #expect(result.note == ClipboardSnapshot.notRestoredNote)
+        #expect(elapsed < .milliseconds(600), "capture waited \(elapsed) for a stalled read")
+    }
+}
+
+@Suite("runBlocking")
+struct RunBlockingTests {
+    @Test func returnsTheResultWhenWorkFinishesFirst() async {
+        let clock = FakeClock()
+        let value = await runBlocking(within: .seconds(5), clock: clock) { 42 }
+        #expect(value == 42)
+        try? await waitUntil { clock.sleeperCount == 0 }
+        #expect(clock.sleeperCount == 0, "the deadline timer is cancelled once work wins")
+    }
+
+    @Test func returnsNilAtTheDeadlineWhileWorkIsStillBlocked() async throws {
+        let clock = FakeClock()
+        let task = Task { await runBlocking(within: .milliseconds(200), clock: clock) { () -> Int in
+            Thread.sleep(forTimeInterval: 1.0)
+            return 1
+        } }
+        try await waitUntil { clock.sleeperCount == 1 }
+        let start = ContinuousClock.now
+        clock.advance(by: .milliseconds(200))
+        let value = await task.value
+        #expect(value == nil)
+        #expect(ContinuousClock.now - start < .milliseconds(300))
+    }
+
+    @Test func cancellationReturnsNil() async throws {
+        let clock = FakeClock()
+        let task = Task { await runBlocking(within: .seconds(60), clock: clock) { () -> Int in
+            Thread.sleep(forTimeInterval: 1.0)
+            return 1
+        } }
+        try await waitUntil { clock.sleeperCount == 1 }
+        task.cancel()
+        #expect(await task.value == nil)
     }
 }

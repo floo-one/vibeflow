@@ -920,7 +920,7 @@ Lanes: A: T0 → T5. B: T1 (independent). C: T2 → T3 and T4 in parallel. D: T7
 ## Implementation Tasks (milestone 1)
 Synthesized from this review's findings. Ratios: tests ~50x, features ~30x, architecture ~5x.
 
-- [ ] **T0 (P1, human: ~half day / CC: ~15 min)** — Capture — Fix the snapshot timeout and extract ClipboardSnapshot
+- [x] **T0 (P1, human: ~half day / CC: ~15 min)** — Capture — Fix the snapshot timeout and extract ClipboardSnapshot
   - Surfaced by: Outside Voice factual correction (PasteboardCapture.swift:71, Timeout.swift:16); D2
   - Files: VibeFlowCore/Sources/VibeFlowCore/Capture/ClipboardSnapshot.swift, Capture/PasteboardCapture.swift, Tests/CaptureTests.swift
   - Verify: 13 CaptureTests green plus a wall-clock assertion that a 1 s stalled read returns within 250 ms

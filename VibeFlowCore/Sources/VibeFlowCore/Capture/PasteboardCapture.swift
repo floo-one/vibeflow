@@ -2,8 +2,8 @@ import Foundation
 
 /// The Edit > Copy fallback (design: Capture step 3, decisions D9 and D10).
 ///
-/// - Snapshot: plain text only, read in a detached task with a 200 ms timeout, because a
-///   lazily provided pasteboard can block until the owning app answers.
+/// - Snapshot and restore: ClipboardSnapshot (plain text only, every read bounded at 200 ms
+///   because a lazily provided pasteboard can block until the owning app answers).
 /// - Press the source app's Edit > Copy menu item through Accessibility.
 /// - Accept the result only if changeCount became exactly N+1 within 300 ms, the source
 ///   app is still frontmost, and the new string is non-empty after trimming.
@@ -11,12 +11,12 @@ import Foundation
 ///   is still N+1. Never restore after a timeout, drift or cancellation; never read stale text.
 @MainActor
 public final class PasteboardCapture {
-    public static let snapshotTimeout: Duration = .milliseconds(200)
+    public static let snapshotTimeout = ClipboardSnapshot.deadline
     public static let copyTimeout: Duration = .milliseconds(300)
     static let pollInterval: Duration = .milliseconds(20)
 
-    public static let notRestoredNote = "Clipboard not restored"
-    public static let nonTextNote = "Clipboard not restored (non-text content)"
+    public static let notRestoredNote = ClipboardSnapshot.notRestoredNote
+    public static let nonTextNote = ClipboardSnapshot.nonTextNote
 
     private let accessibility: any AccessibilityBridge
     private let pasteboard: any Pasteboard
@@ -28,15 +28,8 @@ public final class PasteboardCapture {
         self.clock = clock
     }
 
-    private enum Snapshot {
-        case text(String)
-        case empty
-        case nonText
-        case timedOut
-    }
-
     public func capture(from app: FrontmostApp) async -> CaptureResult {
-        let snapshot = await readSnapshot()
+        let snapshot = await ClipboardSnapshot.take(from: pasteboard, clock: clock)
         let before = pasteboard.changeCount
 
         do {
@@ -61,41 +54,10 @@ public final class PasteboardCapture {
         guard pasteboard.changeCount == expected else { return .none } // drift: someone else wrote too
         guard accessibility.frontmostApp()?.pid == app.pid else { return .none }
 
-        let copied = pasteboard.string()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let copied = await readPasteboardText(pasteboard, clock: clock)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !copied.isEmpty else { return .none }
 
-        let note = await restore(snapshot, ifChangeCountIs: expected)
+        let note = await snapshot.restore(to: pasteboard, ifChangeCountIs: expected, clock: clock)
         return CaptureResult(text: copied, note: note)
-    }
-
-    private func readSnapshot() async -> Snapshot {
-        let pb = pasteboard
-        let result: Snapshot? = try? await withTimeout(Self.snapshotTimeout, clock: clock) {
-            await Task.detached { () -> Snapshot in
-                if pb.isEmpty { return .empty }
-                if let text = pb.string() { return .text(text) }
-                return .nonText
-            }.value
-        }
-        return result ?? .timedOut
-    }
-
-    /// Returns a status note when the clipboard could not be put back.
-    private func restore(_ snapshot: Snapshot, ifChangeCountIs expected: Int) async -> String? {
-        switch snapshot {
-        case .empty:
-            return nil
-        case .nonText:
-            return Self.nonTextNote
-        case .timedOut:
-            return Self.notRestoredNote
-        case .text(let text):
-            guard pasteboard.changeCount == expected else { return Self.notRestoredNote }
-            let pb = pasteboard
-            let done: Bool? = try? await withTimeout(Self.snapshotTimeout, clock: clock) {
-                await Task.detached { pb.setString(text, transient: true); return true }.value
-            }
-            return done == true ? nil : Self.notRestoredNote
-        }
     }
 }

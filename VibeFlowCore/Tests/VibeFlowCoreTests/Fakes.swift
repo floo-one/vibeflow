@@ -13,8 +13,10 @@ final class FakePasteboard: Pasteboard, @unchecked Sendable {
     private var nonText: Bool
     private(set) var changeCountValue = 0
     private(set) var writes: [(text: String, transient: Bool)] = []
-    /// Simulates a lazy provider: every read blocks this long.
+    /// Simulates a lazy provider: reads block this long.
     var readDelay: Duration = .zero
+    /// How many reads are slowed by `readDelay` (default: all of them).
+    var delayedReads = Int.max
 
     init(text: String? = nil, nonText: Bool = false) {
         self.text = text
@@ -25,7 +27,12 @@ final class FakePasteboard: Pasteboard, @unchecked Sendable {
     var isEmpty: Bool { lock.withLock { text == nil && !nonText } }
 
     func string() -> String? {
-        if readDelay > .zero { Thread.sleep(forTimeInterval: Double(readDelay.components.seconds) + Double(readDelay.components.attoseconds) / 1e18) }
+        let shouldDelay: Bool = lock.withLock {
+            guard readDelay > .zero, delayedReads > 0 else { return false }
+            delayedReads -= 1
+            return true
+        }
+        if shouldDelay { Thread.sleep(forTimeInterval: Double(readDelay.components.seconds) + Double(readDelay.components.attoseconds) / 1e18) }
         return lock.withLock { text }
     }
 
