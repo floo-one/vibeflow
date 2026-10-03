@@ -303,6 +303,8 @@ Scope Challenge result: scope reduced per recommendation (conversation deferred 
 - Groq transcriptions: verbose_json returns per-segment no_speech_prob; uploads up to 25 MB (console.groq.com docs). A 2-minute 16 kHz mono 16-bit WAV is about 3.8 MB.
 - Apple SpeechAnalyzer and SpeechTranscriber (macOS 26) need the locale model installed through AssetInventory before first use; authorization requirements to be confirmed in the spike.
 - Required implementation (not a choice): project.yml has ENABLE_HARDENED_RUNTIME: YES, so microphone access needs the com.apple.security.device.audio-input entitlement and an NSMicrophoneUsageDescription in Info.plist; without them AVAudioEngine input returns silence. Added to the milestone 1 tasks.
+- T1 spike result (2026-10-03, Florian's voice, built-in mic, 6 s, 10 runs): whisper-large-v3 median 520 ms, whisper-large-v3-turbo 421 ms, Qwen cleanup 228 ms; totals 793 ms and 651 ms (target 1,500 ms). large-v3 transcribed "hear me well" correctly where turbo wrote "hear me while", so the default transcription model is whisper-large-v3 (FreeFlow's choice) with turbo selectable. Speech segment no_speech_prob 0.03. Groq's transcription endpoint rejects a service_tier field; on_demand is the default.
+- Cleanup model (D4 implementation detail): llama-3.3-70b-versatile is not available on this account. Probed qwen/qwen3.8-27b (263 ms), openai/gpt-oss-120b (531 ms) and openai/gpt-oss-20b (885 ms); all cleaned a test dictation without answering its embedded question. Default cleanup model is qwen/qwen3.8-27b with reasoning_effort "none"; gpt-oss models need reasoning_effort "low" and extra max_tokens for the reasoning trace. Model stays a setting.
 
 ### R1: Record while a read is speaking
 Finding: #A1, P1, confidence 8/10, design "Dictation state machine" (no rule for key down while ReadSession is speaking), reviewer: plan-eng-review (Claude)
@@ -924,7 +926,7 @@ Synthesized from this review's findings. Ratios: tests ~50x, features ~30x, arch
   - Surfaced by: Outside Voice factual correction (PasteboardCapture.swift:71, Timeout.swift:16); D2
   - Files: VibeFlowCore/Sources/VibeFlowCore/Capture/ClipboardSnapshot.swift, Capture/PasteboardCapture.swift, Tests/CaptureTests.swift
   - Verify: 13 CaptureTests green plus a wall-clock assertion that a 1 s stalled read returns within 250 ms
-- [ ] **T1 (P1, human: ~1 day / CC: ~20 min)** — Spike — Record shortcut feel, secure input, Groq latency, cleanup latency on both providers, Apple model size
+- [x] **T1 (P1, human: ~1 day / CC: ~20 min)** — Spike — Record shortcut feel, secure input, Groq latency, cleanup latency on both providers, Apple model size
   - Surfaced by: design Open Questions; D4; D9
   - Files: Spike/dictation-spike.swift
   - Verify: ten measured dictations; Groq + Groq-chat cleanup median at or under 1.5 s
