@@ -930,7 +930,7 @@ Synthesized from this review's findings. Ratios: tests ~50x, features ~30x, arch
   - Surfaced by: design Open Questions; D4; D9
   - Files: Spike/dictation-spike.swift
   - Verify: ten measured dictations; Groq + Groq-chat cleanup median at or under 1.5 s
-- [ ] **T2 (P1, human: ~half day / CC: ~10 min)** — Ports — AudioRecorder and Transcriber protocols with fakes; AccessibilityBridge gains pressPasteMenuItem and focusedElement
+- [x] **T2 (P1, human: ~half day / CC: ~10 min)** — Ports — AudioRecorder and Transcriber protocols with fakes; AccessibilityBridge gains pressPasteMenuItem and focusedElement
   - Surfaced by: D2; D10
   - Files: VibeFlowCore/Sources/VibeFlowCore/Ports.swift, Tests/Fakes.swift
   - Verify: swift build under Swift 6, zero warnings

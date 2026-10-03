@@ -60,6 +60,22 @@ public protocol AccessibilityBridge: AnyObject {
     func focusedSelectedText() throws -> String?
     /// Presses the app's Edit > Copy menu item through the Accessibility API.
     func pressCopyMenuItem(in app: FrontmostApp) throws
+    /// Presses the menu item bound to plain Cmd-V in the app, found by its command
+    /// character so it works in any UI language (dictation paste, D2 and R2-8).
+    func pressPasteMenuItem(in app: FrontmostApp) throws
+    /// Posts a synthesized Cmd-V, for apps without a Cmd-V menu item.
+    func postPasteKeystroke()
+    /// The system-wide focused UI element, nil when the app exposes none (D10).
+    func focusedElement() -> FocusedElement?
+    /// True while a secure text field (password) has keyboard focus (IsSecureEventInputEnabled).
+    var isSecureInputActive: Bool { get }
+}
+
+/// Opaque identity of a focused text field. The live bridge wraps an AXUIElement (CF types
+/// compare with CFEqual); fakes use any hashable value. Compared before pasting (D10).
+public struct FocusedElement: Equatable, @unchecked Sendable {
+    private let identity: AnyHashable
+    public init(_ identity: AnyHashable) { self.identity = identity }
 }
 
 // MARK: - 3. SpeechProvider (Read flow, D11)
@@ -260,4 +276,71 @@ public protocol SecretsStore: Sendable {
     func read(_ key: SecretKey) -> String?
     func write(_ value: String, for key: SecretKey) throws
     func delete(_ key: SecretKey) throws
+}
+
+
+// MARK: - Dictation (VibeFlow 2, milestone 1)
+
+public enum MicrophonePermission: Sendable, Equatable {
+    case granted
+    case denied
+    case undetermined
+}
+
+public enum RecordingError: Error, Equatable, Sendable {
+    case permissionDenied
+    case noInputDevice
+    case engineFailed(String)
+}
+
+/// Microphone capture to 16 kHz mono 16-bit PCM in memory. One recording at a time.
+@MainActor
+public protocol AudioRecorder: AnyObject {
+    var permission: MicrophonePermission { get }
+    /// Shows the system prompt when undetermined; returns whether access is granted.
+    func requestPermission() async -> Bool
+    /// Starts recording from the given input device UID, nil = system default input.
+    func start(deviceUID: String?) throws
+    /// Stops and returns everything recorded since start. Empty audio if not recording.
+    func stop() -> RecordedAudio
+    /// Stops and discards the recording.
+    func cancel()
+    var isRecording: Bool { get }
+}
+
+/// What Whisper returned: the text and the per-segment no-speech probabilities.
+public struct Transcription: Sendable, Equatable {
+    public var text: String
+    public var noSpeechProbabilities: [Double]
+    public init(text: String, noSpeechProbabilities: [Double] = []) {
+        self.text = text
+        self.noSpeechProbabilities = noSpeechProbabilities
+    }
+}
+
+/// Transcription failures, classified for the fallback table in the design.
+public enum TranscriptionFailure: Error, Equatable, Sendable {
+    /// 401 or 403. Surfaces with the Keys action; never falls back silently.
+    case unauthorized
+    /// Any other 4xx (400, 404, 413, ...). Surfaces with the status and message.
+    case rejected(status: Int, message: String)
+    /// 429.
+    case rateLimited
+    /// 5xx.
+    case serverError(Int)
+    /// No route, DNS, connection lost.
+    case offline
+    /// No response within the transcription deadline.
+    case timeout
+    /// A 200 the client could not decode.
+    case malformed
+    /// Apple on-device: the language model is not installed yet.
+    case assetsMissing(language: String)
+    /// Apple on-device: not available on this macOS version or speech access denied.
+    case unavailable(String)
+}
+
+public protocol Transcriber: Sendable {
+    /// `language` is a BCP-47 hint, nil = let the model detect.
+    func transcribe(_ audio: RecordedAudio, language: String?) async throws -> Transcription
 }

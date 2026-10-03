@@ -72,6 +72,20 @@ final class FakeAccessibility: AccessibilityBridge {
 
     func frontmostApp() -> FrontmostApp? { frontmost }
 
+    // Dictation paste (D2, D10)
+    var pasteError: AccessibilityError?
+    private(set) var pastePresses: [FrontmostApp] = []
+    private(set) var pasteKeystrokes = 0
+    var focused: FocusedElement? = FocusedElement("field-1")
+    var isSecureInputActive = false
+
+    func pressPasteMenuItem(in app: FrontmostApp) throws {
+        if let e = pasteError { throw e }
+        pastePresses.append(app)
+    }
+    func postPasteKeystroke() { pasteKeystrokes += 1 }
+    func focusedElement() -> FocusedElement? { focused }
+
     func focusedSelectedText() throws -> String? {
         if let e = selectedTextError { throw e }
         return selectedText
@@ -280,4 +294,53 @@ final class FakeSecrets: SecretsStore, @unchecked Sendable {
         lock.withLock { values[key] = value }
     }
     func delete(_ key: SecretKey) throws { lock.withLock { values[key] = nil } }
+}
+
+
+// MARK: - Dictation fakes
+
+@MainActor
+final class FakeAudioRecorder: AudioRecorder {
+    var permission: MicrophonePermission = .granted
+    var grantOnRequest = true
+    var startError: RecordingError?
+    /// Returned by the next stop().
+    var nextAudio = RecordedAudio(pcm16: Data(repeating: 0x40, count: 32_000)) // 1 s
+    private(set) var isRecording = false
+    private(set) var startedDevices: [String?] = []
+    private(set) var permissionRequests = 0
+    private(set) var cancelCount = 0
+
+    func requestPermission() async -> Bool {
+        permissionRequests += 1
+        permission = grantOnRequest ? .granted : .denied
+        return grantOnRequest
+    }
+    func start(deviceUID: String?) throws {
+        if let e = startError { throw e }
+        startedDevices.append(deviceUID)
+        isRecording = true
+    }
+    func stop() -> RecordedAudio {
+        guard isRecording else { return .empty }
+        isRecording = false
+        return nextAudio
+    }
+    func cancel() { cancelCount += 1; isRecording = false }
+}
+
+final class FakeTranscriber: Transcriber, @unchecked Sendable {
+    private let lock = NSLock()
+    var result: Result<Transcription, TranscriptionFailure> = .success(Transcription(text: "hello world", noSpeechProbabilities: [0.02]))
+    var delay: Duration = .zero
+    var clock: FakeClock?
+    private var _calls: [(RecordedAudio, String?)] = []
+    var callCount: Int { lock.withLock { _calls.count } }
+    var lastLanguage: String? { lock.withLock { _calls.last?.1 } }
+
+    func transcribe(_ audio: RecordedAudio, language: String?) async throws -> Transcription {
+        lock.withLock { _calls.append((audio, language)) }
+        if delay > .zero, let clock { try await clock.sleep(for: delay) }
+        return try result.get()
+    }
 }

@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import Carbon.HIToolbox
 import Foundation
 import VibeFlowCore
 
@@ -33,6 +34,38 @@ final class LiveAccessibility: AccessibilityBridge {
     /// Finds the menu item bound to plain Command-C in the app's menu bar (so it works in any
     /// UI language) and presses it.
     func pressCopyMenuItem(in app: FrontmostApp) throws {
+        try pressMenuItem(commandCharacter: "C", in: app)
+    }
+
+    /// Same lookup for plain Command-V (dictation paste).
+    func pressPasteMenuItem(in app: FrontmostApp) throws {
+        try pressMenuItem(commandCharacter: "V", in: app)
+    }
+
+    /// Synthesized Cmd-V for apps without a paste menu item.
+    func postPasteKeystroke() {
+        let source = CGEventSource(stateID: .combinedSessionState)
+        let vKey = CGKeyCode(kVK_ANSI_V)
+        let down = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: true)
+        let up = CGEvent(keyboardEventSource: source, virtualKey: vKey, keyDown: false)
+        down?.flags = .maskCommand
+        up?.flags = .maskCommand
+        down?.post(tap: .cgAnnotatedSessionEventTap)
+        up?.post(tap: .cgAnnotatedSessionEventTap)
+    }
+
+    /// The system-wide focused element; AXUIElement is a CF type, so equality is CFEqual.
+    func focusedElement() -> FocusedElement? {
+        guard isTrusted else { return nil }
+        var ref: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(AXUIElementCreateSystemWide(), kAXFocusedUIElementAttribute as CFString, &ref) == .success,
+              let ref else { return nil }
+        return FocusedElement(ref as! AXUIElement)
+    }
+
+    var isSecureInputActive: Bool { IsSecureEventInputEnabled() }
+
+    private func pressMenuItem(commandCharacter: String, in app: FrontmostApp) throws {
         guard isTrusted else { throw AccessibilityError.notTrusted }
         let application = AXUIElementCreateApplication(app.pid)
         guard let menuBar = Self.child(of: application, attribute: kAXMenuBarAttribute) else {
@@ -40,22 +73,20 @@ final class LiveAccessibility: AccessibilityBridge {
         }
         for topLevel in Self.children(of: menuBar) {
             for submenu in Self.children(of: topLevel) {
-                for item in Self.children(of: submenu) {
-                    if Self.isCommandC(item) {
-                        let result = AXUIElementPerformAction(item, kAXPressAction as CFString)
-                        guard result == .success else { throw AccessibilityError.pressFailed }
-                        return
-                    }
+                for item in Self.children(of: submenu) where Self.isCommand(item, character: commandCharacter) {
+                    let result = AXUIElementPerformAction(item, kAXPressAction as CFString)
+                    guard result == .success else { throw AccessibilityError.pressFailed }
+                    return
                 }
             }
         }
         throw AccessibilityError.copyMenuItemNotFound
     }
 
-    private static func isCommandC(_ item: AXUIElement) -> Bool {
+    private static func isCommand(_ item: AXUIElement, character: String) -> Bool {
         var charRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(item, kAXMenuItemCmdCharAttribute as CFString, &charRef) == .success,
-              let char = charRef as? String, char.uppercased() == "C" else { return false }
+              let char = charRef as? String, char.uppercased() == character else { return false }
         var modRef: CFTypeRef?
         guard AXUIElementCopyAttributeValue(item, kAXMenuItemCmdModifiersAttribute as CFString, &modRef) == .success,
               let modifiers = modRef as? Int else { return false }
