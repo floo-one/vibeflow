@@ -152,7 +152,6 @@ func transcribe(_ audio: Data, key: String, model: String) async throws -> Trans
     }
     field("model", model)
     field("response_format", "verbose_json")
-    field("service_tier", "on_demand")
     body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"dictation.wav\"\r\nContent-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
     body.append(audio)
     body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
