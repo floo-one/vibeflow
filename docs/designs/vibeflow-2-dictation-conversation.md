@@ -939,7 +939,7 @@ Synthesized from this review's findings. Ratios: tests ~50x, features ~30x, arch
   - Surfaced by: design fallback table; D8; D9; D11
   - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/GroqTranscriber.swift, Dictation/AppleTranscriber.swift, Tests/TranscriberTests.swift
   - Verify: TranscriberTests green including spoken and silent phrase rows
-- [ ] **T4 (P1, human: ~1 day / CC: ~20 min)** — Cleanup — OpenAI-compatible chat client (Groq default), dictation cleanup prompt, sanity check, 1.5 s deadline, error to raw text
+- [x] **T4 (P1, human: ~1 day / CC: ~20 min)** — Cleanup — OpenAI-compatible chat client (Groq default), dictation cleanup prompt, sanity check, 1.5 s deadline, error to raw text
   - Surfaced by: D4; D12; design cleanup section
   - Files: VibeFlowCore/Sources/VibeFlowCore/SmartRead/ChatCompletionsClient.swift, SmartRead/SmartReadPrompts.swift, Tests/LiveEvalTests.swift
   - Verify: unit rows for each error class; eval golden (question cleaned, not answered) passes with a key

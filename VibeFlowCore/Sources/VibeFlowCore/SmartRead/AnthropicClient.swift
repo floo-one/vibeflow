@@ -16,8 +16,19 @@ public final class AnthropicClient: SmartReadClient {
     }
 
     public func transform(_ request: SmartReadRequest) async throws -> SmartReadResponse {
+        try await complete(
+            system: SmartReadPrompts.system(mode: request.mode, language: request.language, instructions: request.instructions),
+            user: SmartReadPrompts.user(text: request.text),
+            model: request.model,
+            maxTokens: request.maxTokens
+        )
+    }
+
+    /// One Messages API call with a system prompt and a single user message. Shared by smart
+    /// read and dictation cleanup (D4: Anthropic as the optional cleanup provider).
+    public func complete(system: String, user: String, model: String, maxTokens: Int) async throws -> SmartReadResponse {
         guard let key = secrets.read(.anthropic) else { throw SmartReadFailure.unauthorized }
-        let urlRequest = Self.buildRequest(request, apiKey: key, baseURL: baseURL)
+        let urlRequest = Self.buildRequest(system: system, user: user, model: model, maxTokens: maxTokens, apiKey: key, baseURL: baseURL)
 
         let response: HTTPResponse
         do {
@@ -48,7 +59,7 @@ public final class AnthropicClient: SmartReadClient {
         return SmartReadResponse(text: text, stopReason: Self.stopReason(message.stop_reason))
     }
 
-    static func buildRequest(_ request: SmartReadRequest, apiKey: String, baseURL: URL) -> URLRequest {
+    static func buildRequest(system: String, user: String, model: String, maxTokens: Int, apiKey: String, baseURL: URL) -> URLRequest {
         var req = URLRequest(url: baseURL.appendingPathComponent("/v1/messages"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -56,10 +67,10 @@ public final class AnthropicClient: SmartReadClient {
         req.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
         req.timeoutInterval = 25
         let body: [String: Any] = [
-            "model": request.model,
-            "max_tokens": request.maxTokens,
-            "system": SmartReadPrompts.system(mode: request.mode, language: request.language, instructions: request.instructions),
-            "messages": [["role": "user", "content": SmartReadPrompts.user(text: request.text)]],
+            "model": model,
+            "max_tokens": maxTokens,
+            "system": system,
+            "messages": [["role": "user", "content": user]],
         ]
         req.httpBody = try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
         return req
