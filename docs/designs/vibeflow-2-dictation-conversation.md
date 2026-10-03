@@ -305,6 +305,7 @@ Scope Challenge result: scope reduced per recommendation (conversation deferred 
 - Required implementation (not a choice): project.yml has ENABLE_HARDENED_RUNTIME: YES, so microphone access needs the com.apple.security.device.audio-input entitlement and an NSMicrophoneUsageDescription in Info.plist; without them AVAudioEngine input returns silence. Added to the milestone 1 tasks.
 - T1 spike result (2026-10-03, Florian's voice, built-in mic, 6 s, 10 runs): whisper-large-v3 median 520 ms, whisper-large-v3-turbo 421 ms, Qwen cleanup 228 ms; totals 793 ms and 651 ms (target 1,500 ms). large-v3 transcribed "hear me well" correctly where turbo wrote "hear me while", so the default transcription model is whisper-large-v3 (FreeFlow's choice) with turbo selectable. Speech segment no_speech_prob 0.03. Groq's transcription endpoint rejects a service_tier field; on_demand is the default.
 - Cleanup model (D4 implementation detail): llama-3.3-70b-versatile is not available on this account. Probed qwen/qwen3.8-27b (263 ms), openai/gpt-oss-120b (531 ms) and openai/gpt-oss-20b (885 ms); all cleaned a test dictation without answering its embedded question. Default cleanup model is qwen/qwen3.8-27b with reasoning_effort "none"; gpt-oss models need reasoning_effort "low" and extra max_tokens for the reasoning trace. Model stays a setting.
+- Apple on-device probe (2026-10-03, macOS 26, en-US, Spike/apple-stt-probe.swift): the model went from "supported" to "installed" via AssetInventory in 0.3 s; no Speech Recognition permission prompt appeared. DictationTranscriber (shortDictation) emitted only a volatile result for a file and wrote "Fr.4000"; SpeechTranscriber with the transcription preset returned final segments, all words correct, in 161 ms. AppleTranscriber uses SpeechTranscriber.
 
 ### R1: Record while a read is speaking
 Finding: #A1, P1, confidence 8/10, design "Dictation state machine" (no rule for key down while ReadSession is speaking), reviewer: plan-eng-review (Claude)
@@ -934,7 +935,7 @@ Synthesized from this review's findings. Ratios: tests ~50x, features ~30x, arch
   - Surfaced by: D2; D10
   - Files: VibeFlowCore/Sources/VibeFlowCore/Ports.swift, Tests/Fakes.swift
   - Verify: swift build under Swift 6, zero warnings
-- [ ] **T3 (P1, human: ~2 days / CC: ~30 min)** — Transcribers — Groq (multipart WAV, verbose_json, fallback table, custom URL) and Apple (macOS 26 guard, prepared model, readiness states); no-speech rules
+- [x] **T3 (P1, human: ~2 days / CC: ~30 min)** — Transcribers — Groq (multipart WAV, verbose_json, fallback table, custom URL) and Apple (macOS 26 guard, prepared model, readiness states); no-speech rules
   - Surfaced by: design fallback table; D8; D9; D11
   - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/GroqTranscriber.swift, Dictation/AppleTranscriber.swift, Tests/TranscriberTests.swift
   - Verify: TranscriberTests green including spoken and silent phrase rows
