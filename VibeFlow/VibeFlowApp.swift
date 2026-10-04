@@ -11,7 +11,7 @@ struct VibeFlowApp: App {
             MenuBarView()
                 .environment(container)
         } label: {
-            Image(systemName: container.session.iconState.symbolName)
+            Image(systemName: container.iconSymbol)
         }
         Settings {
             SettingsView()

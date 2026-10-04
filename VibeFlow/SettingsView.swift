@@ -4,10 +4,10 @@ import VibeFlowCore
 import SwiftUI
 
 enum SettingsTab: Hashable {
-    case general, voices, smartRead, presets, keys
+    case general, voices, smartRead, dictation, presets, keys
 }
 
-/// Settings window: General, Voices, Smart read, Per-app presets, Keys (design T9).
+/// Settings window: General, Voices, Smart read, Dictation, Per-app presets, Keys.
 struct SettingsView: View {
     @Environment(AppContainer.self) private var container
 
@@ -23,6 +23,9 @@ struct SettingsView: View {
             SmartReadTab()
                 .tabItem { Label("Smart read", systemImage: "sparkles") }
                 .tag(SettingsTab.smartRead)
+            DictationTab()
+                .tabItem { Label("Dictation", systemImage: "mic") }
+                .tag(SettingsTab.dictation)
             PresetsTab()
                 .tabItem { Label("Per-app", systemImage: "app.badge") }
                 .tag(SettingsTab.presets)
@@ -30,7 +33,7 @@ struct SettingsView: View {
                 .tabItem { Label("Keys", systemImage: "key") }
                 .tag(SettingsTab.keys)
         }
-        .frame(width: 600, height: 480)
+        .frame(width: 640, height: 520)
         .background(SettingsWindowConfigurator())
     }
 }
@@ -75,8 +78,8 @@ private struct GeneralTab: View {
                 KeyboardShortcuts.Recorder("Smart read selection", name: .smartRead)
                 KeyboardShortcuts.Recorder("Read clipboard", name: .readClipboard)
                 KeyboardShortcuts.Recorder("Smart read clipboard", name: .smartReadClipboard)
-                KeyboardShortcuts.Recorder("Dictate (coming in VibeFlow 2)", name: .record)
-                Text("Press the same shortcut again to stop.")
+                KeyboardShortcuts.Recorder("Dictate", name: .record)
+                Text("Press a read shortcut again to stop. Hold Dictate to talk and release to paste; tap it to dictate hands-free until the next press.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Long selections") {
@@ -158,6 +161,101 @@ private struct SmartReadTab: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+// MARK: - Dictation
+
+private struct DictationTab: View {
+    @Environment(AppContainer.self) private var container
+    /// Loaded once when the tab appears, never in body (CoreAudio enumeration).
+    @State private var inputs: [AudioInputDevice] = []
+
+    private var hasGroqKey: Bool { container.secrets.read(.groq) != nil }
+
+    var body: some View {
+        @Bindable var prefs = container.preferences
+        Form {
+            if !hasGroqKey && (prefs.transcriber == .groq || (prefs.cleanupEnabled && prefs.cleanupProvider == .groq)) {
+                MissingKeyCallout(
+                    service: "Groq",
+                    consequence: AppleTranscriber.isAvailable
+                        ? "Dictation uses Apple's on-device recognizer and skips cleanup until a key is added."
+                        : "Dictation needs a Groq key on this Mac."
+                )
+            }
+
+            Section("Transcription") {
+                Picker("Transcriber", selection: $prefs.transcriber) {
+                    Text("Groq (Whisper, fast and accurate)").tag(TranscriberChoice.groq)
+                    Text("Custom OpenAI-compatible endpoint").tag(TranscriberChoice.custom)
+                    Text(AppleTranscriber.isAvailable ? "Apple on-device (never leaves this Mac)" : "Apple on-device (needs macOS 26)")
+                        .tag(TranscriberChoice.apple)
+                        .selectionDisabled(!AppleTranscriber.isAvailable)
+                }
+                .pickerStyle(.radioGroup)
+                if prefs.transcriber == .custom {
+                    TextField("Base URL", text: $prefs.customEndpoint, prompt: Text("http://localhost:8000/v1"))
+                }
+                if prefs.transcriber != .apple {
+                    TextField("Model", text: $prefs.transcriptionModel, prompt: Text(OpenAITranscriber.defaultModel))
+                    Text("Falls back to Apple on device when offline, rate limited or the service is down.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                LabeledContent("On-device model") {
+                    HStack {
+                        Text(container.onDeviceModel.summary)
+                            .foregroundStyle(container.onDeviceModel.isReady ? .green : .secondary)
+                        if case .failed = container.onDeviceModel.state {
+                            Button("Retry") { container.onDeviceModel.retry() }
+                        }
+                    }
+                }
+            }
+
+            Section("Cleanup") {
+                Toggle("Fix punctuation, casing and misheard words", isOn: $prefs.cleanupEnabled)
+                if prefs.cleanupEnabled {
+                    Picker("Provider", selection: $prefs.cleanupProvider) {
+                        Text("Groq").tag(CleanupProvider.groq)
+                        Text("Anthropic (Claude Haiku)").tag(CleanupProvider.anthropic)
+                    }
+                    if prefs.cleanupProvider == .groq {
+                        TextField("Model", text: $prefs.cleanupModel, prompt: Text(ChatCompletionsCleaner.defaultModel))
+                    } else if container.secrets.read(.anthropic) == nil {
+                        Label("No Anthropic key: dictations are pasted without cleanup.", systemImage: "key.slash")
+                            .foregroundStyle(.orange).font(.callout)
+                    }
+                    Text("If cleanup takes longer than 1.5 s or fails, the raw transcript is pasted.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Vocabulary")
+                    TextField("Names and terms, one per line or comma separated", text: $prefs.vocabulary, axis: .vertical)
+                        .lineLimit(2...5)
+                        .textFieldStyle(.roundedBorder)
+                }
+            }
+
+            Section("Microphone") {
+                Picker("Microphone", selection: Binding(
+                    get: { prefs.microphoneUID ?? "" },
+                    set: { prefs.microphoneUID = $0.isEmpty ? nil : $0 }
+                )) {
+                    Text("Automatic").tag("")
+                    ForEach(inputs) { device in
+                        Text(device.name).tag(device.uid)
+                    }
+                    if let chosen = prefs.microphoneUID, !inputs.contains(where: { $0.uid == chosen }) {
+                        Text("Unplugged device (uses Automatic)").tag(chosen)
+                    }
+                }
+                Text("Automatic uses the built-in microphone while you listen on Bluetooth headphones, so they stay in high-quality mode, and the system input otherwise.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .task { inputs = AudioDevices.inputs() }
     }
 }
 
@@ -318,7 +416,16 @@ private struct PresetEditor: View {
                     Text("Cleanup").tag(SmartReadMode.cleanup)
                 }
                 InstructionsField(text: $preset.smartReadInstructions)
-                Text("Turning smart read off and choosing the Apple provider keeps this app's text on this Mac.")
+            }
+            Section("Dictation") {
+                Toggle("Dictate on this Mac only", isOn: $preset.dictationLocalOnly)
+                Text(AppleTranscriber.isAvailable
+                     ? "Uses Apple's on-device recognizer and skips cloud cleanup when dictating into this app."
+                     : "Needs macOS 26: dictation into this app fails instead of using the cloud.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section {
+                Text("Choosing the Apple provider, turning smart read off and dictating on this Mac only keeps everything from this app on this Mac.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -466,6 +573,8 @@ private struct KeysTab: View {
     @Environment(AppContainer.self) private var container
     @State private var elevenLabs = ""
     @State private var anthropic = ""
+    @State private var groq = ""
+    @State private var customEndpoint = ""
     @State private var saved = false
     @State private var error: String?
 
@@ -479,14 +588,27 @@ private struct KeysTab: View {
                 SecureField("API key", text: $anthropic)
                 keyStatus(stored: container.secrets.read(.anthropic) != nil, missing: "No key stored. Smart read is unavailable until one is added.")
             }
+            Section("Groq") {
+                SecureField("API key", text: $groq)
+                keyStatus(stored: container.secrets.read(.groq) != nil, missing: "No key stored. Dictation uses Apple's on-device recognizer until one is added.")
+                Link("Create a Groq key", destination: URL(string: "https://console.groq.com/keys")!)
+                    .font(.caption)
+            }
+            if container.preferences.transcriber == .custom {
+                Section("Custom dictation endpoint (optional)") {
+                    SecureField("API key", text: $customEndpoint)
+                    Text("Leave empty for local servers that need no key.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
             Section {
                 HStack {
                     Button("Save") { save() }
                         .keyboardShortcut(.defaultAction)
-                    if saved { Text("Saved. Takes effect on the next read.").foregroundStyle(.secondary) }
+                    if saved { Text("Saved. Takes effect on the next read or dictation.").foregroundStyle(.secondary) }
                     if let error { Text(error).foregroundStyle(.red) }
                 }
-                Text("Keys never leave your Keychain. A plain read sends the selected text to ElevenLabs; a smart read also sends it to Anthropic.")
+                Text("Keys never leave your Keychain. A plain read sends the selected text to ElevenLabs; a smart read also sends it to Anthropic. Dictation sends your recording to Groq and the transcript to the cleanup provider.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -494,6 +616,8 @@ private struct KeysTab: View {
         .onAppear {
             elevenLabs = container.secrets.read(.elevenLabs) ?? ""
             anthropic = container.secrets.read(.anthropic) ?? ""
+            groq = container.secrets.read(.groq) ?? ""
+            customEndpoint = container.secrets.read(.customEndpoint) ?? ""
         }
     }
 
@@ -512,6 +636,8 @@ private struct KeysTab: View {
         do {
             try container.secrets.write(elevenLabs, for: .elevenLabs)
             try container.secrets.write(anthropic, for: .anthropic)
+            try container.secrets.write(groq, for: .groq)
+            try container.secrets.write(customEndpoint, for: .customEndpoint)
             saved = true
             error = nil
             container.catalogs.refresh()

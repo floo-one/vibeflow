@@ -272,6 +272,8 @@ public enum SecretKey: String, Sendable, CaseIterable {
     case anthropic = "anthropic-api-key"
     /// Groq: dictation transcription and cleanup (VibeFlow 2).
     case groq = "groq-api-key"
+    /// Optional key for a custom OpenAI-compatible transcription endpoint.
+    case customEndpoint = "custom-endpoint-api-key"
 }
 
 public protocol SecretsStore: Sendable {

@@ -111,16 +111,18 @@ private final class PCMSink: @unchecked Sendable {
         let ratio = outputFormat.sampleRate / input.format.sampleRate
         let capacity = AVAudioFrameCount(Double(input.frameLength) * ratio) + 64
         guard let output = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: capacity) else { return }
-        var supplied = false
+        // The input block runs synchronously inside convert, on this thread; it hands over the
+        // one tap buffer, then reports no more data.
+        nonisolated(unsafe) var pending: AVAudioPCMBuffer? = input
         var error: NSError?
         let status = converter.convert(to: output, error: &error) { _, inputStatus in
-            if supplied {
+            guard let buffer = pending else {
                 inputStatus.pointee = .noDataNow
                 return nil
             }
-            supplied = true
+            pending = nil
             inputStatus.pointee = .haveData
-            return input
+            return buffer
         }
         guard status != .error, output.frameLength > 0, let samples = output.int16ChannelData else { return }
         let chunk = UnsafeBufferPointer(start: samples[0], count: Int(output.frameLength))

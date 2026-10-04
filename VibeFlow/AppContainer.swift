@@ -14,55 +14,121 @@ final class AppContainer {
     let secrets: KeychainSecretsStore
     let voices: SystemVoiceCatalog
     let session: ReadSession
+    let dictation: DictationSession
+    let onDeviceModel: OnDeviceModelStatus
     let accessibility = LiveAccessibility()
     let catalogs: RemoteCatalogs
     /// Which settings tab is showing; "Add key" buttons jump to Keys.
     var settingsTab: SettingsTab = .general
+    /// True after the record shortcut, false after a read: which session the menu's status
+    /// line and icon describe.
+    private(set) var showsDictation = false
 
     init() {
         LegacyMigration.runIfNeeded()
         SystemVoiceCatalog.preload()
-        preferences = Preferences()
-        presets = AppPresetStore()
-        secrets = KeychainSecretsStore()
+        let preferences = Preferences()
+        let presets = AppPresetStore()
+        let secrets = KeychainSecretsStore()
+        self.preferences = preferences
+        self.presets = presets
+        self.secrets = secrets
         voices = SystemVoiceCatalog()
         catalogs = RemoteCatalogs(secrets: secrets)
         catalogs.refresh()
 
         let clock = ContinuousSessionClock()
         let pasteboard = LivePasteboard()
-        session = ReadSession(
+        let http = URLSessionHTTPClient()
+        let session = ReadSession(
             accessibility: accessibility,
             capture: SelectionCapture(accessibility: accessibility, pasteboard: pasteboard, clock: clock),
             presets: presets,
             elevenLabs: ElevenLabsProvider(client: URLSessionByteStreamClient(), player: PCMStreamPlayer(), secrets: secrets),
             apple: AppleSpeechProvider(catalog: voices),
-            smartRead: AnthropicClient(http: URLSessionHTTPClient(), secrets: secrets),
+            smartRead: AnthropicClient(http: http, secrets: secrets),
             secrets: secrets,
             clock: clock,
             configuration: preferences.sessionConfiguration
         )
+        self.session = session
+
+        let onDevice: (any Transcriber)? = AppleTranscriber.isAvailable ? AppleTranscriber() : nil
+        dictation = DictationSession(
+            recorder: LiveAudioRecorder(),
+            accessibility: accessibility,
+            presets: presets,
+            pasteboard: pasteboard,
+            clock: clock,
+            setup: {
+                // D7, resolved per dictation so plugging in AirPods takes effect at once.
+                let microphone = MicrophoneSelection.deviceUID(
+                    choice: preferences.microphoneUID,
+                    inputs: AudioDevices.inputs(),
+                    outputIsBluetooth: AudioDevices.defaultOutputIsBluetooth()
+                )
+                return DictationSetupFactory.make(settings: preferences.dictationSettings, secrets: secrets, http: http,
+                                                  onDevice: onDevice, microphoneUID: microphone)
+            },
+            stopReading: { session.stop() } // D3
+        )
+        onDeviceModel = OnDeviceModelStatus(store: LiveOnDeviceModelStore())
+        onDeviceModel.prepare(language: presets.defaultPreset.languageOverride) // D9
 
         KeyboardShortcuts.onKeyUp(for: .read) { [weak self] in self?.hotkey(.read) }
         KeyboardShortcuts.onKeyUp(for: .smartRead) { [weak self] in self?.hotkey(.smartRead) }
         KeyboardShortcuts.onKeyUp(for: .readClipboard) { [weak self] in self?.clipboardHotkey(.read) }
         KeyboardShortcuts.onKeyUp(for: .smartReadClipboard) { [weak self] in self?.clipboardHotkey(.smartRead) }
+        KeyboardShortcuts.onKeyDown(for: .record) { [weak self] in self?.recordKeyDown() }
+        KeyboardShortcuts.onKeyUp(for: .record) { [weak self] in self?.dictation.recordKeyUp() }
 
         warmConnections()
     }
 
+    private func recordKeyDown() {
+        showsDictation = true
+        dictation.recordKeyDown()
+    }
+
+    /// A read shortcut while dictating cancels the dictation and does nothing else.
+    private func dictationCancelledByRead() -> Bool {
+        if dictation.cancel() { return true }
+        showsDictation = false
+        return false
+    }
+
+    /// Menu "Stop": whichever session is running.
+    func stopAll() {
+        if !dictation.cancel() { session.stop() }
+    }
+
+    var isRunning: Bool { session.state != .idle || dictation.state.isBusy }
+
+    var iconSymbol: String {
+        switch dictation.state {
+        case .recording: return "mic.fill"
+        case .transcribing, .cleaning, .pasting: return "ellipsis.circle"
+        case .idle: break
+        }
+        if showsDictation, session.state == .idle, dictation.lastError != nil { return IconState.error.symbolName }
+        return session.iconState.symbolName
+    }
+
     private func hotkey(_ kind: ReadKind) {
+        if dictationCancelledByRead() { return }
         session.configuration = preferences.sessionConfiguration
         session.hotkey(kind)
     }
 
     private func clipboardHotkey(_ kind: ReadKind) {
+        if dictationCancelledByRead() { return }
         session.configuration = preferences.sessionConfiguration
         session.clipboardHotkey(kind, text: NSPasteboard.general.string(forType: .string) ?? "")
     }
 
     /// Menu reads use the clipboard text and the default preset.
     func menuRead(_ kind: ReadKind) {
+        if dictationCancelledByRead() { return }
         session.configuration = preferences.sessionConfiguration
         let text = NSPasteboard.general.string(forType: .string) ?? ""
         session.menuRead(kind, text: text)

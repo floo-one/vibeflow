@@ -10,14 +10,24 @@ struct MenuBarView: View {
     @Environment(\.openSettings) private var openSettings
 
     private var session: ReadSession { container.session }
+    private var dictation: DictationSession { container.dictation }
 
     var body: some View {
-        Text(session.status)
-
-        if let error = session.lastError {
-            Text(error.message).foregroundStyle(.red)
-            ForEach(error.actions, id: \.self) { action in
-                Button(label(for: action)) { perform(action) }
+        if container.showsDictation {
+            Text(dictation.status)
+            if let error = dictation.lastError {
+                Text(error.message).foregroundStyle(.red)
+                ForEach(error.actions, id: \.self) { action in
+                    Button(label(for: action)) { perform(action) }
+                }
+            }
+        } else {
+            Text(session.status)
+            if let error = session.lastError {
+                Text(error.message).foregroundStyle(.red)
+                ForEach(error.actions, id: \.self) { action in
+                    Button(label(for: action)) { perform(action) }
+                }
             }
         }
 
@@ -29,8 +39,8 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("Stop") { session.stop() }
-            .disabled(session.state == .idle)
+        Button("Stop") { container.stopAll() }
+            .disabled(!container.isRunning)
             .keyboardShortcut(".", modifiers: .command)
 
         if case .awaitingConfirm(_, .menu, _) = session.state {
@@ -61,6 +71,29 @@ struct MenuBarView: View {
         case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .keys)
         case .readOriginal: session.readOriginal()
         case .grantAccessibility: NSWorkspace.shared.open(Accessibility.settingsURL)
+        }
+    }
+
+    private func label(for action: DictationAction) -> String {
+        switch action {
+        case .retry: return "Retry dictation"
+        case .copyText: return "Copy dictated text"
+        case .discard: return "Discard recording"
+        case .openKeys: return "Open Settings > Keys"
+        case .openDictationSettings: return "Open Settings > Dictation"
+        case .openMicrophoneSettings: return "Open Microphone settings"
+        }
+    }
+
+    private func perform(_ action: DictationAction) {
+        switch action {
+        case .retry: dictation.retry()
+        case .copyText: Task { await dictation.copyText() }
+        case .discard: dictation.discard()
+        case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .keys)
+        case .openDictationSettings: SettingsWindow.present(openSettings, container: container, tab: .dictation)
+        case .openMicrophoneSettings:
+            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!)
         }
     }
 }
