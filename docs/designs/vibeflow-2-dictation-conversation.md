@@ -943,7 +943,7 @@ Synthesized from this review's findings. Ratios: tests ~50x, features ~30x, arch
   - Surfaced by: D4; D12; design cleanup section
   - Files: VibeFlowCore/Sources/VibeFlowCore/SmartRead/ChatCompletionsClient.swift, SmartRead/SmartReadPrompts.swift, Tests/LiveEvalTests.swift
   - Verify: unit rows for each error class; eval golden (question cleaned, not answered) passes with a key
-- [ ] **T5 (P1, human: ~1 day / CC: ~20 min)** — Paste — TextInsertion with field and secure-input check, Cmd-V item or synthesized Cmd-V, 750 ms restore
+- [x] **T5 (P1, human: ~1 day / CC: ~20 min)** — Paste — TextInsertion with field and secure-input check, Cmd-V item or synthesized Cmd-V, 750 ms restore
   - Surfaced by: D2; D6; D10
   - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/TextInsertion.swift, Tests/TextInsertionTests.swift
   - Verify: changed field, same field, missing element, secure input, delay and foreign write rows green
