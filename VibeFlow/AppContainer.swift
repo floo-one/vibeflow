@@ -48,7 +48,7 @@ final class AppContainer {
         KeyboardShortcuts.onKeyUp(for: .readClipboard) { [weak self] in self?.clipboardHotkey(.read) }
         KeyboardShortcuts.onKeyUp(for: .smartReadClipboard) { [weak self] in self?.clipboardHotkey(.smartRead) }
 
-        warmElevenLabsConnection()
+        warmConnections()
     }
 
     private func hotkey(_ kind: ReadKind) {
@@ -68,13 +68,18 @@ final class AppContainer {
         session.menuRead(kind, text: text)
     }
 
-    /// Perf note P2: a first TLS handshake at launch so the first real read is warm.
-    private func warmElevenLabsConnection() {
-        Task.detached(priority: .utility) {
-            var request = URLRequest(url: URL(string: "https://api.elevenlabs.io/")!)
-            request.httpMethod = "HEAD"
-            request.timeoutInterval = 10
-            _ = try? await URLSession.shared.data(for: request)
+    /// Perf note P2: a first TLS handshake at launch so the first real read and the first
+    /// dictation are warm. Groq only when a Groq key is set.
+    private func warmConnections() {
+        var hosts = ["https://api.elevenlabs.io/"]
+        if secrets.read(.groq) != nil { hosts.append("https://api.groq.com/") }
+        for host in hosts {
+            Task.detached(priority: .utility) {
+                var request = URLRequest(url: URL(string: host)!)
+                request.httpMethod = "HEAD"
+                request.timeoutInterval = 10
+                _ = try? await URLSession.shared.data(for: request)
+            }
         }
     }
 

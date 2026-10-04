@@ -26,5 +26,9 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>MIT License</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>VibeFlow records your voice while you hold the record shortcut and turns it into text.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>VibeFlow can transcribe dictation on this Mac with Apple's on-device speech recognition.</string>
 </dict>
 </plist>

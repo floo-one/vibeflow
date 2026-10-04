@@ -270,6 +270,8 @@ public protocol SmartReadClient: Sendable {
 public enum SecretKey: String, Sendable, CaseIterable {
     case elevenLabs = "elevenlabs-api-key"
     case anthropic = "anthropic-api-key"
+    /// Groq: dictation transcription and cleanup (VibeFlow 2).
+    case groq = "groq-api-key"
 }
 
 public protocol SecretsStore: Sendable {

@@ -53,6 +53,13 @@ targets:
         LSUIElement: true            # agent app: no Dock icon, no focus steal
         LSMinimumSystemVersion: "15.0"
         NSHumanReadableCopyright: "MIT License"
+        NSMicrophoneUsageDescription: "VibeFlow records your voice while you hold the record shortcut and turns it into text."
+        NSSpeechRecognitionUsageDescription: "VibeFlow can transcribe dictation on this Mac with Apple's on-device speech recognition."
+    entitlements:
+      path: VibeFlow/VibeFlow.entitlements
+      properties:
+        # Hardened runtime blocks the microphone without this, even after the user allows it.
+        com.apple.security.device.audio-input: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: one.floo.vibeflow
