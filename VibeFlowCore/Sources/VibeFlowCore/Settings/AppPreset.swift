@@ -21,6 +21,9 @@ public struct AppPreset: Codable, Sendable, Equatable {
     public var smartReadInstructions: String?
     /// BCP-47, nil = detect from the text.
     public var languageOverride: String?
+    /// Dictation into this app stays on the Mac: Apple's on-device recognizer, no cloud
+    /// cleanup (D5). Absent in presets saved before VibeFlow 2, decoded as false.
+    public var dictationLocalOnly: Bool
 
     public init(
         bundleID: String? = nil,
@@ -31,7 +34,8 @@ public struct AppPreset: Codable, Sendable, Equatable {
         smartReadEnabled: Bool = true,
         smartReadMode: SmartReadMode = .brief,
         smartReadInstructions: String? = nil,
-        languageOverride: String? = nil
+        languageOverride: String? = nil,
+        dictationLocalOnly: Bool = false
     ) {
         self.bundleID = bundleID
         self.provider = provider
@@ -42,6 +46,26 @@ public struct AppPreset: Codable, Sendable, Equatable {
         self.smartReadMode = smartReadMode
         self.smartReadInstructions = smartReadInstructions
         self.languageOverride = languageOverride
+        self.dictationLocalOnly = dictationLocalOnly
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case bundleID, provider, elevenLabsVoiceID, appleVoiceByLanguage, speed
+        case smartReadEnabled, smartReadMode, smartReadInstructions, languageOverride, dictationLocalOnly
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        bundleID = try c.decodeIfPresent(String.self, forKey: .bundleID)
+        provider = try c.decode(ProviderKind.self, forKey: .provider)
+        elevenLabsVoiceID = try c.decode(String.self, forKey: .elevenLabsVoiceID)
+        appleVoiceByLanguage = try c.decode([String: String].self, forKey: .appleVoiceByLanguage)
+        speed = try c.decode(Double.self, forKey: .speed)
+        smartReadEnabled = try c.decode(Bool.self, forKey: .smartReadEnabled)
+        smartReadMode = try c.decode(SmartReadMode.self, forKey: .smartReadMode)
+        smartReadInstructions = try c.decodeIfPresent(String.self, forKey: .smartReadInstructions)
+        languageOverride = try c.decodeIfPresent(String.self, forKey: .languageOverride)
+        dictationLocalOnly = try c.decodeIfPresent(Bool.self, forKey: .dictationLocalOnly) ?? false
     }
 
     /// George, ElevenLabs premade narrative voice.

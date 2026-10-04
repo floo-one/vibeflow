@@ -947,7 +947,7 @@ Synthesized from this review's findings. Ratios: tests ~50x, features ~30x, arch
   - Surfaced by: D2; D6; D10
   - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/TextInsertion.swift, Tests/TextInsertionTests.swift
   - Verify: changed field, same field, missing element, secure input, delay and foreign write rows green
-- [ ] **T6 (P1, human: ~2 days / CC: ~30 min)** — DictationSession — state machine, hold and tap, stop read first, local-only routing, last-failure memory with Retry, Copy and Discard
+- [x] **T6 (P1, human: ~2 days / CC: ~30 min)** — DictationSession — state machine, hold and tap, stop read first, local-only routing, last-failure memory with Retry, Copy and Discard
   - Surfaced by: D3; D5; D13; design state machine
   - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/DictationSession.swift, Tests/DictationTests.swift
   - Verify: DictationTests green for every state row

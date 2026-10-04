@@ -116,6 +116,15 @@ struct TextInsertionTests {
         #expect(await h.run() == .copiedInstead(reason: "the app lost focus"))
     }
 
+    @Test func withoutAccessibilityTheTextIsCopiedInstead() async {
+        let h = InsertionHarness()
+        h.accessibility.isTrusted = false
+        #expect(await h.run() == .copiedInstead(reason: "Accessibility access is off"))
+        #expect(h.accessibility.pastePresses.isEmpty)
+        #expect(h.accessibility.pasteKeystrokes == 0)
+        #expect(h.pasteboard.string() == "Hello Anna.")
+    }
+
     @Test func nonTextClipboardIsOverwrittenWithANote() async {
         let h = InsertionHarness(pasteboard: FakePasteboard(nonText: true))
         #expect(await h.run() == .pasted(note: ClipboardSnapshot.nonTextNote))

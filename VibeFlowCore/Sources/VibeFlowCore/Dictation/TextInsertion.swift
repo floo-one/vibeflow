@@ -21,7 +21,7 @@ public enum InsertionResult: Sendable, Equatable {
 /// Pastes text at the cursor through the clipboard and puts the user's clipboard back
 /// (design D2, D6, D10):
 ///
-/// 1. Immediately before pasting, the target must still be valid: same frontmost app, same
+/// 1. Immediately before pasting, the target must still be valid: Accessibility granted, same frontmost app, same
 ///    focused field (when one was captured), and no secure input. Otherwise the text goes to
 ///    the clipboard and nothing is pasted.
 /// 2. Snapshot the clipboard text (ClipboardSnapshot, 200 ms bound), write the dictation
@@ -72,6 +72,8 @@ public final class TextInsertion {
 
     /// nil = safe to paste.
     func invalidTargetReason(_ target: PasteTarget) -> String? {
+        // Both the menu press and the synthesized Cmd-V need the Accessibility grant.
+        guard accessibility.isTrusted else { return "Accessibility access is off" }
         guard accessibility.frontmostApp()?.pid == target.app.pid else { return "the app lost focus" }
         if accessibility.isSecureInputActive { return "a password field has focus" }
         if let field = target.field {
