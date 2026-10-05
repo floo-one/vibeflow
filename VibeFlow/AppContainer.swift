@@ -48,8 +48,7 @@ final class AppContainer {
             apple: AppleSpeechProvider(catalog: voices),
             smartRead: AnthropicClient(http: http, secrets: secrets),
             secrets: secrets,
-            clock: clock,
-            configuration: preferences.sessionConfiguration
+            clock: clock
         )
         self.session = session
 
@@ -67,7 +66,7 @@ final class AppContainer {
                     inputs: AudioDevices.inputs(),
                     outputIsBluetooth: AudioDevices.defaultOutputIsBluetooth()
                 )
-                return DictationSetupFactory.make(settings: preferences.dictationSettings, secrets: secrets, http: http,
+                return DictationSetupFactory.make(vocabulary: preferences.vocabularyTerms, secrets: secrets, http: http,
                                                   onDevice: onDevice, microphoneUID: microphone)
             },
             stopReading: { session.stop() } // D3
@@ -116,20 +115,17 @@ final class AppContainer {
 
     private func hotkey(_ kind: ReadKind) {
         if dictationCancelledByRead() { return }
-        session.configuration = preferences.sessionConfiguration
         session.hotkey(kind)
     }
 
     private func clipboardHotkey(_ kind: ReadKind) {
         if dictationCancelledByRead() { return }
-        session.configuration = preferences.sessionConfiguration
         session.clipboardHotkey(kind, text: NSPasteboard.general.string(forType: .string) ?? "")
     }
 
     /// Menu reads use the clipboard text and the default preset.
     func menuRead(_ kind: ReadKind) {
         if dictationCancelledByRead() { return }
-        session.configuration = preferences.sessionConfiguration
         let text = NSPasteboard.general.string(forType: .string) ?? ""
         session.menuRead(kind, text: text)
     }

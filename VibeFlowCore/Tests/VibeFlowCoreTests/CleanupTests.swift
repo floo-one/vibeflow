@@ -116,17 +116,3 @@ struct ChatCompletionsCleanerTests {
         }
     }
 }
-
-@Suite("AnthropicCleaner")
-struct AnthropicCleanerTests {
-    @Test func usesTheCleanupPromptAndMapsStopReason() async throws {
-        let http = FakeHTTPClient()
-        http.body = try JSONSerialization.data(withJSONObject: ["content": [["type": "text", "text": "Hey Anna."]], "stop_reason": "end_turn"])
-        let client = AnthropicClient(http: http, secrets: FakeSecrets([.anthropic: "sk"]))
-        let r = try await AnthropicCleaner(client: client).clean("hey anna", vocabulary: [])
-        #expect(r == CleanupResponse(text: "Hey Anna.", complete: true))
-        let b = try #require(try JSONSerialization.jsonObject(with: http.requests[0].httpBody!) as? [String: Any])
-        #expect(b["model"] as? String == "claude-haiku-4-5")
-        #expect((b["system"] as? String)?.contains("tidy spoken dictation") == true)
-    }
-}

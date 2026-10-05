@@ -4,10 +4,11 @@ import VibeFlowCore
 import SwiftUI
 
 enum SettingsTab: Hashable {
-    case general, voices, smartRead, dictation, presets, keys
+    case general, reading, dictation, apps, keys
 }
 
-/// Settings window: General, Voices, Smart read, Dictation, Per-app presets, Keys.
+/// Settings window. Deliberately small: models, providers, fallbacks and limits are
+/// opinionated constants; only what differs between people is a setting.
 struct SettingsView: View {
     @Environment(AppContainer.self) private var container
 
@@ -17,23 +18,20 @@ struct SettingsView: View {
             GeneralTab()
                 .tabItem { Label("General", systemImage: "gearshape") }
                 .tag(SettingsTab.general)
-            VoicesTab()
-                .tabItem { Label("Voices", systemImage: "waveform") }
-                .tag(SettingsTab.voices)
-            SmartReadTab()
-                .tabItem { Label("Smart read", systemImage: "sparkles") }
-                .tag(SettingsTab.smartRead)
+            ReadingTab()
+                .tabItem { Label("Reading", systemImage: "waveform") }
+                .tag(SettingsTab.reading)
             DictationTab()
                 .tabItem { Label("Dictation", systemImage: "mic") }
                 .tag(SettingsTab.dictation)
-            PresetsTab()
-                .tabItem { Label("Per-app", systemImage: "app.badge") }
-                .tag(SettingsTab.presets)
+            AppsTab()
+                .tabItem { Label("Apps", systemImage: "app.badge") }
+                .tag(SettingsTab.apps)
             KeysTab()
                 .tabItem { Label("Keys", systemImage: "key") }
                 .tag(SettingsTab.keys)
         }
-        .frame(width: 640, height: 520)
+        .frame(width: 600, height: 480)
         .background(SettingsWindowConfigurator())
     }
 }
@@ -70,28 +68,13 @@ private struct GeneralTab: View {
     var body: some View {
         @Bindable var prefs = container.preferences
         Form {
-            if container.secrets.read(.elevenLabs) == nil {
-                MissingKeyCallout(service: "ElevenLabs", consequence: "Reads use the built-in Apple voice until a key is added.")
-            }
             Section("Shortcuts") {
                 KeyboardShortcuts.Recorder("Read selection", name: .read)
                 KeyboardShortcuts.Recorder("Smart read selection", name: .smartRead)
                 KeyboardShortcuts.Recorder("Read clipboard", name: .readClipboard)
                 KeyboardShortcuts.Recorder("Smart read clipboard", name: .smartReadClipboard)
                 KeyboardShortcuts.Recorder("Dictate", name: .record)
-                Text("Press a read shortcut again to stop. Hold Dictate to talk and release to paste; tap it to dictate hands-free until the next press.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section("Long selections") {
-                LabeledContent("Ask before reading more than") {
-                    HStack {
-                        TextField("", value: $prefs.sizeCap, format: .number)
-                            .frame(width: 90)
-                            .multilineTextAlignment(.trailing)
-                        Text("characters")
-                    }
-                }
-                Text("Nothing above \(SessionConfiguration.hardMax.formatted()) characters is ever sent; that is the model's limit.")
+                Text("Press a read shortcut again to stop. Hold Dictate to talk and release to paste, or tap it to dictate hands-free until the next press.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section {
@@ -103,60 +86,26 @@ private struct GeneralTab: View {
     }
 }
 
-// MARK: - Voices (the global default preset)
+// MARK: - Reading (the global default preset)
 
-private struct VoicesTab: View {
+private struct ReadingTab: View {
     @Environment(AppContainer.self) private var container
 
     var body: some View {
         @Bindable var store = container.presets
         Form {
-            PresetEditor(preset: $store.defaultPreset, showSmartRead: false)
-        }
-        .formStyle(.grouped)
-    }
-}
-
-// MARK: - Smart read
-
-private struct SmartReadTab: View {
-    @Environment(AppContainer.self) private var container
-
-    var body: some View {
-        @Bindable var prefs = container.preferences
-        @Bindable var store = container.presets
-        Form {
-            Section("Model") {
-                switch container.catalogs.modelsState {
-                case .noKey:
-                    MissingKeyCallout(service: "Anthropic", consequence: "Smart read is unavailable until a key is added.")
-                case .loading:
-                    ProgressView("Loading models").controlSize(.small)
-                case .failed(let reason):
-                    Label(reason, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
-                    Button("Retry") { container.catalogs.refreshModels() }
-                case .limited(let reason):
-                    Label(reason, systemImage: "info.circle")
-                    TextField("Anthropic model id", text: $prefs.smartReadModel)
-                case .loaded:
-                    SearchablePicker(
-                        title: "Model",
-                        items: container.catalogs.models.map { ($0.id, $0.name, $0.id) },
-                        selection: $prefs.smartReadModel
-                    )
-                    Text("Haiku answers fastest; Sonnet is more careful with long legal text.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
+            Section("Voice") {
+                VoicePicker(voiceID: $store.defaultPreset.elevenLabsVoiceID)
+                SpeedSlider(speed: $store.defaultPreset.speed)
+                Text("Without a key or a connection, VibeFlow reads with the best Apple voice installed for the text's language.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            Section("Default behaviour") {
-                Toggle("Smart read enabled", isOn: $store.defaultPreset.smartReadEnabled)
-                Picker("Mode", selection: $store.defaultPreset.smartReadMode) {
-                    Text("Explain simply: a quick overview, like for a 10-year-old").tag(SmartReadMode.brief)
-                    Text("Cleanup: the full text, tidied for listening").tag(SmartReadMode.cleanup)
+            Section("Smart read") {
+                if container.secrets.read(.anthropic) == nil {
+                    MissingKeyCallout(service: "Anthropic", consequence: "Smart read is unavailable until a key is added.")
                 }
-                .pickerStyle(.radioGroup)
                 InstructionsField(text: $store.defaultPreset.smartReadInstructions)
-                Text("Per-app presets can turn smart read off for sensitive apps.")
+                Text("Smart read gives a short, simple overview of the selection, as if for a 10-year-old.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -168,73 +117,27 @@ private struct SmartReadTab: View {
 
 private struct DictationTab: View {
     @Environment(AppContainer.self) private var container
-    /// Loaded once when the tab appears, never in body (CoreAudio enumeration).
+    /// Loaded when the tab appears, never in body (CoreAudio enumeration).
     @State private var inputs: [AudioInputDevice] = []
-
-    private var hasGroqKey: Bool { container.secrets.read(.groq) != nil }
 
     var body: some View {
         @Bindable var prefs = container.preferences
         Form {
-            if !hasGroqKey && (prefs.transcriber == .groq || (prefs.cleanupEnabled && prefs.cleanupProvider == .groq)) {
+            if container.secrets.read(.groq) == nil {
                 MissingKeyCallout(
                     service: "Groq",
                     consequence: AppleTranscriber.isAvailable
-                        ? "Dictation uses Apple's on-device recognizer and skips cleanup until a key is added."
+                        ? "Dictation uses Apple's on-device recognizer, without cleanup, until a key is added."
                         : "Dictation needs a Groq key on this Mac."
                 )
             }
 
-            Section("Transcription") {
-                Picker("Transcriber", selection: $prefs.transcriber) {
-                    Text("Groq (Whisper, fast and accurate)").tag(TranscriberChoice.groq)
-                    Text("Custom OpenAI-compatible endpoint").tag(TranscriberChoice.custom)
-                    Text(AppleTranscriber.isAvailable ? "Apple on-device (never leaves this Mac)" : "Apple on-device (needs macOS 26)")
-                        .tag(TranscriberChoice.apple)
-                        .selectionDisabled(!AppleTranscriber.isAvailable)
-                }
-                .pickerStyle(.radioGroup)
-                if prefs.transcriber == .custom {
-                    TextField("Base URL", text: $prefs.customEndpoint, prompt: Text("http://localhost:8000/v1"))
-                }
-                if prefs.transcriber != .apple {
-                    TextField("Model", text: $prefs.transcriptionModel, prompt: Text(OpenAITranscriber.defaultModel))
-                    Text("Falls back to Apple on device when offline, rate limited or the service is down.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                LabeledContent("On-device model") {
-                    HStack {
-                        Text(container.onDeviceModel.summary)
-                            .foregroundStyle(container.onDeviceModel.isReady ? .green : .secondary)
-                        if case .failed = container.onDeviceModel.state {
-                            Button("Retry") { container.onDeviceModel.retry() }
-                        }
-                    }
-                }
-            }
-
-            Section("Cleanup") {
-                Toggle("Fix punctuation, casing and misheard words", isOn: $prefs.cleanupEnabled)
-                if prefs.cleanupEnabled {
-                    Picker("Provider", selection: $prefs.cleanupProvider) {
-                        Text("Groq").tag(CleanupProvider.groq)
-                        Text("Anthropic (Claude Haiku)").tag(CleanupProvider.anthropic)
-                    }
-                    if prefs.cleanupProvider == .groq {
-                        TextField("Model", text: $prefs.cleanupModel, prompt: Text(ChatCompletionsCleaner.defaultModel))
-                    } else if container.secrets.read(.anthropic) == nil {
-                        Label("No Anthropic key: dictations are pasted without cleanup.", systemImage: "key.slash")
-                            .foregroundStyle(.orange).font(.callout)
-                    }
-                    Text("If cleanup takes longer than 1.5 s or fails, the raw transcript is pasted.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Vocabulary")
-                    TextField("Names and terms, one per line or comma separated", text: $prefs.vocabulary, axis: .vertical)
-                        .lineLimit(2...5)
-                        .textFieldStyle(.roundedBorder)
-                }
+            Section("Vocabulary") {
+                TextField("Names and terms, one per line or comma separated", text: $prefs.vocabulary, axis: .vertical)
+                    .lineLimit(3...6)
+                    .labelsHidden()
+                Text("Groq Whisper transcribes, then cleanup fixes punctuation and misheard words and spells these terms as written.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             Section("Microphone") {
@@ -250,8 +153,20 @@ private struct DictationTab: View {
                         Text("Unplugged device (uses Automatic)").tag(chosen)
                     }
                 }
-                Text("Automatic uses the built-in microphone while you listen on Bluetooth headphones, so they stay in high-quality mode, and the system input otherwise.")
+                Text("Automatic uses the built-in microphone while you listen on Bluetooth headphones, so they keep their sound quality.")
                     .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section {
+                LabeledContent("Offline fallback") {
+                    HStack {
+                        Text(AppleTranscriber.isAvailable ? container.onDeviceModel.summary : "Needs macOS 26")
+                            .foregroundStyle(container.onDeviceModel.isReady ? .green : .secondary)
+                        if case .failed = container.onDeviceModel.state {
+                            Button("Retry") { container.onDeviceModel.retry() }
+                        }
+                    }
+                }
             }
         }
         .formStyle(.grouped)
@@ -259,20 +174,25 @@ private struct DictationTab: View {
     }
 }
 
-// MARK: - Per-app presets
+// MARK: - Apps
 
-private struct PresetsTab: View {
+private struct AppsTab: View {
     @Environment(AppContainer.self) private var container
     @State private var selected: String?
-    @State private var newBundleID = ""
 
     var body: some View {
         HSplitView {
             VStack(spacing: 0) {
                 List(selection: $selected) {
                     ForEach(container.presets.presets, id: \.bundleID) { preset in
-                        Text(preset.bundleID ?? "")
-                            .tag(preset.bundleID ?? "")
+                        HStack {
+                            Text(appName(preset.bundleID ?? ""))
+                            Spacer()
+                            if preset.keepsOnThisMac {
+                                Image(systemName: "lock.fill").foregroundStyle(.secondary).help("Kept on this Mac")
+                            }
+                        }
+                        .tag(preset.bundleID ?? "")
                     }
                 }
                 Divider()
@@ -282,13 +202,11 @@ private struct PresetsTab: View {
                             Button(app.name) { add(bundleID: app.bundleID) }
                         }
                     } label: {
-                        Label("Add running app", systemImage: "plus")
+                        Label("Add app", systemImage: "plus")
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
-                    TextField("or bundle id", text: $newBundleID)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit { add(bundleID: newBundleID); newBundleID = "" }
+                    Spacer()
                     Button(role: .destructive) {
                         if let selected { container.presets.remove(bundleID: selected) }
                         selected = nil
@@ -297,19 +215,19 @@ private struct PresetsTab: View {
                 }
                 .padding(8)
             }
-            .frame(minWidth: 200)
+            .frame(minWidth: 180)
 
             Group {
                 if let selected, let index = container.presets.presets.firstIndex(where: { $0.bundleID == selected }) {
                     Form {
-                        PresetEditor(preset: binding(for: index), showSmartRead: true)
+                        AppEditor(preset: binding(for: index))
                     }
                     .formStyle(.grouped)
                 } else {
-                    ContentUnavailableView("No app selected", systemImage: "app.badge", description: Text("Add an app to give it its own voice, speed or privacy rule."))
+                    ContentUnavailableView("No app selected", systemImage: "app.badge", description: Text("Add an app to keep it on this Mac or give it its own voice, speed or smart read instructions."))
                 }
             }
-            .frame(minWidth: 320)
+            .frame(minWidth: 340)
         }
     }
 
@@ -325,13 +243,16 @@ private struct PresetsTab: View {
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
+    private func appName(_ bundleID: String) -> String {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return bundleID }
+        return FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+    }
+
     private func add(bundleID: String) {
-        let id = bundleID.trimmingCharacters(in: .whitespaces)
-        guard !id.isEmpty else { return }
-        if !container.presets.presets.contains(where: { $0.bundleID == id }) {
-            container.presets.upsert(container.presets.newPreset(bundleID: id))
+        if !container.presets.presets.contains(where: { $0.bundleID == bundleID }) {
+            container.presets.upsert(container.presets.newPreset(bundleID: bundleID))
         }
-        selected = id
+        selected = bundleID
     }
 
     private func binding(for index: Int) -> Binding<AppPreset> {
@@ -342,92 +263,63 @@ private struct PresetsTab: View {
     }
 }
 
-// MARK: - Shared preset editor
-
-private struct PresetEditor: View {
-    @Environment(AppContainer.self) private var container
+private struct AppEditor: View {
     @Binding var preset: AppPreset
-    let showSmartRead: Bool
 
     var body: some View {
-        Section("Provider") {
-            Picker("Provider", selection: $preset.provider) {
-                Text("ElevenLabs").tag(ProviderKind.elevenLabs)
-                Text("Apple (offline, never leaves this Mac)").tag(ProviderKind.apple)
-            }
-            .pickerStyle(.radioGroup)
+        Section {
+            Toggle("Keep this app on this Mac", isOn: $preset.keepsOnThisMac)
+            Text(preset.keepsOnThisMac
+                 ? "Reads use the Apple voice, smart read is off and dictation stays on device. Nothing from this app leaves the Mac."
+                 : AppleTranscriber.isAvailable
+                    ? "Turn on for confidential apps: Apple voice, no smart read, on-device dictation."
+                    : "Turn on for confidential apps: Apple voice and no smart read. Dictation into this app then fails, since on-device dictation needs macOS 26.")
+                .font(.caption).foregroundStyle(.secondary)
         }
-
-        if preset.provider == .elevenLabs {
-            Section("ElevenLabs voice") {
-                switch container.catalogs.voicesState {
-                case .noKey:
-                    MissingKeyCallout(service: "ElevenLabs", consequence: "Reads use the Apple voice until a key is added.")
-                case .loading:
-                    ProgressView("Loading voices").controlSize(.small)
-                case .failed(let reason):
-                    Label(reason, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
-                    Button("Retry") { container.catalogs.refreshVoices() }
-                case .loaded:
-                    SearchablePicker(
-                        title: "Voice",
-                        items: container.catalogs.voices.map { ($0.id, $0.name, $0.description) },
-                        selection: $preset.elevenLabsVoiceID
-                    )
-                case .limited(let reason):
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "info.circle").foregroundStyle(.blue)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(reason).font(.callout)
-                            HStack {
-                                Link("Open ElevenLabs API keys", destination: URL(string: "https://elevenlabs.io/app/settings/api-keys")!)
-                                Button("Check again") { container.catalogs.refreshVoices() }
-                            }
-                        }
-                    }
-                    .padding(10)
-                    .background(.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-                    SearchablePicker(
-                        title: "Voice",
-                        items: container.catalogs.voices.map { ($0.id, $0.name, $0.description) },
-                        selection: $preset.elevenLabsVoiceID
-                    )
-                    TextField("Or paste a voice id from your ElevenLabs library", text: $preset.elevenLabsVoiceID)
-                        .textFieldStyle(.roundedBorder)
-                }
+        Section("Voice") {
+            if !preset.keepsOnThisMac {
+                VoicePicker(voiceID: $preset.elevenLabsVoiceID)
             }
-        }
-
-        Section("Speed and language") {
             SpeedSlider(speed: $preset.speed)
-            TextField("Language override (BCP-47, e.g. de-DE), empty = detect", text: Binding(
-                get: { preset.languageOverride ?? "" },
-                set: { preset.languageOverride = $0.isEmpty ? nil : $0 }
-            ))
         }
-
-        AppleVoiceSection(map: $preset.appleVoiceByLanguage, voices: container.voices.voices(), systemLanguage: container.voices.systemLanguage)
-
-        if showSmartRead {
+        if !preset.keepsOnThisMac {
             Section("Smart read") {
-                Toggle("Smart read enabled for this app", isOn: $preset.smartReadEnabled)
-                Picker("Mode", selection: $preset.smartReadMode) {
-                    Text("Explain simply").tag(SmartReadMode.brief)
-                    Text("Cleanup").tag(SmartReadMode.cleanup)
-                }
                 InstructionsField(text: $preset.smartReadInstructions)
             }
-            Section("Dictation") {
-                Toggle("Dictate on this Mac only", isOn: $preset.dictationLocalOnly)
-                Text(AppleTranscriber.isAvailable
-                     ? "Uses Apple's on-device recognizer and skips cloud cleanup when dictating into this app."
-                     : "Needs macOS 26: dictation into this app fails instead of using the cloud.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Section {
-                Text("Choosing the Apple provider, turning smart read off and dictating on this Mac only keeps everything from this app on this Mac.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
+        }
+    }
+}
+
+// MARK: - ElevenLabs voice
+
+private struct VoicePicker: View {
+    @Environment(AppContainer.self) private var container
+    @Binding var voiceID: String
+
+    var body: some View {
+        switch container.catalogs.voicesState {
+        case .noKey:
+            MissingKeyCallout(service: "ElevenLabs", consequence: "Reads use the Apple voice until a key is added.")
+        case .loading:
+            ProgressView("Loading voices").controlSize(.small)
+        case .failed(let reason):
+            Label(reason, systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+            Button("Retry") { container.catalogs.refreshVoices() }
+        case .loaded:
+            SearchablePicker(
+                title: "Voice",
+                items: container.catalogs.voices.map { ($0.id, $0.name, $0.description) },
+                selection: $voiceID
+            )
+        case .limited(let reason):
+            Label(reason, systemImage: "info.circle").font(.callout)
+            SearchablePicker(
+                title: "Voice",
+                items: container.catalogs.voices.map { ($0.id, $0.name, $0.description) },
+                selection: $voiceID
+            )
+            TextField("Or paste a voice id from your ElevenLabs library", text: $voiceID)
+                .textFieldStyle(.roundedBorder)
         }
     }
 }
@@ -457,75 +349,18 @@ private struct SpeedSlider: View {
     }
 }
 
-// MARK: - Apple voice per language
-
-/// Shows only the languages that matter: the system language, any language with a chosen
-/// voice, plus a menu to add another. 49 pickers with 180 voices was too heavy to render.
-private struct AppleVoiceSection: View {
-    @Binding var map: [String: String]
-    let voices: [AppleVoice]
-    let systemLanguage: String
-
-    private var byLanguage: [String: [AppleVoice]] { Dictionary(grouping: voices, by: \.language) }
-
-    private var shownLanguages: [String] {
-        var langs = Set(map.keys)
-        langs.insert(systemLanguage)
-        return langs.sorted { a, b in
-            if a == systemLanguage { return true }
-            if b == systemLanguage { return false }
-            return a < b
-        }
-    }
-
-    var body: some View {
-        let grouped = byLanguage
-        Section("Apple voice per language") {
-            ForEach(shownLanguages, id: \.self) { language in
-                Picker(languageName(language), selection: Binding(
-                    get: { map[language] ?? "" },
-                    set: { id in map[language] = id.isEmpty ? nil : id }
-                )) {
-                    Text("System default").tag("")
-                    ForEach(grouped[language] ?? [], id: \.identifier) { voice in
-                        Text(voice.name).tag(voice.identifier)
-                    }
-                }
-            }
-            Menu("Add a voice for another language") {
-                ForEach(grouped.keys.sorted().filter { !shownLanguages.contains($0) }, id: \.self) { language in
-                    Button(languageName(language)) {
-                        if let first = grouped[language]?.first { map[language] = first.identifier }
-                    }
-                }
-            }
-            .fixedSize()
-        }
-    }
-
-    private func languageName(_ code: String) -> String {
-        let name = Locale.current.localizedString(forIdentifier: code) ?? code
-        return "\(name) (\(code))"
-    }
-}
-
-// MARK: - Per-app instructions
+// MARK: - Smart read instructions
 
 private struct InstructionsField: View {
     @Binding var text: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Extra instructions")
-            TextField("e.g. Tell me what they want from me and by when", text: Binding(
-                get: { text ?? "" },
-                set: { text = $0.isEmpty ? nil : String($0.prefix(SmartReadPrompts.maxInstructionsLength)) }
-            ), axis: .vertical)
-            .lineLimit(2...4)
-            .textFieldStyle(.roundedBorder)
-            Text("Added to the smart read prompt for this app. Up to \(SmartReadPrompts.maxInstructionsLength) characters.")
-                .font(.caption).foregroundStyle(.secondary)
-        }
+        TextField("Extra instructions, e.g. Tell me what they want from me and by when", text: Binding(
+            get: { text ?? "" },
+            set: { text = $0.isEmpty ? nil : String($0.prefix(SmartReadPrompts.maxInstructionsLength)) }
+        ), axis: .vertical)
+        .lineLimit(2...4)
+        .textFieldStyle(.roundedBorder)
     }
 }
 
@@ -545,7 +380,7 @@ private struct SearchablePicker: View {
     }
 
     var body: some View {
-        LabeledContent("Current") {
+        LabeledContent(title) {
             Text(items.first { $0.id == selection }?.name ?? selection)
                 .fontWeight(.medium)
         }
@@ -563,7 +398,7 @@ private struct SearchablePicker: View {
             .contentShape(Rectangle())
             .onTapGesture { selection = item.id }
         }
-        .frame(minHeight: 140, maxHeight: 220)
+        .frame(minHeight: 120, maxHeight: 180)
     }
 }
 
@@ -574,41 +409,22 @@ private struct KeysTab: View {
     @State private var elevenLabs = ""
     @State private var anthropic = ""
     @State private var groq = ""
-    @State private var customEndpoint = ""
     @State private var saved = false
     @State private var error: String?
 
     var body: some View {
         Form {
-            Section("ElevenLabs") {
-                SecureField("API key", text: $elevenLabs)
-                keyStatus(stored: container.secrets.read(.elevenLabs) != nil, missing: "No key stored. Reads use the Apple voice until one is added.")
-            }
-            Section("Anthropic") {
-                SecureField("API key", text: $anthropic)
-                keyStatus(stored: container.secrets.read(.anthropic) != nil, missing: "No key stored. Smart read is unavailable until one is added.")
-            }
-            Section("Groq") {
-                SecureField("API key", text: $groq)
-                keyStatus(stored: container.secrets.read(.groq) != nil, missing: "No key stored. Dictation uses Apple's on-device recognizer until one is added.")
-                Link("Create a Groq key", destination: URL(string: "https://console.groq.com/keys")!)
-                    .font(.caption)
-            }
-            if container.preferences.transcriber == .custom {
-                Section("Custom dictation endpoint (optional)") {
-                    SecureField("API key", text: $customEndpoint)
-                    Text("Leave empty for local servers that need no key.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
+            keySection("ElevenLabs", purpose: "Natural voice for reading", text: $elevenLabs, key: .elevenLabs)
+            keySection("Anthropic", purpose: "Smart read", text: $anthropic, key: .anthropic)
+            keySection("Groq", purpose: "Dictation", text: $groq, key: .groq)
             Section {
                 HStack {
                     Button("Save") { save() }
                         .keyboardShortcut(.defaultAction)
-                    if saved { Text("Saved. Takes effect on the next read or dictation.").foregroundStyle(.secondary) }
+                    if saved { Text("Saved.").foregroundStyle(.secondary) }
                     if let error { Text(error).foregroundStyle(.red) }
                 }
-                Text("Keys never leave your Keychain. A plain read sends the selected text to ElevenLabs; a smart read also sends it to Anthropic. Dictation sends your recording to Groq and the transcript to the cleanup provider.")
+                Text("Keys stay in your Keychain. Reading sends the text to ElevenLabs, smart read to Anthropic, and dictation sends your recording to Groq.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -617,18 +433,21 @@ private struct KeysTab: View {
             elevenLabs = container.secrets.read(.elevenLabs) ?? ""
             anthropic = container.secrets.read(.anthropic) ?? ""
             groq = container.secrets.read(.groq) ?? ""
-            customEndpoint = container.secrets.read(.customEndpoint) ?? ""
         }
     }
 
-    @ViewBuilder
-    private func keyStatus(stored: Bool, missing: String) -> some View {
-        if stored {
-            Label("A key is stored in your Keychain.", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green).font(.callout)
-        } else {
-            Label(missing, systemImage: "key.slash")
-                .foregroundStyle(.orange).font(.callout)
+    private func keySection(_ service: String, purpose: String, text: Binding<String>, key: SecretKey) -> some View {
+        Section {
+            SecureField("API key", text: text)
+            if container.secrets.read(key) != nil {
+                Label("Stored in your Keychain", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green).font(.callout)
+            } else {
+                Label("No key", systemImage: "key.slash")
+                    .foregroundStyle(.orange).font(.callout)
+            }
+        } header: {
+            Text("\(service) · \(purpose)")
         }
     }
 
@@ -637,7 +456,6 @@ private struct KeysTab: View {
             try container.secrets.write(elevenLabs, for: .elevenLabs)
             try container.secrets.write(anthropic, for: .anthropic)
             try container.secrets.write(groq, for: .groq)
-            try container.secrets.write(customEndpoint, for: .customEndpoint)
             saved = true
             error = nil
             container.catalogs.refresh()

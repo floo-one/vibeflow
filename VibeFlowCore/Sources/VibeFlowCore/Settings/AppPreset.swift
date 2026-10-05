@@ -68,6 +68,17 @@ public struct AppPreset: Codable, Sendable, Equatable {
         dictationLocalOnly = try c.decodeIfPresent(Bool.self, forKey: .dictationLocalOnly) ?? false
     }
 
+    /// The one privacy switch per app: Apple voice, no smart read, dictation on device. Nothing
+    /// from the app leaves the Mac. Turning it off restores the cloud defaults.
+    public var keepsOnThisMac: Bool {
+        get { provider == .apple && !smartReadEnabled && dictationLocalOnly }
+        set {
+            provider = newValue ? .apple : .elevenLabs
+            smartReadEnabled = !newValue
+            dictationLocalOnly = newValue
+        }
+    }
+
     /// George, ElevenLabs premade narrative voice.
     public static let defaultElevenLabsVoiceID = "JBFqnCBsd6RMkjVDRZzb"
 

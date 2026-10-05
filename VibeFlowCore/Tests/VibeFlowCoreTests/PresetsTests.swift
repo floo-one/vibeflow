@@ -62,23 +62,38 @@ struct PresetStoreTests {
 
 @Suite("Preferences") @MainActor
 struct PreferencesTests {
-    @Test func defaultsMatchTheSessionConfiguration() {
-        let p = Preferences(defaults: scratchDefaults())
-        #expect(p.sizeCap == SessionConfiguration().sizeCap)
-        #expect(p.smartReadModel == SessionConfiguration().smartReadModel)
-        #expect(p.launchAtLogin == false)
-    }
-
-    @Test func sizeCapIsClampedToTheModelLimitAndPersisted() {
+    @Test func defaultsAndPersistence() {
         let defaults = scratchDefaults()
         let p = Preferences(defaults: defaults)
-        p.sizeCap = 90_000
-        #expect(p.sizeCap == 40_000)
-        p.sizeCap = 10
-        #expect(p.sizeCap == 1_000)
-        p.sizeCap = 25_000
-        #expect(Preferences(defaults: defaults).sizeCap == 25_000)
-        #expect(p.sessionConfiguration.sizeCap == 25_000)
+        #expect(p.launchAtLogin == false)
+        #expect(p.vocabularyTerms.isEmpty)
+        #expect(p.microphoneUID == nil)
+        p.vocabulary = "Anna, VibeFlow"
+        p.microphoneUID = "usb-mic"
+        let q = Preferences(defaults: defaults)
+        #expect(q.vocabularyTerms == ["Anna", "VibeFlow"])
+        #expect(q.microphoneUID == "usb-mic")
+    }
+
+    @Test func vocabularyAcceptsLinesAndCommas() {
+        #expect(Preferences.parseVocabulary("VibeFlow, Groq\n  Kokoro \n\n,ElevenLabs") == ["VibeFlow", "Groq", "Kokoro", "ElevenLabs"])
+    }
+}
+
+@Suite("Keep this app on this Mac") struct KeepOnThisMacTests {
+    @Test func oneSwitchSetsAllThreePrivacyRules() {
+        var p = AppPreset(bundleID: "com.apple.Notes")
+        #expect(!p.keepsOnThisMac)
+        p.keepsOnThisMac = true
+        #expect(p.provider == .apple && !p.smartReadEnabled && p.dictationLocalOnly)
+        p.keepsOnThisMac = false
+        #expect(p.provider == .elevenLabs && p.smartReadEnabled && !p.dictationLocalOnly)
+    }
+
+    @Test func partlyLocalPresetsCountAsNotKept() {
+        // A v1 preset with the Apple voice and smart read off still dictates through Groq.
+        let p = AppPreset(bundleID: "a", provider: .apple, smartReadEnabled: false)
+        #expect(!p.keepsOnThisMac)
     }
 }
 

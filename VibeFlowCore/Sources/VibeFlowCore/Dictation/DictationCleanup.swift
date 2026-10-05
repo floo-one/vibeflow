@@ -1,10 +1,5 @@
 import Foundation
 
-public enum CleanupProvider: String, Codable, Sendable, CaseIterable {
-    case groq
-    case anthropic
-}
-
 /// What a cleanup model returned. `complete` is false when generation stopped early.
 public struct CleanupResponse: Sendable, Equatable {
     public var text: String
@@ -161,38 +156,5 @@ public final class ChatCompletionsCleaner: DictationCleaner {
         }
         request.httpBody = try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
         return request
-    }
-}
-
-/// Claude as the optional cleaner (D4), through the existing Anthropic client.
-public final class AnthropicCleaner: DictationCleaner {
-    public static let defaultModel = "claude-haiku-4-5"
-    private let client: AnthropicClient
-    private let model: String
-
-    public init(client: AnthropicClient, model: String = AnthropicCleaner.defaultModel) {
-        self.client = client
-        self.model = model
-    }
-
-    public func clean(_ transcript: String, vocabulary: [String]) async throws -> CleanupResponse {
-        do {
-            let response = try await client.complete(
-                system: SmartReadPrompts.dictationCleanupSystem(vocabulary: vocabulary),
-                user: SmartReadPrompts.dictationUser(transcript),
-                model: model,
-                maxTokens: transcript.count / 3 + 100
-            )
-            return CleanupResponse(text: response.text, complete: response.stopReason == .endTurn)
-        } catch let failure as SmartReadFailure {
-            switch failure {
-            case .unauthorized: throw CleanupFailure.unauthorized
-            case .rateLimited: throw CleanupFailure.rateLimited
-            case .overloaded: throw CleanupFailure.serverError(529)
-            case .offline: throw CleanupFailure.offline
-            case .timeout: throw CleanupFailure.timeout
-            case .other(let s): throw CleanupFailure.other(s)
-            }
-        }
     }
 }

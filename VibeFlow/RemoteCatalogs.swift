@@ -8,11 +8,6 @@ struct ElevenLabsVoice: Identifiable, Hashable {
     let description: String
 }
 
-struct AnthropicModel: Identifiable, Hashable {
-    let id: String
-    let name: String
-}
-
 enum CatalogState: Equatable {
     case noKey
     case loading
@@ -36,15 +31,13 @@ struct APIErrorBody: Decodable {
     }
 }
 
-/// Voice and model lists fetched with the stored keys, for the settings pickers.
+/// The ElevenLabs voice list fetched with the stored keys, for the settings pickers.
 /// Refreshed at launch and whenever keys are saved.
 @MainActor
 @Observable
 final class RemoteCatalogs {
     private(set) var voices: [ElevenLabsVoice] = []
     private(set) var voicesState: CatalogState = .noKey
-    private(set) var models: [AnthropicModel] = []
-    private(set) var modelsState: CatalogState = .noKey
 
     private let secrets: KeychainSecretsStore
 
@@ -54,7 +47,6 @@ final class RemoteCatalogs {
 
     func refresh() {
         refreshVoices()
-        refreshModels()
     }
 
     func refreshVoices() {
@@ -96,34 +88,6 @@ final class RemoteCatalogs {
         }
     }
 
-    func refreshModels() {
-        guard let key = secrets.read(.anthropic) else {
-            models = []
-            modelsState = .noKey
-            return
-        }
-        modelsState = .loading
-        Task {
-            do {
-                var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/models?limit=100")!)
-                request.setValue(key, forHTTPHeaderField: "x-api-key")
-                request.setValue(AnthropicClient.apiVersion, forHTTPHeaderField: "anthropic-version")
-                let (data, response) = try await URLSession.shared.data(for: request)
-                let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-                guard status == 200 else {
-                    let (message, _) = APIErrorBody.parse(data)
-                    modelsState = .failed(message ?? (status == 401 ? "Anthropic rejected the key" : "Anthropic returned HTTP \(status)"))
-                    return
-                }
-                let decoded = try JSONDecoder().decode(ModelsResponse.self, from: data)
-                models = decoded.data.map { AnthropicModel(id: $0.id, name: $0.display_name ?? $0.id) }
-                modelsState = .loaded
-            } catch {
-                modelsState = .failed(error.localizedDescription)
-            }
-        }
-    }
-
     /// ElevenLabs premade voices, shown when the key cannot list the library.
     static let premadeVoices = [
         ElevenLabsVoice(id: "JBFqnCBsd6RMkjVDRZzb", name: "George", description: "male, narrative"),
@@ -139,13 +103,5 @@ final class RemoteCatalogs {
             let labels: [String: String]?
         }
         let voices: [Voice]
-    }
-
-    private struct ModelsResponse: Decodable {
-        struct Model: Decodable {
-            let id: String
-            let display_name: String?
-        }
-        let data: [Model]
     }
 }
