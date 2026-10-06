@@ -64,7 +64,8 @@ final class AppContainer {
                 let microphone = MicrophoneSelection.deviceUID(
                     choice: preferences.microphoneUID,
                     inputs: AudioDevices.inputs(),
-                    outputIsBluetooth: AudioDevices.defaultOutputIsBluetooth()
+                    outputIsBluetooth: AudioDevices.defaultOutputIsBluetooth(),
+                    defaultInputUID: AudioDevices.defaultInputUID()
                 )
                 return DictationSetupFactory.make(vocabulary: preferences.vocabularyTerms, secrets: secrets, http: http,
                                                   onDevice: onDevice, microphoneUID: microphone)

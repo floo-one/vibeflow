@@ -6,15 +6,17 @@ import VibeFlowCore
 
 private let log = Logger(subsystem: "one.floo.vibeflow", category: "audio-in")
 
-// MARK: - AudioRecorder on AVAudioEngine
+// MARK: - AudioRecorder on AVCaptureSession
 
-/// Records from one input device into 16 kHz mono 16-bit PCM in memory (perf note P1).
-/// A fresh engine per recording: switching the input device of a running engine leaves the
-/// input node with a stale format, and this engine never shares a graph with PCMStreamPlayer.
+/// Records one input device into 16 kHz mono 16-bit PCM in memory (perf note P1).
+///
+/// AVCaptureSession, not AVAudioEngine: verified 2026-10-06, opening the microphone made
+/// CoreAudio reconfigure the I/O unit, and AVAudioEngine stops itself on that configuration
+/// change, so every recording came back as digital silence. A capture session only touches
+/// the input and converts to the target format itself.
 @MainActor
 final class LiveAudioRecorder: AudioRecorder {
-    private var engine: AVAudioEngine?
-    private var sink: PCMSink?
+    private var recording: CaptureRecording?
 
     var permission: MicrophonePermission {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
@@ -28,105 +30,102 @@ final class LiveAudioRecorder: AudioRecorder {
         await AVCaptureDevice.requestAccess(for: .audio)
     }
 
-    var isRecording: Bool { engine != nil }
+    var isRecording: Bool { recording != nil }
 
     func start(deviceUID: String?) throws {
         cancel()
         guard permission == .granted else { throw RecordingError.permissionDenied }
-
-        let engine = AVAudioEngine()
-        let input = engine.inputNode
-        if let deviceUID {
-            if let id = AudioDevices.deviceID(forUID: deviceUID), let unit = input.audioUnit {
-                var device = id
-                let status = AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
-                                                  &device, UInt32(MemoryLayout<AudioDeviceID>.size))
-                if status != noErr { log.error("Could not select input \(deviceUID, privacy: .public): \(status)") }
-            } else {
-                log.notice("Input \(deviceUID, privacy: .public) not found, using the default input")
-            }
+        let chosen = deviceUID.flatMap { AVCaptureDevice(uniqueID: $0) }
+        if deviceUID != nil && chosen == nil {
+            log.notice("Input \(deviceUID ?? "", privacy: .public) not found, using the default input")
         }
-
-        let format = input.outputFormat(forBus: 0)
-        guard format.channelCount > 0, format.sampleRate > 0 else { throw RecordingError.noInputDevice }
-        guard let sink = PCMSink(inputFormat: format) else { throw RecordingError.engineFailed("unsupported input format") }
-        input.installTap(onBus: 0, bufferSize: 4096, format: format, block: Self.tap(into: sink))
-        engine.prepare()
-        do {
-            try engine.start()
-        } catch {
-            input.removeTap(onBus: 0)
-            throw RecordingError.engineFailed(error.localizedDescription)
-        }
-        self.engine = engine
-        self.sink = sink
-        log.notice("Recording at \(format.sampleRate, privacy: .public) Hz, \(format.channelCount, privacy: .public) ch")
+        guard let device = chosen ?? AVCaptureDevice.default(for: .audio) else { throw RecordingError.noInputDevice }
+        let recording = try CaptureRecording(device: device)
+        recording.start()
+        self.recording = recording
+        log.notice("Recording from \(device.localizedName, privacy: .public) (\(device.uniqueID, privacy: .public))")
     }
 
     func stop() -> RecordedAudio {
-        guard let sink else { return .empty }
-        tearDown()
-        let audio = RecordedAudio(pcm16: sink.data)
+        guard let recording else { return .empty }
+        self.recording = nil
+        let audio = RecordedAudio(pcm16: recording.finish())
         log.notice("Recorded \(audio.pcm16.count / 32, privacy: .public) ms, rms \(audio.rms, privacy: .public)")
         return audio
     }
 
     func cancel() {
-        tearDown()
-    }
-
-    private func tearDown() {
-        engine?.inputNode.removeTap(onBus: 0)
-        engine?.stop()
-        engine = nil
-        sink = nil
-    }
-
-    /// Built outside the main actor: the tap runs on the audio thread, and a closure formed in a
-    /// main-actor method would trap on its isolation check there.
-    nonisolated private static func tap(into sink: PCMSink) -> AVAudioNodeTapBlock {
-        { buffer, _ in sink.append(buffer) }
+        _ = recording?.finish()
+        recording = nil
     }
 }
 
-/// Converts tap buffers to 16 kHz mono Int16 and accumulates them. Called on the audio thread;
-/// `data` is read on the main actor after the tap is removed.
-private final class PCMSink: @unchecked Sendable {
-    private let converter: AVAudioConverter
-    private let outputFormat: AVAudioFormat
+/// One capture session. Sample buffers arrive on `sampleQueue`; starting and stopping the
+/// session block, so they run on `sessionQueue`, never on the main thread.
+private final class CaptureRecording: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate, @unchecked Sendable {
+    private let session = AVCaptureSession()
+    private let sessionQueue = DispatchQueue(label: "one.floo.vibeflow.audio-in.session")
+    private let sampleQueue = DispatchQueue(label: "one.floo.vibeflow.audio-in.samples")
     private let lock = NSLock()
-    private var buffer = Data()
+    private var pcm = Data()
+    private var finished = false
 
-    init?(inputFormat: AVAudioFormat) {
-        guard let output = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: Double(RecordedAudio.sampleRate), channels: 1, interleaved: true),
-              let converter = AVAudioConverter(from: inputFormat, to: output) else { return nil }
-        converter.downmix = true
-        self.converter = converter
-        self.outputFormat = output
+    init(device: AVCaptureDevice) throws {
+        super.init()
+        let input: AVCaptureDeviceInput
+        do {
+            input = try AVCaptureDeviceInput(device: device)
+        } catch {
+            throw RecordingError.engineFailed(error.localizedDescription)
+        }
+        let output = AVCaptureAudioDataOutput()
+        output.audioSettings = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: Double(RecordedAudio.sampleRate),
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsNonInterleaved: false,
+        ]
+        session.beginConfiguration()
+        guard session.canAddInput(input), session.canAddOutput(output) else {
+            session.commitConfiguration()
+            throw RecordingError.engineFailed("the microphone cannot be opened")
+        }
+        session.addInput(input)
+        session.addOutput(output)
+        session.commitConfiguration()
+        output.setSampleBufferDelegate(self, queue: sampleQueue)
     }
 
-    var data: Data { lock.withLock { buffer } }
+    func start() {
+        sessionQueue.async { [session] in session.startRunning() }
+    }
 
-    func append(_ input: AVAudioPCMBuffer) {
-        let ratio = outputFormat.sampleRate / input.format.sampleRate
-        let capacity = AVAudioFrameCount(Double(input.frameLength) * ratio) + 64
-        guard let output = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: capacity) else { return }
-        // The input block runs synchronously inside convert, on this thread; it hands over the
-        // one tap buffer, then reports no more data.
-        nonisolated(unsafe) var pending: AVAudioPCMBuffer? = input
-        var error: NSError?
-        let status = converter.convert(to: output, error: &error) { _, inputStatus in
-            guard let buffer = pending else {
-                inputStatus.pointee = .noDataNow
-                return nil
-            }
-            pending = nil
-            inputStatus.pointee = .haveData
-            return buffer
+    /// Returns everything captured so far and stops the session in the background.
+    func finish() -> Data {
+        let data: Data = lock.withLock {
+            finished = true
+            return pcm
         }
-        guard status != .error, output.frameLength > 0, let samples = output.int16ChannelData else { return }
-        let chunk = UnsafeBufferPointer(start: samples[0], count: Int(output.frameLength))
-        lock.withLock { buffer.append(chunk) }
+        sessionQueue.async { [session] in session.stopRunning() }
+        return data
+    }
+
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard let block = CMSampleBufferGetDataBuffer(sampleBuffer) else { return }
+        let length = CMBlockBufferGetDataLength(block)
+        guard length > 0 else { return }
+        var chunk = Data(count: length)
+        let status = chunk.withUnsafeMutableBytes { raw in
+            CMBlockBufferCopyDataBytes(block, atOffset: 0, dataLength: length, destination: raw.baseAddress!)
+        }
+        guard status == kCMBlockBufferNoErr else { return }
+        lock.withLock {
+            guard !finished else { return }
+            pcm.append(chunk)
+        }
     }
 }
 
@@ -152,8 +151,13 @@ enum AudioDevices {
         return transport(device) == .bluetooth
     }
 
-    static func deviceID(forUID uid: String) -> AudioDeviceID? {
-        allDevices().first { string($0, kAudioDevicePropertyDeviceUID) == uid }
+    static func defaultInputUID() -> String? {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultInputDevice,
+                                                 mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var device = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device) == noErr else { return nil }
+        return string(device, kAudioDevicePropertyDeviceUID)
     }
 
     private static func allDevices() -> [AudioDeviceID] {
@@ -197,6 +201,7 @@ enum AudioDevices {
         case kAudioDeviceTransportTypeBuiltIn: return .builtIn
         case kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE: return .bluetooth
         case kAudioDeviceTransportTypeUSB: return .usb
+        case kAudioDeviceTransportTypeVirtual, kAudioDeviceTransportTypeAggregate, kAudioDeviceTransportTypeAutoAggregate: return .virtual
         default: return .other
         }
     }

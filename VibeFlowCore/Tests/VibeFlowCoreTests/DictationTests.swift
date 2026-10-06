@@ -135,6 +135,14 @@ struct DictationFlowTests {
         #expect(h.session.lastFailure == nil)
     }
 
+    @Test func digitalSilenceIsAMicrophoneProblemNotSilence() async {
+        let h = DictationHarness()
+        h.recorder.nextAudio = RecordedAudio(pcm16: Data(count: 32_000)) // 1 s of zeros
+        await h.hold()
+        #expect(h.groq.callCount == 0)
+        #expect(h.session.lastError == DictationError(message: "The microphone recorded no sound. Choose a microphone in Settings > Dictation", actions: [.openDictationSettings]))
+    }
+
     @Test func keyDownWhileBusyIsIgnoredNotQueued() async {
         let h = DictationHarness()
         h.groq.delay = .seconds(1)

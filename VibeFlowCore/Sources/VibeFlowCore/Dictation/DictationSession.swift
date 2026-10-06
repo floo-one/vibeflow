@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+import OSLog
+
+private let log = Logger(subsystem: "one.floo.vibeflow", category: "dictation")
 
 // MARK: - Public surface
 
@@ -290,6 +293,12 @@ public final class DictationSession {
             finishIdle(status: "Too short, nothing recorded")
             return
         }
+        // Real microphones always have a noise floor; all-zero samples mean the input device
+        // delivered nothing (muted, virtual or unavailable), not a quiet room.
+        guard audio.rms > 0 else {
+            fail("The microphone recorded no sound. Choose a microphone in Settings > Dictation", actions: [.openDictationSettings])
+            return
+        }
         process(audio, session: session, notes: note.map { [$0] } ?? [])
     }
 
@@ -406,12 +415,14 @@ public final class DictationSession {
     private static let microphoneOff = "Microphone access is off. Allow VibeFlow in System Settings > Privacy & Security > Microphone"
 
     private func finishIdle(status: String) {
+        log.notice("Dictation finished: \(status, privacy: .public)")
         tearDown()
         state = .idle
         self.status = status
     }
 
     private func fail(_ message: String, actions: [DictationAction] = []) {
+        log.notice("Dictation failed: \(message, privacy: .public)")
         tearDown()
         state = .idle
         lastError = DictationError(message: message, actions: actions)
