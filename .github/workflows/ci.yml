@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        run: |
+          if [ -d /Applications/Xcode_26.6.app ]; then sudo xcode-select -s /Applications/Xcode_26.6.app; fi
+          xcodebuild -version
+          major=$(xcodebuild -version | head -1 | sed -E 's/Xcode ([0-9]+).*/\1/')
+          if [ "$major" -lt 26 ]; then
+            echo "::error::VibeFlow needs Xcode 26 or later (Swift 6, macOS 26 SDK); this runner has Xcode $major."
+            exit 1
+          fi
+
+      # Live API evals run only with VIBEFLOW_RUN_EVALS=1 plus keys; CI sets neither.
+      - name: Core tests
+        working-directory: VibeFlowCore
+        run: swift test
+
+      - name: Generate the Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      # Ad-hoc signed: fine for checking the build. A build you run day to day needs a
+      # personal team so the Accessibility grant survives rebuilds (see README).
+      - name: Build the app
+        run: |
+          xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
+            build

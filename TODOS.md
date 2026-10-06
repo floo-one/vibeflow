@@ -43,3 +43,37 @@
 **Depends on:** VibeFlow 2 milestones 1 and 2.
 
 ## Completed
+
+## Distribution
+
+### Guided onboarding for keys
+
+**What:** A first-run window that explains the three keys, links to where to get each, and shows what already works without them (Apple voice, on-device dictation on macOS 26).
+
+**Why:** The first users are non-technical friends who set up their own keys (office hours 2026-10-06). Today they must find Settings > Keys on their own.
+
+**Effort:** S
+**Priority:** P2
+
+### Downloadable build: notarized DMG and Homebrew cask
+
+**What:** Sign with a Developer ID, notarize, attach a DMG to GitHub Releases, then publish a Homebrew cask.
+
+**Why:** Without it, only people who can build from source can run VibeFlow, and Homebrew casks now require notarized apps.
+
+**Context:** Needs the paid Apple Developer Program ($99/year). Deferred until people beyond friends want to run it (docs/designs/vibeflow-github-v1.md).
+
+**Effort:** M
+**Priority:** P3
+
+## Settings
+
+### Bring back vocabulary and per-app settings
+
+**What:** UI for the dictation vocabulary and per-app presets (voice, speed, "Keep this app on this Mac", smart read instructions). Storage and logic still exist (Preferences.vocabulary, AppPreset, AppPresetStore).
+
+**Why:** Removed from Settings on 2026-10-06 to keep it minimal; wanted long term.
+
+**Effort:** S
+**Priority:** P3
+

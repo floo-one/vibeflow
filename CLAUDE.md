@@ -43,38 +43,15 @@ Xcode 26.6 installed and selected (2026-10-01). The .xcodeproj is generated and 
 - Read app logs with `/usr/bin/log show --last 5m --predicate 'subsystem == "one.floo.vibeflow"'` (plain `log` is a zsh builtin and silently does nothing). Use `.notice`, not `.info`, for lines that must persist.
 - Swift 6 gotcha: `kAXTrustedCheckOptionPrompt` is a non-Sendable global; use the literal key "AXTrustedCheckOptionPrompt".
 
-## gstack (REQUIRED — global install)
+## gstack (optional)
 
-**Before doing ANY work, verify gstack is installed:**
-
-```bash
-_GS=""
-for _D in "${GSTACK_ROOT:-}" "$HOME/.claude/skills/gstack" "$HOME/.codex/skills/gstack" "$HOME/.factory/skills/gstack" "$HOME/.kiro/skills/gstack" "$HOME/.config/opencode/skills/gstack" "$HOME/.slate/skills/gstack" "$HOME/.cursor/skills/gstack" "$HOME/.openclaw/skills/gstack" "$HOME/.hermes/skills/gstack" "$HOME/.gbrain/skills/gstack" "$HOME/.gstack/repos/gstack"; do
-  [ -z "$_GS" ] && [ -n "$_D" ] && [ -d "$_D/bin" ] && _GS="$_D"
-done
-[ -n "$_GS" ] && echo "GSTACK_OK: $_GS" || echo "GSTACK_MISSING"
-```
-
-If GSTACK_MISSING: STOP. Do not proceed. Tell the user:
-
-> gstack is required for all AI-assisted work in this repo.
-> Install it:
-> ```bash
-> git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
-> cd ~/.claude/skills/gstack && ./setup --team
-> ```
-> Then restart your AI coding tool.
-
-Do not skip skills, ignore gstack errors, or work around missing gstack.
-
-Using gstack skills: After install, skills like /qa, /ship, /review, /investigate,
-and /browse are available. Use /browse for all web browsing (Aside first, the bundled gstack browser as fallback).
-Use the resolved install path above for gstack file paths
-(default: ~/.claude/skills/gstack).
+The author builds VibeFlow with [gstack](https://github.com/garrytan/gstack) skills
+(/office-hours, /plan-eng-review, /review, /qa, /ship, /investigate). If they are installed,
+use them as routed below; if not, work normally. Nothing in this repo requires them.
 
 ## Skill routing
 
-When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
+When gstack is installed and the user's request matches one of its skills, invoke it via the Skill tool.
 
 Key routing rules:
 - Product ideas/brainstorming → invoke /office-hours

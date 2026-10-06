@@ -17,6 +17,8 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "15.0"
     # Stable signing keeps the Accessibility (TCC) grant across rebuilds.
     # Free personal team from the Apple ID signed in to Xcode (Settings > Accounts).
+    # Forking? Put your own team id here and change PRODUCT_BUNDLE_IDENTIFIER below;
+    # one.floo.vibeflow belongs to the author's team.
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: Y798SH49X3
     ENABLE_HARDENED_RUNTIME: YES
@@ -48,7 +50,7 @@ targets:
       path: VibeFlow/Info.plist
       properties:
         CFBundleDisplayName: VibeFlow
-        CFBundleShortVersionString: "0.1.0"
+        CFBundleShortVersionString: "1.0.0"
         CFBundleVersion: "1"
         LSUIElement: true            # agent app: no Dock icon, no focus steal
         LSMinimumSystemVersion: "15.0"
