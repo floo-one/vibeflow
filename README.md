@@ -1,29 +1,42 @@
 # VibeFlow
 
 Select text anywhere on your Mac, press a shortcut, hear it read aloud in a voice you
-actually want to listen to. VibeFlow is the counterpart to speech-to-text tools like
-Wispr Flow: speech out instead of speech in.
+actually want to listen to. Hold another shortcut, talk, and the text is typed where your
+cursor is. Speech out and speech in, in one small menu bar app.
 
 - **Read** (Option + . by default): the selection, spoken with an ElevenLabs voice,
   first audio in well under a second. Apple's built-in voices are the free, offline fallback.
-- **Smart read** (Option + ,): the selection goes through Claude first, as a short
-  spoken brief or a cleanup that reads well aloud, then is spoken.
-- **Per-app presets**: a calm narrator for PDFs, a fast voice for Slack, or "Apple only, no
-  smart read" for apps whose text must never leave the Mac.
+  Tables, links and Markdown are rewritten for listening: a table row is read as
+  "Campaign: X, Budget: Y", a link as its text, a bare URL as its domain.
+- **Smart read** (Option + ,): Claude explains the selection like you are 10, in a few short
+  sentences, then it is spoken. Add per-app instructions such as "what do they want from me".
+- **Dictate** (Option + - by default): hold to talk and release to paste, or tap once to
+  dictate hands-free until the next press (2-minute cap). Groq Whisper transcribes, a quick
+  cleanup fixes punctuation, casing and misheard names from your vocabulary, and the text is
+  pasted into the field you were typing in. About 0.8 s from release to text.
 - **Clipboard**: add Shift (Shift + Option + . or ,) to read or smart read whatever is on the clipboard.
-- Press the shortcut again to stop. Everything lives in the menu bar.
+- **Per app**: its own voice and speed, or one switch, "Keep this app on this Mac", for apps
+  whose content must never leave the Mac.
+- Press a read shortcut again to stop. Everything lives in the menu bar.
 
 Native Swift 6 / SwiftUI, macOS 15 or later. No accounts, no server, no telemetry. Bring your
 own API keys.
 
 ## What leaves your Mac
 
-- A **read** with the ElevenLabs provider sends the selected text to ElevenLabs.
-- A **smart read** also sends it to Anthropic.
-- A read with the **Apple** provider sends nothing anywhere.
+- A **read** sends the selected text to ElevenLabs. Without a key or a connection it uses
+  an Apple voice and sends nothing.
+- A **smart read** also sends the selected text to Anthropic.
+- A **dictation** sends your recording to Groq for transcription, then the transcript and
+  your vocabulary list to Groq again for cleanup. If Groq is offline, rate limited or down,
+  or no Groq key is set, Apple's on-device recognizer transcribes instead and nothing is sent
+  (macOS 26; on macOS 15 there is no on-device fallback).
+- **Recordings stay in memory.** The last failed dictation is kept only so you can Retry,
+  Copy or Discard it from the menu; the next dictation or quitting the app removes it. Apple
+  on-device transcription writes a temporary audio file that is deleted as soon as it is read.
+- **Keep this app on this Mac** (Settings > Apps) means the Apple voice, no smart read and
+  on-device dictation for that app: nothing from it leaves the Mac.
 - API keys are stored in your login Keychain and never written to a file.
-
-Set a per-app preset to the Apple provider with smart read off for anything sensitive.
 
 ## Clipboard note
 
@@ -32,6 +45,20 @@ pressing that app's Edit > Copy for you and then puts your previous clipboard te
 This is best-effort: the copy itself shows up in clipboard managers, only plain text is
 restored, and if another app writes the clipboard in the same instant the read is refused
 rather than guessed.
+
+Dictation pastes through the clipboard too: it writes the text (marked transient, so
+clipboard managers skip it), presses the app's Paste menu item (or Cmd-V), and restores your
+previous clipboard text 750 ms later unless something else was copied in between. Right
+before pasting it checks that the same app and the same text field still have focus and that
+no password field is active; otherwise the text is left on the clipboard instead, with a note
+in the menu.
+
+## Microphone
+
+Settings > Dictation > Microphone defaults to Automatic: the built-in microphone while you
+listen on Bluetooth headphones (opening a headset's microphone drops it to phone-call sound
+quality), the built-in microphone when the system input is a virtual or aggregate device,
+and the system input otherwise. Pick a specific microphone there to override it.
 
 ## Setup
 
@@ -48,13 +75,15 @@ rather than guessed.
    open build/DerivedData/Build/Products/Debug/VibeFlow.app
    ```
 
-4. Grant Accessibility when asked. Add your keys under Settings > Keys.
+4. Grant Accessibility when asked, and Microphone on the first dictation. Add your keys under
+   Settings > Keys: ElevenLabs for the voice, Anthropic for smart read, Groq for dictation.
 
 ## Development
 
-The logic lives in the `VibeFlowCore` Swift package behind seven small protocols
-(pasteboard, accessibility, speech provider, audio player, clock, smart read client, secrets),
-so everything from the state machine to the Copy fallback is tested with in-memory fakes:
+The logic lives in the `VibeFlowCore` Swift package behind small protocols (pasteboard,
+accessibility, speech provider, audio player, audio recorder, transcriber, clock, smart read
+client, secrets), so everything from both state machines to the paste and Copy fallbacks is
+tested with in-memory fakes:
 
 ```bash
 cd VibeFlowCore && swift test
@@ -67,10 +96,15 @@ qualifications, cleanup keeps numbers and names) run only on request:
 VIBEFLOW_RUN_EVALS=1 ANTHROPIC_API_KEY=... swift test --filter LiveEvalTests
 ```
 
-`Spike/elevenlabs-spike.swift` measures ElevenLabs first-audio and stop latency on your
-machine; run it with `swift Spike/elevenlabs-spike.swift` and a key in a local `.env`.
+The dictation cleanup golden (a dictated question is cleaned, never answered) runs the same
+way with `GROQ_API_KEY` set and `--filter CleanupEvals`.
 
-The design, every review decision and the task list are in `docs/designs/vibeflow-v1.md`.
+`Spike/elevenlabs-spike.swift` measures ElevenLabs first-audio and stop latency and
+`Spike/dictation-spike.swift` measures Groq transcription and cleanup on your machine; run
+them with `swift Spike/<name>.swift` and keys in a local `.env`.
+
+The designs, every review decision and the task lists are in `docs/designs/vibeflow-v1.md`
+(reading) and `docs/designs/vibeflow-2-dictation-conversation.md` (dictation).
 
 ## License
 
