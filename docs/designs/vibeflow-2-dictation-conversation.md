@@ -953,18 +953,19 @@ Synthesized from this review's findings. Ratios: tests ~50x, features ~30x, arch
   - Surfaced by: D3; D5; D13; design state machine
   - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/DictationSession.swift, Tests/DictationTests.swift
   - Verify: DictationTests green for every state row
-- [ ] **T7 (P1, human: ~1 day / CC: ~20 min)** — App audio — LiveAudioRecorder (16 kHz mono), microphone picker with Automatic rule, audio-input entitlement and NSMicrophoneUsageDescription, Groq warm-up request
+- [x] **T7 (P1, human: ~1 day / CC: ~20 min)** — App audio — LiveAudioRecorder (16 kHz mono), microphone picker with Automatic rule, audio-input entitlement and NSMicrophoneUsageDescription, Groq warm-up request
   - Surfaced by: required implementation (hardened runtime); D7; perf note P2
   - Files: VibeFlow/LiveAudioRecorder.swift, VibeFlow/VibeFlow.entitlements, project.yml
   - Verify: first press shows the mic prompt; second press records non-silent audio
-- [ ] **T8 (P2, human: ~1 day / CC: ~20 min)** — Settings and wiring — Dictation tab, Groq key, per-app "Dictate on this Mac only", record shortcut handlers, menu states
+- [x] **T8 (P2, human: ~1 day / CC: ~20 min)** — Settings and wiring — Dictation tab, Groq key, per-app "Dictate on this Mac only", record shortcut handlers, menu states
   - Surfaced by: D5; D7; D9; design Settings additions
   - Files: VibeFlow/SettingsView.swift, VibeFlow/AppContainer.swift, VibeFlow/MenuBarView.swift, VibeFlowCore/Sources/VibeFlowCore/Settings/AppPreset.swift, Tests/PresetsTests.swift
   - Verify: old presets decode with dictationLocalOnly false; shortcut drives the session
-- [ ] **T9 (P2, human: ~half day / CC: ~10 min)** — QA and docs — paste matrix incl. a German-locale app, AirPods check, README dictation and data-handling section
+- [x] **T9 (P2, human: ~half day / CC: ~10 min)** — QA and docs — paste matrix incl. a German-locale app, AirPods check, README dictation and data-handling section
   - Surfaced by: test plan; design success criteria
   - Files: README.md
   - Verify: matrix passes; README states what dictation sends where
+  - Done 2026-10-06: paste matrix passed (user run). QA found and fixed silent recordings: AVAudioEngine stopped itself on the I/O reconfiguration that opening the mic triggers, so the recorder moved to AVCaptureSession, and Automatic skips virtual or aggregate default inputs. AirPods check not yet reported.
 
 ### Unresolved decisions that may bite you later
 None. All 13 decisions in this review are answered.
