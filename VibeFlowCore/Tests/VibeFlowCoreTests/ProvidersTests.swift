@@ -59,6 +59,14 @@ struct ElevenLabsRequestTests {
         #expect(body["language_code"] == nil)
     }
 
+    @Test func theChosenVoiceModelIsSent() async {
+        let h = ElevenLabsHarness()
+        h.provider.model = "eleven_multilingual_v2"
+        h.client.lines = [ElevenLabsHarness.line(samples: 240, characters: ["H", "i"], startTimes: [0, 0.1])]
+        _ = await h.collect(h.provider.speak(SpeechRequest(text: "Hi", voiceID: "voice-1")))
+        #expect(h.body(of: h.client.requests[0])["model_id"] as? String == "eleven_multilingual_v2")
+    }
+
     @Test func speedIsClampedTo1Point2AndTheRemainderGoesToThePlayer() async {
         let h = ElevenLabsHarness()
         h.client.lines = [ElevenLabsHarness.line(samples: 10, characters: [], startTimes: [])]

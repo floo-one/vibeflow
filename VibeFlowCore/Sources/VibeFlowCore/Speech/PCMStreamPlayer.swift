@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreAudio
 import Foundation
 
 /// The AudioPlayer port on AVAudioEngine (design T8, performance notes P1 and P2).
@@ -28,6 +29,17 @@ public final class PCMStreamPlayer: AudioPlayer {
     /// Bumped by `stop()` so completions from a stopped generation are ignored.
     private var generation = 0
 
+    /// Output device for the next read (Settings > Reading > Speaker), nil = system output.
+    /// Applied when the engine starts; a change while idle restarts it on the next read.
+    public var outputDeviceUID: String? {
+        didSet {
+            guard outputDeviceUID != oldValue, engine.isRunning, pending == 0 else { return }
+            engine.stop()
+        }
+    }
+    /// What the engine's output unit is set to; nil = never touched, follows the system output.
+    private var appliedDeviceUID: String?
+
     public init() {
         engine.attach(node)
         engine.attach(timePitch)
@@ -38,9 +50,42 @@ public final class PCMStreamPlayer: AudioPlayer {
     public func prepare() throws {
         idleStop?.cancel()
         if !engine.isRunning {
+            applyOutputDevice()
             engine.prepare()
             try engine.start()
         }
+    }
+
+    private func applyOutputDevice() {
+        guard outputDeviceUID != appliedDeviceUID else { return }
+        // Back to the system output: point the unit at the current default device.
+        guard let unit = engine.outputNode.audioUnit,
+              var device = outputDeviceUID.map(Self.deviceID(forUID:)) ?? Self.defaultOutputDevice() else { return }
+        let status = AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
+                                          &device, UInt32(MemoryLayout<AudioDeviceID>.size))
+        if status == noErr { appliedDeviceUID = outputDeviceUID }
+    }
+
+    private static func deviceID(forUID uid: String) -> AudioDeviceID? {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyTranslateUIDToDevice,
+                                                 mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var cfUID = uid as CFString
+        var device = AudioDeviceID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = withUnsafePointer(to: &cfUID) { pointer in
+            AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address,
+                                       UInt32(MemoryLayout<CFString>.size), pointer, &size, &device)
+        }
+        return status == noErr && device != kAudioObjectUnknown ? device : nil
+    }
+
+    private static func defaultOutputDevice() -> AudioDeviceID? {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+                                                 mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var device = AudioDeviceID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device)
+        return status == noErr && device != kAudioObjectUnknown ? device : nil
     }
 
     public func schedule(pcm16: Data) {

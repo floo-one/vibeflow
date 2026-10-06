@@ -124,6 +124,8 @@ Every fallback shows a one-line status ("Transcribed on device: Groq unavailable
 
 Superseded 2026-10-05 by an opinionated cleanup (user request): Settings keeps only what differs between people. Tabs: General (shortcuts, launch at login), Reading (ElevenLabs voice, speed, smart read instructions), Dictation (vocabulary, microphone with Automatic, offline fallback status), Apps (one "Keep this app on this Mac" switch = Apple voice + smart read off + on-device dictation, plus voice, speed and instructions), Keys (ElevenLabs, Anthropic, Groq). Removed as settings and fixed as constants: transcriber choice and custom endpoint (Groq whisper-large-v3 with Apple fallback), cleanup on/off, provider and model (Groq qwen cleanup whenever a Groq key is set; the Anthropic cleaner from D4 is dropped), smart read model (claude-haiku-4-5) and mode (brief), long-selection size cap (10,000), language override and Apple voice per language (auto-detected, best installed voice). The original list below is kept for history.
 
+Reduced again 2026-10-06 (user request, "super minimal"): four tabs. General: shortcuts, launch at login. Reading: voice, voice model, speed, smart read model, speaker. Dictation: transcription model, cleanup model (or off), microphone. Keys: three keys. Every voice, model and device choice is a plain dropdown over a curated list (ModelOptions). Vocabulary, per-app settings and smart read instructions left the UI; their storage and code remain for a later return.
+
 - Dictation tab: transcriber (Groq / custom OpenAI-compatible URL / Apple) with the Apple language asset status and a download button, cleanup on or off, custom vocabulary.
 - Keys tab: Groq key, with the missing-key callout.
 - Conversation: on or off, inactivity timeout.

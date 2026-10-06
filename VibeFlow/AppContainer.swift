@@ -17,6 +17,8 @@ final class AppContainer {
     let dictation: DictationSession
     let onDeviceModel: OnDeviceModelStatus
     let accessibility = LiveAccessibility()
+    private let player = PCMStreamPlayer()
+    private let elevenLabs: ElevenLabsProvider
     let catalogs: RemoteCatalogs
     /// Which settings tab is showing; "Add key" buttons jump to Keys.
     var settingsTab: SettingsTab = .general
@@ -40,15 +42,18 @@ final class AppContainer {
         let clock = ContinuousSessionClock()
         let pasteboard = LivePasteboard()
         let http = URLSessionHTTPClient()
+        let elevenLabs = ElevenLabsProvider(client: URLSessionByteStreamClient(), player: player, secrets: secrets)
+        self.elevenLabs = elevenLabs
         let session = ReadSession(
             accessibility: accessibility,
             capture: SelectionCapture(accessibility: accessibility, pasteboard: pasteboard, clock: clock),
             presets: presets,
-            elevenLabs: ElevenLabsProvider(client: URLSessionByteStreamClient(), player: PCMStreamPlayer(), secrets: secrets),
+            elevenLabs: elevenLabs,
             apple: AppleSpeechProvider(catalog: voices),
             smartRead: AnthropicClient(http: http, secrets: secrets),
             secrets: secrets,
-            clock: clock
+            clock: clock,
+            configuration: preferences.sessionConfiguration
         )
         self.session = session
 
@@ -67,8 +72,10 @@ final class AppContainer {
                     outputIsBluetooth: AudioDevices.defaultOutputIsBluetooth(),
                     defaultInputUID: AudioDevices.defaultInputUID()
                 )
-                return DictationSetupFactory.make(vocabulary: preferences.vocabularyTerms, secrets: secrets, http: http,
-                                                  onDevice: onDevice, microphoneUID: microphone)
+                return DictationSetupFactory.make(vocabulary: preferences.vocabularyTerms,
+                                                  transcriptionModel: preferences.transcriptionModel,
+                                                  cleanupModel: preferences.cleanupModel,
+                                                  secrets: secrets, http: http, onDevice: onDevice, microphoneUID: microphone)
             },
             stopReading: { session.stop() } // D3
         )
@@ -114,19 +121,29 @@ final class AppContainer {
         return session.iconState.symbolName
     }
 
+    /// The models and speaker chosen in Settings, applied right before each read.
+    private func applyReadSettings() {
+        session.configuration = preferences.sessionConfiguration
+        elevenLabs.model = preferences.voiceModel
+        player.outputDeviceUID = preferences.speakerUID
+    }
+
     private func hotkey(_ kind: ReadKind) {
         if dictationCancelledByRead() { return }
+        applyReadSettings()
         session.hotkey(kind)
     }
 
     private func clipboardHotkey(_ kind: ReadKind) {
         if dictationCancelledByRead() { return }
+        applyReadSettings()
         session.clipboardHotkey(kind, text: NSPasteboard.general.string(forType: .string) ?? "")
     }
 
     /// Menu reads use the clipboard text and the default preset.
     func menuRead(_ kind: ReadKind) {
         if dictationCancelledByRead() { return }
+        applyReadSettings()
         let text = NSPasteboard.general.string(forType: .string) ?? ""
         session.menuRead(kind, text: text)
     }

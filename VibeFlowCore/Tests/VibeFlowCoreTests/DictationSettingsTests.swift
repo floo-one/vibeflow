@@ -110,4 +110,21 @@ struct DictationSetupFactoryTests {
         let setup = DictationSetupFactory.make(vocabulary: [], secrets: FakeSecrets(), http: http, onDevice: nil, microphoneUID: nil)
         await #expect(throws: TranscriptionFailure.unauthorized) { try await setup.transcriber.transcribe(speech, language: nil) }
     }
+
+    @Test func chosenModelsReachTheRequests() async throws {
+        let setup = DictationSetupFactory.make(vocabulary: [], transcriptionModel: "whisper-large-v3-turbo", cleanupModel: "openai/gpt-oss-20b",
+                                               secrets: FakeSecrets([.groq: "gsk"]), http: http, onDevice: apple, microphoneUID: nil)
+        _ = try await setup.transcriber.transcribe(speech, language: nil)
+        let multipart = String(decoding: http.requests.first?.httpBody ?? Data(), as: UTF8.self)
+        #expect(multipart.contains("whisper-large-v3-turbo"))
+        http.body = Data(#"{"choices":[{"message":{"content":"Hello."},"finish_reason":"stop"}]}"#.utf8)
+        _ = try await setup.cleaner?.clean("hello", vocabulary: [])
+        let chat = try JSONSerialization.jsonObject(with: http.requests.last?.httpBody ?? Data()) as? [String: Any]
+        #expect(chat?["model"] as? String == "openai/gpt-oss-20b")
+    }
+
+    @Test func cleanupOffMeansNoCleaner() {
+        let setup = DictationSetupFactory.make(vocabulary: [], cleanupModel: ModelOptions.cleanupOff, secrets: FakeSecrets([.groq: "gsk"]), http: http, onDevice: apple, microphoneUID: nil)
+        #expect(setup.cleaner == nil)
+    }
 }

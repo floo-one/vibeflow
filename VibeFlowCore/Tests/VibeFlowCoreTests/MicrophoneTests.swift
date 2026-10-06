@@ -3,9 +3,9 @@ import Testing
 
 @Suite("Microphone selection (D7)")
 struct MicrophoneTests {
-    let builtIn = AudioInputDevice(uid: "BuiltInMicrophoneDevice", name: "MacBook Pro Microphone", transport: .builtIn)
-    let airPods = AudioInputDevice(uid: "AA-BB-CC:input", name: "AirPods Pro", transport: .bluetooth)
-    let usb = AudioInputDevice(uid: "usb-podcast-mic", name: "Shure MV7", transport: .usb)
+    let builtIn = AudioDevice(uid: "BuiltInMicrophoneDevice", name: "MacBook Pro Microphone", transport: .builtIn)
+    let airPods = AudioDevice(uid: "AA-BB-CC:input", name: "AirPods Pro", transport: .bluetooth)
+    let usb = AudioDevice(uid: "usb-podcast-mic", name: "Shure MV7", transport: .usb)
 
     @Test func automaticUsesTheBuiltInMicWhileListeningOnBluetooth() {
         #expect(MicrophoneSelection.deviceUID(choice: nil, inputs: [airPods, builtIn], outputIsBluetooth: true, defaultInputUID: airPods.uid) == builtIn.uid)
@@ -30,8 +30,8 @@ struct MicrophoneTests {
         #expect(MicrophoneSelection.deviceUID(choice: usb.uid, inputs: [builtIn], outputIsBluetooth: false, defaultInputUID: builtIn.uid) == nil)
     }
 
-    let aggregate = AudioInputDevice(uid: "~:AMS2_Aggregate:0", name: "voice isolation aggregate", transport: .virtual)
-    let blackHole = AudioInputDevice(uid: "BlackHole2ch_UID", name: "BlackHole 2ch", transport: .virtual)
+    let aggregate = AudioDevice(uid: "~:AMS2_Aggregate:0", name: "voice isolation aggregate", transport: .virtual)
+    let blackHole = AudioDevice(uid: "BlackHole2ch_UID", name: "BlackHole 2ch", transport: .virtual)
 
     @Test func automaticSkipsAVirtualDefaultInput() {
         let inputs = [aggregate, blackHole, builtIn, usb]

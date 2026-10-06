@@ -62,6 +62,26 @@ struct PresetStoreTests {
 
 @Suite("Preferences") @MainActor
 struct PreferencesTests {
+    @Test func modelsDefaultToTheFirstOptionAndPersist() {
+        let defaults = scratchDefaults()
+        let p = Preferences(defaults: defaults)
+        #expect(p.voiceModel == "eleven_flash_v2_5")
+        #expect(p.smartReadModel == "claude-haiku-4-5")
+        #expect(p.sessionConfiguration.smartReadModel == "claude-haiku-4-5")
+        #expect(p.transcriptionModel == "whisper-large-v3")
+        #expect(p.cleanupModel == "qwen/qwen3.8-27b")
+        #expect(p.speakerUID == nil)
+        p.voiceModel = "eleven_multilingual_v2"
+        p.smartReadModel = "claude-sonnet-5-5"
+        p.cleanupModel = ModelOptions.cleanupOff
+        p.speakerUID = "BuiltInSpeakerDevice"
+        let q = Preferences(defaults: defaults)
+        #expect(q.voiceModel == "eleven_multilingual_v2")
+        #expect(q.sessionConfiguration.smartReadModel == "claude-sonnet-5-5")
+        #expect(q.cleanupModel == "")
+        #expect(q.speakerUID == "BuiltInSpeakerDevice")
+    }
+
     @Test func defaultsAndPersistence() {
         let defaults = scratchDefaults()
         let p = Preferences(defaults: defaults)

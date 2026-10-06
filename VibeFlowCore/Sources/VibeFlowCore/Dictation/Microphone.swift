@@ -1,7 +1,7 @@
 import Foundation
 
-/// An input device as CoreAudio reports it, for the Settings picker and the Automatic rule.
-public struct AudioInputDevice: Sendable, Equatable, Identifiable {
+/// An audio device as CoreAudio reports it, for the Settings pickers and the Automatic rule.
+public struct AudioDevice: Sendable, Equatable, Identifiable {
     public enum Transport: Sendable, Equatable {
         case builtIn
         case bluetooth
@@ -34,7 +34,7 @@ public struct AudioInputDevice: Sendable, Equatable, Identifiable {
 /// to Automatic.
 public enum MicrophoneSelection {
     /// `choice` nil = Automatic. Returns the device UID to record from, nil = system default input.
-    public static func deviceUID(choice: String?, inputs: [AudioInputDevice], outputIsBluetooth: Bool, defaultInputUID: String?) -> String? {
+    public static func deviceUID(choice: String?, inputs: [AudioDevice], outputIsBluetooth: Bool, defaultInputUID: String?) -> String? {
         if let choice, inputs.contains(where: { $0.uid == choice }) { return choice }
         let builtIn = inputs.first(where: { $0.transport == .builtIn })?.uid
         if outputIsBluetooth, let builtIn { return builtIn }

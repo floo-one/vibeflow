@@ -131,14 +131,18 @@ private final class CaptureRecording: NSObject, AVCaptureAudioDataOutputSampleBu
 
 // MARK: - CoreAudio device list
 
-/// Input devices and the default output's transport, for the microphone picker and D7.
+/// Input and output devices and the default devices, for the Settings pickers and D7.
 enum AudioDevices {
-    static func inputs() -> [AudioInputDevice] {
+    static func inputs() -> [AudioDevice] { devices(scope: kAudioDevicePropertyScopeInput) }
+
+    static func outputs() -> [AudioDevice] { devices(scope: kAudioDevicePropertyScopeOutput) }
+
+    private static func devices(scope: AudioObjectPropertyScope) -> [AudioDevice] {
         allDevices().compactMap { id in
-            guard inputChannelCount(id) > 0,
+            guard channelCount(id, scope: scope) > 0,
                   let uid = string(id, kAudioDevicePropertyDeviceUID),
                   let name = string(id, kAudioObjectPropertyName) else { return nil }
-            return AudioInputDevice(uid: uid, name: name, transport: transport(id))
+            return AudioDevice(uid: uid, name: name, transport: transport(id))
         }
     }
 
@@ -171,9 +175,9 @@ enum AudioDevices {
         return ids
     }
 
-    private static func inputChannelCount(_ id: AudioDeviceID) -> Int {
+    private static func channelCount(_ id: AudioDeviceID, scope: AudioObjectPropertyScope) -> Int {
         var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreamConfiguration,
-                                                 mScope: kAudioDevicePropertyScopeInput, mElement: kAudioObjectPropertyElementMain)
+                                                 mScope: scope, mElement: kAudioObjectPropertyElementMain)
         var size: UInt32 = 0
         guard AudioObjectGetPropertyDataSize(id, &address, 0, nil, &size) == noErr, size > 0 else { return 0 }
         let raw = UnsafeMutableRawPointer.allocate(byteCount: Int(size), alignment: MemoryLayout<AudioBufferList>.alignment)
@@ -191,7 +195,7 @@ enum AudioDevices {
         return value?.takeRetainedValue() as String?
     }
 
-    private static func transport(_ id: AudioDeviceID) -> AudioInputDevice.Transport {
+    private static func transport(_ id: AudioDeviceID) -> AudioDevice.Transport {
         var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyTransportType,
                                                  mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
         var value: UInt32 = 0

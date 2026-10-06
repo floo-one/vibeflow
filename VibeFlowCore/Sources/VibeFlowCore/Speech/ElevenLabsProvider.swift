@@ -8,7 +8,7 @@ import Foundation
 /// timing used to report the last played character when the stream drops.
 @MainActor
 public final class ElevenLabsProvider: SpeechProvider {
-    public static let model = "eleven_flash_v2_5"
+    public static let defaultModel = ModelOptions.voice[0].id
     public static let outputFormat = "pcm_24000"
     /// voice_settings.speed range on Flash v2.5, verified by live probe (HTTP 400 outside it).
     public static let speedRange = 0.7...1.2
@@ -17,6 +17,8 @@ public final class ElevenLabsProvider: SpeechProvider {
     private let player: any AudioPlayer
     private let secrets: any SecretsStore
     private let baseURL: URL
+    /// The ElevenLabs model for the next read (Settings > Reading).
+    public var model = ElevenLabsProvider.defaultModel
 
     public init(client: any ByteStreamClient, player: any AudioPlayer, secrets: any SecretsStore,
                 baseURL: URL = URL(string: "https://api.elevenlabs.io")!) {
@@ -32,7 +34,7 @@ public final class ElevenLabsProvider: SpeechProvider {
             playback.fail(.unauthorized)
             return playback
         }
-        let urlRequest = Self.buildRequest(request, apiKey: key, baseURL: baseURL)
+        let urlRequest = Self.buildRequest(request, apiKey: key, baseURL: baseURL, model: model)
         let clampedSpeed = min(max(request.speed, Self.speedRange.lowerBound), Self.speedRange.upperBound)
         let remainder = request.speed > Self.speedRange.upperBound ? request.speed / Self.speedRange.upperBound : 1.0
         playback.start(urlRequest: urlRequest, client: client, startOffset: request.startOffset, playerRate: remainder, apiSpeed: clampedSpeed)
@@ -41,7 +43,7 @@ public final class ElevenLabsProvider: SpeechProvider {
 
     // MARK: Request building (pure, tested)
 
-    static func buildRequest(_ request: SpeechRequest, apiKey: String, baseURL: URL) -> URLRequest {
+    static func buildRequest(_ request: SpeechRequest, apiKey: String, baseURL: URL, model: String = defaultModel) -> URLRequest {
         var components = URLComponents(url: baseURL.appendingPathComponent("/v1/text-to-speech/\(request.voiceID)/stream/with-timestamps"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "output_format", value: outputFormat)]
         var req = URLRequest(url: components.url!)
