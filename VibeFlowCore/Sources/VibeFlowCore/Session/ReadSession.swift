@@ -375,7 +375,11 @@ public final class ReadSession {
 
     // MARK: Speaking
 
-    private func speak(_ text: String, session: Current, from offset: Int = 0) {
+    private func speak(_ original: String, session: Current, from offset: Int = 0) {
+        // Tables, links and Markdown marks are rewritten for listening; resume offsets refer
+        // to this spoken form.
+        let speakable = SpeakableText.make(original)
+        let text = speakable.isEmpty ? original : speakable
         session.spokenText = text
         let preset = session.preset
         var useApple = preset.provider == .apple
