@@ -13,8 +13,8 @@ and your words are typed where your cursor is.
   as "Campaign: X, Budget: Y", a link as its text, a bare URL as its domain.
 - **Smart read** (Option + ,): Claude explains the selection like you are 10, in a few short
   sentences, then it is spoken.
-- **Dictate** (Option + -): hold to talk and release to paste, or tap once to dictate
-  hands-free until the next press. Groq Whisper transcribes, a quick cleanup fixes
+- **Dictate** (Option + -): hold to talk, release to paste. For longer dictation, press
+  Shift + Option + - once to start and again to stop. Groq Whisper transcribes, a quick cleanup fixes
   punctuation, casing and misheard words, and the text lands in the field you were typing in.
   About 0.8 s from release to text.
 - **Clipboard**: add Shift (Shift + Option + . or ,) to read or smart read the clipboard.

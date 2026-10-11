@@ -9,7 +9,8 @@ private let log = Logger(subsystem: "one.floo.vibeflow", category: "dictation")
 /// idle -> recording -> transcribing -> cleaning -> pasting -> idle (design: Dictation state machine).
 public enum DictationState: Sendable, Equatable {
     case idle
-    /// `handsFree` is false while the key is held, true after a short tap.
+    /// `handsFree` is false while the push-to-talk key is held, true when the toggle
+    /// shortcut started it.
     case recording(handsFree: Bool)
     case transcribing
     case cleaning
@@ -79,9 +80,10 @@ public struct DictationSetup: Sendable {
 
 /// One dictation from record key down to idle (milestone 1, D3, D5, D13).
 ///
-/// - Key down while idle stops any read (D3), freezes the app, its focused field and its
-///   preset, then records. Held 0.3 s or more: key up stops and pastes (push-to-talk).
-///   Released sooner: recording continues hands-free until the next key down or the 2-minute cap.
+/// - Push-to-talk: key down while idle stops any read (D3), freezes the app, its focused field
+///   and its preset, then records; key up stops, transcribes and pastes.
+/// - Toggle: one press starts the same recording hands-free, the next press of either shortcut
+///   stops it. The 2-minute cap ends any recording.
 /// - Key down while busy is ignored, never queued.
 /// - `cancel()` (the read shortcuts) drops the recording or the in-flight requests; nothing is pasted.
 /// - A failure after recording keeps the audio, and any text, for Retry, Copy and Discard.
@@ -91,7 +93,6 @@ public struct DictationSetup: Sendable {
 @MainActor
 @Observable
 public final class DictationSession {
-    public static let holdThreshold: Duration = .milliseconds(300)
     public static let minimumDuration: Duration = .milliseconds(300)
     public static let maximumDuration: Duration = .seconds(120)
 
@@ -135,7 +136,6 @@ public final class DictationSession {
         let target: PasteTarget?
         let preset: AppPreset
         let setup: DictationSetup
-        var heldLongEnough = false
         var timers: [Task<Void, Never>] = []
         var task: Task<Void, Never>?
 
@@ -152,23 +152,28 @@ public final class DictationSession {
 
     // MARK: Inputs
 
-    /// The record shortcut went down.
+    /// The push-to-talk shortcut went down: record while it is held. Also stops a hands-free
+    /// recording started with the toggle.
     public func recordKeyDown() {
         switch state {
-        case .idle: start()
+        case .idle: start(handsFree: false)
         case .recording(handsFree: true): finishRecording()
         case .recording(handsFree: false), .transcribing, .cleaning, .pasting: return
         }
     }
 
-    /// The record shortcut came up: push-to-talk ends, or a short tap switches to hands-free.
+    /// The push-to-talk shortcut came up: stop and transcribe.
     public func recordKeyUp() {
-        guard case .recording(handsFree: false) = state, let session = current else { return }
-        if session.heldLongEnough {
-            finishRecording()
-        } else {
-            state = .recording(handsFree: true)
-            status = "Listening hands-free. Press the record shortcut again to stop"
+        guard case .recording(handsFree: false) = state else { return }
+        finishRecording()
+    }
+
+    /// The toggle shortcut: start a hands-free recording, or stop the running one.
+    public func toggleRecording() {
+        switch state {
+        case .idle: start(handsFree: true)
+        case .recording(handsFree: true): finishRecording()
+        case .recording(handsFree: false), .transcribing, .cleaning, .pasting: return
         }
     }
 
@@ -218,7 +223,7 @@ public final class DictationSession {
 
     // MARK: Recording
 
-    private func start() {
+    private func start(handsFree: Bool) {
         stopReading()
         lastError = nil
         lastFailure = nil
@@ -263,15 +268,10 @@ public final class DictationSession {
 
         let session = Current(target: target, preset: preset, setup: setup)
         current = session
-        state = .recording(handsFree: false)
-        status = "Listening"
+        state = .recording(handsFree: handsFree)
+        status = handsFree ? "Listening. Press the toggle shortcut again to stop" : "Listening"
         let id = session.id
         session.timers = [
-            Task { [weak self, clock] in
-                do { try await clock.sleep(for: Self.holdThreshold) } catch { return }
-                guard let self, self.isCurrent(id) else { return }
-                session.heldLongEnough = true
-            },
             Task { [weak self, clock] in
                 do { try await clock.sleep(for: Self.maximumDuration) } catch { return }
                 guard let self, self.isCurrent(id), case .recording = self.state else { return }

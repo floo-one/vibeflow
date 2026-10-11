@@ -51,11 +51,9 @@ final class DictationHarness {
         for _ in 0..<20 { await Task.yield() }
     }
 
-    /// Push-to-talk: key down, hold past the threshold, key up.
+    /// Push-to-talk: key down, a moment of talking, key up.
     func hold() async {
         session.recordKeyDown()
-        await settle()
-        clock.advance(by: DictationSession.holdThreshold)
         await settle()
         session.recordKeyUp()
     }
@@ -72,7 +70,7 @@ final class DictationHarness {
     }
 }
 
-@Suite("DictationSession: hold, tap and cap") @MainActor
+@Suite("DictationSession: push-to-talk, toggle and cap") @MainActor
 struct DictationFlowTests {
     @Test func holdRecordsTranscribesCleansAndPastes() async {
         let h = DictationHarness()
@@ -91,31 +89,59 @@ struct DictationFlowTests {
         #expect(h.session.lastError == nil)
     }
 
-    @Test func shortTapKeepsRecordingHandsFreeUntilTheNextPress() async {
+    @Test func releasingThePushToTalkKeyTranscribesAtOnce() async {
         let h = DictationHarness()
         h.session.recordKeyDown()
-        await h.settle()
+        #expect(h.session.state == .recording(handsFree: false))
         h.session.recordKeyUp()
-        #expect(h.session.state == .recording(handsFree: true))
-        #expect(h.recorder.isRecording)
+        #expect(h.session.state == .transcribing, "no hold threshold: release always stops")
+        #expect(!h.recorder.isRecording)
+        await h.finish()
+        #expect(h.session.status == "Pasted")
+    }
 
-        h.clock.advance(by: .seconds(10))
+    @Test func toggleStartsHandsFreeAndTheNextPressStops() async {
+        let h = DictationHarness()
+        h.session.toggleRecording()
+        #expect(h.session.state == .recording(handsFree: true))
+        #expect(h.session.status == "Listening. Press the toggle shortcut again to stop")
+        #expect(h.readStops == 1)
+
+        h.clock.advance(by: .seconds(30))
         await h.settle()
         #expect(h.session.state == .recording(handsFree: true), "still listening")
 
-        h.session.recordKeyDown()
+        h.session.toggleRecording()
         #expect(h.session.state == .transcribing)
-        h.session.recordKeyUp() // the second press's release changes nothing
         await h.finish()
         #expect(h.session.status == "Pasted")
         #expect(h.recorder.startedDevices.count == 1)
     }
 
-    @Test func twoMinuteCapStopsAndTranscribes() async {
+    @Test func pushToTalkKeyAlsoStopsAToggleRecording() async {
+        let h = DictationHarness()
+        h.session.toggleRecording()
+        h.session.recordKeyDown()
+        #expect(h.session.state == .transcribing)
+        h.session.recordKeyUp() // that press's release changes nothing
+        await h.finish()
+        #expect(h.session.status == "Pasted")
+    }
+
+    @Test func toggleWhileHoldingPushToTalkIsIgnored() async {
         let h = DictationHarness()
         h.session.recordKeyDown()
-        await h.settle()
+        h.session.toggleRecording()
+        #expect(h.session.state == .recording(handsFree: false))
         h.session.recordKeyUp()
+        await h.finish()
+        #expect(h.recorder.startedDevices.count == 1)
+    }
+
+    @Test func twoMinuteCapStopsAndTranscribes() async {
+        let h = DictationHarness()
+        h.session.toggleRecording()
+        await h.settle()
         h.clock.advance(by: DictationSession.maximumDuration)
         await h.settle()
         #expect(h.session.state != .recording(handsFree: true))
@@ -334,8 +360,6 @@ struct DictationRecoveryTests {
         let h = DictationHarness()
         h.session.recordKeyDown()
         h.accessibility.focused = FocusedElement("field-2") // the user clicked elsewhere
-        await h.settle()
-        h.clock.advance(by: DictationSession.holdThreshold)
         await h.settle()
         h.session.recordKeyUp()
         await h.finish()

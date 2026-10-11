@@ -45,7 +45,8 @@ private struct GeneralTab: View {
                 KeyboardShortcuts.Recorder("Smart read selection", name: .smartRead)
                 KeyboardShortcuts.Recorder("Read clipboard", name: .readClipboard)
                 KeyboardShortcuts.Recorder("Smart read clipboard", name: .smartReadClipboard)
-                KeyboardShortcuts.Recorder("Dictate", name: .record)
+                KeyboardShortcuts.Recorder("Dictate (hold to talk)", name: .record)
+                KeyboardShortcuts.Recorder("Dictate (toggle)", name: .recordToggle)
             }
             Section {
                 Toggle("Launch at login", isOn: $prefs.launchAtLogin)

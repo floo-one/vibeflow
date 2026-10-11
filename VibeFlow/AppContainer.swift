@@ -88,6 +88,7 @@ final class AppContainer {
         KeyboardShortcuts.onKeyUp(for: .smartReadClipboard) { [weak self] in self?.clipboardHotkey(.smartRead) }
         KeyboardShortcuts.onKeyDown(for: .record) { [weak self] in self?.recordKeyDown() }
         KeyboardShortcuts.onKeyUp(for: .record) { [weak self] in self?.dictation.recordKeyUp() }
+        KeyboardShortcuts.onKeyDown(for: .recordToggle) { [weak self] in self?.toggleRecording() }
 
         warmConnections()
     }
@@ -95,6 +96,11 @@ final class AppContainer {
     private func recordKeyDown() {
         showsDictation = true
         dictation.recordKeyDown()
+    }
+
+    private func toggleRecording() {
+        showsDictation = true
+        dictation.toggleRecording()
     }
 
     /// A read shortcut while dictating cancels the dictation and does nothing else.

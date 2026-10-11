@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Dictation
+- Dictate is now pure push-to-talk: releasing the shortcut always transcribes and pastes,
+  however short the press. A separate toggle shortcut (Shift + Option + - by default) starts a
+  hands-free recording with one press and stops it with the next.
+
 ## 1.0.0 (2026-10-06)
 
 First public version.
