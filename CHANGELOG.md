@@ -7,6 +7,11 @@
   however short the press. A separate toggle shortcut (Shift + Option + - by default) starts a
   hands-free recording with one press and stops it with the next.
 
+### Clocks
+- A second menu bar item shows the time in other time zones, each with its flag. It starts
+  with Berlin. Settings > Clocks adds clocks by city, country, abbreviation or IANA name
+  (time zone data from vvo/tzdb), and removes or reorders them.
+
 ## 1.0.0 (2026-10-06)
 
 First public version.

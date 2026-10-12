@@ -13,6 +13,7 @@ let package = Package(
     targets: [
         .target(
             name: "VibeFlowCore",
+            resources: [.copy("Clock/Resources/time-zones.json")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(

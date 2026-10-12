@@ -19,6 +19,8 @@ and your words are typed where your cursor is.
   About 0.8 s from release to text.
 - **Clipboard**: add Shift (Shift + Option + . or ,) to read or smart read the clipboard.
 - Press a read shortcut again to stop. Every shortcut can be changed in Settings.
+- **Clocks**: other time zones in the menu bar, each with its flag (🇩🇪 14:05  🇺🇸 08:05).
+  Add them in Settings > Clocks by searching a city, country, abbreviation or time zone.
 
 Native Swift 6 and SwiftUI, macOS 15 or later. No accounts, no server, no telemetry. You
 bring your own API keys.
@@ -134,3 +136,7 @@ The designs, every review decision and the task lists are in `docs/designs/`:
 ## License
 
 MIT, see `LICENSE`.
+
+The time zone list for Clocks comes from [vvo/tzdb](https://github.com/vvo/tzdb) (MIT,
+Copyright CodeAgain SASU), trimmed into `VibeFlowCore/Sources/VibeFlowCore/Clock/Resources/`.
+Refresh it with `python3 scripts/update-time-zones.py`.

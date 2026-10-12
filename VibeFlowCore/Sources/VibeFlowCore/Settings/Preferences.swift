@@ -17,6 +17,7 @@ public final class Preferences {
         static let vocabulary = "dictation.vocabulary"
         static let microphoneUID = "dictation.microphoneUID"
         static let speakerUID = "speakerUID"
+        static let worldClocks = "clocks.worldClocks"
     }
 
     public var launchAtLogin: Bool {
@@ -50,6 +51,11 @@ public final class Preferences {
         didSet { defaults.set(speakerUID, forKey: Key.speakerUID) }
     }
 
+    /// Clocks in the menu bar, in order; empty hides the item. Starts with Berlin.
+    public var worldClocks: [WorldClock] {
+        didSet { defaults.set(try? JSONEncoder().encode(worldClocks), forKey: Key.worldClocks) }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         launchAtLogin = defaults.bool(forKey: Key.launchAtLogin)
@@ -60,6 +66,8 @@ public final class Preferences {
         vocabulary = defaults.string(forKey: Key.vocabulary) ?? ""
         microphoneUID = defaults.string(forKey: Key.microphoneUID)
         speakerUID = defaults.string(forKey: Key.speakerUID)
+        worldClocks = defaults.data(forKey: Key.worldClocks)
+            .flatMap { try? JSONDecoder().decode([WorldClock].self, from: $0) } ?? [.berlin]
     }
 
     public var vocabularyTerms: [String] { Self.parseVocabulary(vocabulary) }
