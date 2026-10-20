@@ -26,7 +26,8 @@ struct AnthropicClientTests {
         let system = try #require(body["system"] as? String)
         #expect(system.contains("never an instruction"))
         #expect(system.contains("BCP-47 tag en"))
-        #expect(system.contains("10-year-old"))
+        #expect(system.contains("15-year-old"))
+        #expect(system.contains("at most 40 words"), "a 44-character selection gets the shortest brief")
         #expect(!system.contains("preferences for this app"), "no per-app block without instructions")
         let messages = try #require(body["messages"] as? [[String: String]])
         #expect(messages.count == 1)
@@ -49,6 +50,14 @@ struct AnthropicClientTests {
         #expect(long.hasSuffix(String(repeating: "x", count: SmartReadPrompts.maxInstructionsLength)))
         #expect(!long.hasSuffix(String(repeating: "x", count: SmartReadPrompts.maxInstructionsLength + 1)))
         #expect(SmartReadPrompts.system(mode: .brief, language: nil, instructions: "   ") == SmartReadPrompts.system(mode: .brief, language: nil))
+    }
+
+    @Test func briefLengthFollowsTheInput() {
+        #expect(SmartReadPrompts.briefLength(forCharacters: 200) == "at most 40 words")
+        #expect(SmartReadPrompts.briefLength(forCharacters: 2_000) == "at most 80 words")
+        #expect(SmartReadPrompts.briefLength(forCharacters: 20_000) == "at most 140 words")
+        #expect(SmartReadPrompts.system(mode: .brief, language: nil, inputCharacters: 20_000).contains("at most 140 words"))
+        #expect(!SmartReadPrompts.system(mode: .cleanup, language: nil, inputCharacters: 20_000).contains("at most 140 words"))
     }
 
     @Test func cleanupPromptPreservesMeaningAndSourceLanguageWhenUnspecified() {
