@@ -18,6 +18,8 @@ final class AppContainer {
     let onDeviceModel: OnDeviceModelStatus
     let accessibility = LiveAccessibility()
     private let player = PCMStreamPlayer()
+    private let recorder = LiveAudioRecorder()
+    @ObservationIgnored private var notch: NotchIndicator?
     private let elevenLabs: ElevenLabsProvider
     let catalogs: RemoteCatalogs
     /// Which settings tab is showing; "Add key" buttons jump to Keys.
@@ -58,8 +60,9 @@ final class AppContainer {
         self.session = session
 
         let onDevice: (any Transcriber)? = AppleTranscriber.isAvailable ? AppleTranscriber() : nil
+        let sounds = DictationSounds()
         dictation = DictationSession(
-            recorder: LiveAudioRecorder(),
+            recorder: recorder,
             accessibility: accessibility,
             presets: presets,
             pasteboard: pasteboard,
@@ -77,8 +80,10 @@ final class AppContainer {
                                                   cleanupModel: preferences.cleanupModel,
                                                   secrets: secrets, http: http, onDevice: onDevice, microphoneUID: microphone)
             },
-            stopReading: { session.stop() } // D3
+            stopReading: { session.stop() }, // D3
+            cue: { if preferences.dictationSounds { sounds.play($0) } }
         )
+        notch = NotchIndicator(dictation: dictation, preferences: preferences, level: { [recorder] in recorder.level })
         onDeviceModel = OnDeviceModelStatus(store: LiveOnDeviceModelStore())
         onDeviceModel.prepare(language: presets.defaultPreset.languageOverride) // D9
 
