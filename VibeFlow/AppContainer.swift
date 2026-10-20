@@ -83,7 +83,7 @@ final class AppContainer {
             stopReading: { session.stop() }, // D3
             cue: { if preferences.dictationSounds { sounds.play($0) } }
         )
-        notch = NotchIndicator(dictation: dictation, preferences: preferences, level: { [recorder] in recorder.level })
+        notch = NotchIndicator(dictation: dictation, reading: session, preferences: preferences, level: { [recorder] in recorder.level })
         onDeviceModel = OnDeviceModelStatus(store: LiveOnDeviceModelStore())
         onDeviceModel.prepare(language: presets.defaultPreset.languageOverride) // D9
 

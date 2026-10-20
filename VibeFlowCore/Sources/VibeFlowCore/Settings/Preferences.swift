@@ -1,6 +1,24 @@
 import Foundation
 import Observation
 
+/// How the notch shows that the microphone is listening.
+public enum ListeningStyle: String, CaseIterable, Sendable {
+    /// A still red dot: no loudness at all.
+    case dot
+    /// A red dot with a soft ring that swells with the voice.
+    case pulse
+    /// Five bars that follow the microphone level.
+    case bars
+
+    public var title: String {
+        switch self {
+        case .dot: return "Dot"
+        case .pulse: return "Pulse"
+        case .bars: return "Bars"
+        }
+    }
+}
+
 /// The few settings that are not per-app presets, backed by UserDefaults: a model per job,
 /// the audio devices, the dictation cues and launch at login. Shortcuts live in KeyboardShortcuts' own storage;
 /// keys live in the Keychain.
@@ -19,6 +37,7 @@ public final class Preferences {
         static let speakerUID = "speakerUID"
         static let dictationSounds = "feel.dictationSounds"
         static let notchIndicator = "feel.notchIndicator"
+        static let listeningStyle = "feel.listeningStyle"
     }
 
     public var launchAtLogin: Bool {
@@ -56,9 +75,12 @@ public final class Preferences {
     public var dictationSounds: Bool {
         didSet { defaults.set(dictationSounds, forKey: Key.dictationSounds) }
     }
-    /// The black wings around the notch while dictating.
+    /// The black wings around the notch while dictating, reading and thinking.
     public var notchIndicator: Bool {
         didSet { defaults.set(notchIndicator, forKey: Key.notchIndicator) }
+    }
+    public var listeningStyle: ListeningStyle {
+        didSet { defaults.set(listeningStyle.rawValue, forKey: Key.listeningStyle) }
     }
 
     public init(defaults: UserDefaults = .standard) {
@@ -73,6 +95,7 @@ public final class Preferences {
         speakerUID = defaults.string(forKey: Key.speakerUID)
         dictationSounds = defaults.object(forKey: Key.dictationSounds) as? Bool ?? true
         notchIndicator = defaults.object(forKey: Key.notchIndicator) as? Bool ?? true
+        listeningStyle = defaults.string(forKey: Key.listeningStyle).flatMap(ListeningStyle.init(rawValue:)) ?? .dot
     }
 
     public var vocabularyTerms: [String] { Self.parseVocabulary(vocabulary) }
