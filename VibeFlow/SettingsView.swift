@@ -229,6 +229,11 @@ private struct PromptsSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     section("System", system)
+                    if kind == .brief {
+                        Text("The word limit follows the selection: 40 words under 600 characters, 80 under 4,000, 140 above.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     section("User message", user)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
