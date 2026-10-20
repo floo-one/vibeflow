@@ -58,6 +58,7 @@ final class AppContainer {
         self.session = session
 
         let onDevice: (any Transcriber)? = AppleTranscriber.isAvailable ? AppleTranscriber() : nil
+        let sounds = DictationSounds()
         dictation = DictationSession(
             recorder: LiveAudioRecorder(),
             accessibility: accessibility,
@@ -77,7 +78,8 @@ final class AppContainer {
                                                   cleanupModel: preferences.cleanupModel,
                                                   secrets: secrets, http: http, onDevice: onDevice, microphoneUID: microphone)
             },
-            stopReading: { session.stop() } // D3
+            stopReading: { session.stop() }, // D3
+            cue: { sounds.play($0) }
         )
         onDeviceModel = OnDeviceModelStatus(store: LiveOnDeviceModelStore())
         onDeviceModel.prepare(language: presets.defaultPreset.languageOverride) // D9

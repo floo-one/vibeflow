@@ -31,6 +31,13 @@ public enum DictationAction: Sendable, Hashable {
     case openMicrophoneSettings
 }
 
+/// The moments the app marks with a sound, like FreeFlow: the microphone opened, and it closed
+/// on key up, toggle or the 2-minute cap. A cancel or a failed start plays nothing.
+public enum DictationCue: Sendable, Equatable {
+    case recordingStarted
+    case recordingStopped
+}
+
 /// Shown in the menu until the next dictation starts or the user discards it.
 public struct DictationError: Sendable, Equatable {
     public var message: String
@@ -109,6 +116,7 @@ public final class DictationSession {
     private let clock: any SessionClock
     private let setup: @MainActor () -> DictationSetup
     private let stopReading: @MainActor () -> Void
+    private let cue: @MainActor (DictationCue) -> Void
 
     public init(
         recorder: any AudioRecorder,
@@ -117,7 +125,8 @@ public final class DictationSession {
         pasteboard: any Pasteboard,
         clock: any SessionClock,
         setup: @escaping @MainActor () -> DictationSetup,
-        stopReading: @escaping @MainActor () -> Void
+        stopReading: @escaping @MainActor () -> Void,
+        cue: @escaping @MainActor (DictationCue) -> Void = { _ in }
     ) {
         self.recorder = recorder
         self.accessibility = accessibility
@@ -126,6 +135,7 @@ public final class DictationSession {
         self.clock = clock
         self.setup = setup
         self.stopReading = stopReading
+        self.cue = cue
         self.insertion = TextInsertion(accessibility: accessibility, pasteboard: pasteboard, clock: clock)
     }
 
@@ -269,6 +279,7 @@ public final class DictationSession {
         let session = Current(target: target, preset: preset, setup: setup)
         current = session
         state = .recording(handsFree: handsFree)
+        cue(.recordingStarted)
         status = handsFree ? "Listening. Press the toggle shortcut again to stop" : "Listening"
         let id = session.id
         session.timers = [
@@ -289,6 +300,7 @@ public final class DictationSession {
         session.timers.forEach { $0.cancel() }
         session.timers = []
         let audio = recorder.stop()
+        cue(.recordingStopped)
         guard audio.duration >= Self.minimumDuration else {
             finishIdle(status: "Too short, nothing recorded")
             return
