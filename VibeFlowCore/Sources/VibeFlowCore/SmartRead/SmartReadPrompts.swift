@@ -9,7 +9,7 @@ public enum SmartReadPrompts {
     /// Per-app instructions longer than this are cut, so a pasted essay cannot crowd out the guard.
     public static let maxInstructionsLength = 500
 
-    public static func system(mode: SmartReadMode, language: String?, instructions: String? = nil) -> String {
+    public static func system(mode: SmartReadMode, language: String?, instructions: String? = nil, inputCharacters: Int = 0) -> String {
         let languageRule: String
         if let language {
             languageRule = "Write your answer in the language with BCP-47 tag \(language)."
@@ -20,12 +20,25 @@ public enum SmartReadPrompts {
         switch mode {
         case .brief:
             task = """
-            Explain the document like you would to a curious 10-year-old: a quick overview in \
-            two to four short sentences, plain everyday words, no jargon. If a hard word is \
-            unavoidable, say what it means in a few words. Say what it is, what matters most, \
-            and anything the listener must do or watch out for, such as a deadline, an amount \
-            of money or a condition. Do not add anything that is not in the document. No \
-            headings, no lists, no preamble like "This document says": start with the point.
+            Explain the document like a sharp friend who just read it for a smart, curious \
+            15-year-old, written to be heard, not read. Start with the verdict, the one thing that \
+            matters most, then what backs it up. Keep real terms like "liability cap" or "retainer" \
+            and say what each means in a few words. Use at most one short everyday comparison, and \
+            only when it makes something click. Pick the focus from what the document is. An email \
+            or message: what they want from the listener and by when. A contract or terms: money, \
+            deadlines, obligations and the ways out. An article or report: the main claim and \
+            whether it is backed up. An error, log or code: what went wrong and the likely fix. \
+            Anything else: what it is and why it matters. If the listener must do or watch out for \
+            something, such as a deadline, an amount of money or a condition, say the most important \
+            one. Sound like a person: contractions, short sentences, varied rhythm, a dry aside only \
+            when the content earns it. No hype, no filler, no exclamation marks. Stay inside the \
+            word budget by choosing: name only the few details that matter most and leave the rest \
+            out. Never work out totals or other figures the document does not state. Keep every \
+            number, amount, currency, duration and date you mention exactly as written, in digits, \
+            never rounded or paraphrased. No parentheses, no abbreviations like e.g., no headings, \
+            no lists, no openers like "So" or "Here's the deal", no preamble like "This document \
+            says". Do not add anything that is not in the document, including consequences or advice \
+            it does not state. Hard limit: \(briefLength(forCharacters: inputCharacters)).
             """
         case .cleanup:
             task = """
@@ -53,6 +66,16 @@ public enum SmartReadPrompts {
             """
         }
         return prompt
+    }
+
+    /// Brief length follows the input: a message gets a line, a long document a short paragraph.
+    /// A word budget, because the model ignores sentence counts by writing longer sentences.
+    static func briefLength(forCharacters count: Int) -> String {
+        switch count {
+        case ..<600: "at most 40 words"
+        case ..<4_000: "at most 80 words"
+        default: "at most 140 words"
+        }
     }
 
     public static func user(text: String) -> String {
