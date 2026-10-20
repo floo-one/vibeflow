@@ -17,6 +17,7 @@ final class DictationHarness {
     var setup: DictationSetup
     private(set) var readStops = 0
     private(set) var recordingWhenReadStopped: Bool?
+    private(set) var cues: [DictationCue] = []
     private(set) var session: DictationSession!
 
     init() {
@@ -41,7 +42,8 @@ final class DictationHarness {
             stopReading: { [unowned self] in
                 self.readStops += 1
                 self.recordingWhenReadStopped = self.recorder.isRecording
-            }
+            },
+            cue: { [unowned self] in self.cues.append($0) }
         )
     }
 
@@ -219,6 +221,55 @@ struct DictationFlowTests {
         await h.hold()
         await h.finish()
         #expect(h.session.status == "Transcribed on device: no Groq key")
+    }
+}
+
+@Suite("DictationSession: start and stop sounds") @MainActor
+struct DictationCueTests {
+    @Test func pushToTalkCuesOnKeyDownAndKeyUp() async {
+        let h = DictationHarness()
+        h.session.recordKeyDown()
+        #expect(h.cues == [.recordingStarted])
+        h.session.recordKeyUp()
+        #expect(h.cues == [.recordingStarted, .recordingStopped])
+        await h.finish()
+        #expect(h.cues == [.recordingStarted, .recordingStopped], "nothing after the mic closes")
+    }
+
+    @Test func toggleAndTheCapBothCueTheStop() async {
+        let h = DictationHarness()
+        h.session.toggleRecording()
+        h.session.toggleRecording()
+        #expect(h.cues == [.recordingStarted, .recordingStopped])
+        await h.finish()
+
+        h.session.toggleRecording()
+        await h.settle()
+        h.clock.advance(by: DictationSession.maximumDuration)
+        await h.settle()
+        #expect(h.cues == [.recordingStarted, .recordingStopped, .recordingStarted, .recordingStopped])
+    }
+
+    @Test func tooShortStillCuesTheStop() {
+        let h = DictationHarness()
+        h.recorder.nextAudio = RecordedAudio(pcm16: Data(repeating: 0x40, count: 3_200)) // 0.1 s
+        h.session.recordKeyDown()
+        h.session.recordKeyUp()
+        #expect(h.cues == [.recordingStarted, .recordingStopped])
+    }
+
+    @Test func cancelAndFailedStartsAreSilent() {
+        let h = DictationHarness()
+        h.session.recordKeyDown()
+        #expect(h.session.cancel())
+        #expect(h.cues == [.recordingStarted], "a read follows a cancel, so no stop sound")
+
+        h.recorder.startError = .noInputDevice
+        h.session.recordKeyDown()
+        h.recorder.startError = nil
+        h.recorder.permission = .denied
+        h.session.toggleRecording()
+        #expect(h.cues == [.recordingStarted])
     }
 }
 

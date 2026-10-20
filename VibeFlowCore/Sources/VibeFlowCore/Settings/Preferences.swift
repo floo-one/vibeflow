@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// The few settings that are not per-app presets, backed by UserDefaults: a model per job,
-/// the audio devices and launch at login. Shortcuts live in KeyboardShortcuts' own storage;
+/// the audio devices, the dictation cues and launch at login. Shortcuts live in KeyboardShortcuts' own storage;
 /// keys live in the Keychain.
 @MainActor
 @Observable
@@ -17,6 +17,8 @@ public final class Preferences {
         static let vocabulary = "dictation.vocabulary"
         static let microphoneUID = "dictation.microphoneUID"
         static let speakerUID = "speakerUID"
+        static let dictationSounds = "feel.dictationSounds"
+        static let notchIndicator = "feel.notchIndicator"
     }
 
     public var launchAtLogin: Bool {
@@ -50,6 +52,15 @@ public final class Preferences {
         didSet { defaults.set(speakerUID, forKey: Key.speakerUID) }
     }
 
+    /// Tink when the microphone opens, Pop when it closes.
+    public var dictationSounds: Bool {
+        didSet { defaults.set(dictationSounds, forKey: Key.dictationSounds) }
+    }
+    /// The black wings around the notch while dictating.
+    public var notchIndicator: Bool {
+        didSet { defaults.set(notchIndicator, forKey: Key.notchIndicator) }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         launchAtLogin = defaults.bool(forKey: Key.launchAtLogin)
@@ -60,6 +71,8 @@ public final class Preferences {
         vocabulary = defaults.string(forKey: Key.vocabulary) ?? ""
         microphoneUID = defaults.string(forKey: Key.microphoneUID)
         speakerUID = defaults.string(forKey: Key.speakerUID)
+        dictationSounds = defaults.object(forKey: Key.dictationSounds) as? Bool ?? true
+        notchIndicator = defaults.object(forKey: Key.notchIndicator) as? Bool ?? true
     }
 
     public var vocabularyTerms: [String] { Self.parseVocabulary(vocabulary) }
