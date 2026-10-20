@@ -79,6 +79,7 @@ private struct ReadingTab: View {
                 ModelPicker(title: "Voice model", options: ModelOptions.voice, selection: $prefs.voiceModel)
                 SpeedSlider(speed: $store.defaultPreset.speed)
                 ModelPicker(title: "Smart read model", options: ModelOptions.smartRead, selection: $prefs.smartReadModel)
+                PromptsButton(initial: .brief)
             }
             Section {
                 DevicePicker(title: "Speaker", automaticLabel: "System output", devices: speakers, selection: $prefs.speakerUID)
@@ -101,6 +102,7 @@ private struct DictationTab: View {
             Section {
                 ModelPicker(title: "Transcription model", options: ModelOptions.transcription, selection: $prefs.transcriptionModel)
                 ModelPicker(title: "Cleanup model", options: ModelOptions.cleanup, selection: $prefs.cleanupModel)
+                PromptsButton(initial: .dictation)
             }
             Section {
                 DevicePicker(title: "Microphone", automaticLabel: "Automatic", devices: microphones, selection: $prefs.microphoneUID)
@@ -121,7 +123,12 @@ private struct LookAndFeelTab: View {
         Form {
             Section {
                 Toggle("Sound when dictation starts and stops", isOn: $prefs.dictationSounds)
-                Toggle("Show dictation around the notch", isOn: $prefs.notchIndicator)
+                Toggle("Show activity around the notch", isOn: $prefs.notchIndicator)
+                Picker("While listening", selection: $prefs.listeningStyle) {
+                    ForEach(ListeningStyle.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .disabled(!prefs.notchIndicator)
             }
         }
         .formStyle(.grouped)
@@ -184,6 +191,94 @@ private struct KeysTab: View {
         } catch {
             self.error = "Could not save: \(error.localizedDescription)"
         }
+    }
+}
+
+// MARK: - Prompts
+
+/// The prompts VibeFlow sends to the models, read-only for now.
+private enum PromptKind: String, CaseIterable, Identifiable {
+    case brief = "Smart read: brief"
+    case cleanup = "Smart read: cleanup"
+    case dictation = "Dictation cleanup"
+    var id: Self { self }
+}
+
+private struct PromptsButton: View {
+    let initial: PromptKind
+    @State private var showing = false
+
+    var body: some View {
+        LabeledContent("Prompts") {
+            Button("Show Prompts…") { showing = true }
+        }
+        .sheet(isPresented: $showing) { PromptsSheet(kind: initial) }
+    }
+}
+
+/// Built with the current vocabulary and default preset, so it shows what is actually sent.
+private struct PromptsSheet: View {
+    @Environment(AppContainer.self) private var container
+    @Environment(\.dismiss) private var dismiss
+    @State var kind: PromptKind
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Picker("Prompt", selection: $kind) {
+                ForEach(PromptKind.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    section("System", system)
+                    if kind == .brief {
+                        Text("The word limit follows the selection: 40 words under 600 characters, 80 under 4,000, 140 above.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    section("User message", user)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
+            }
+            .background(.background.secondary, in: .rect(cornerRadius: 6))
+            HStack {
+                Text("Read-only. Editing comes later.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Done") { dismiss() }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding()
+        .frame(width: 500, height: 380)
+    }
+
+    private func section(_ title: String, _ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text(text)
+                .font(.callout.monospaced())
+                .textSelection(.enabled)
+        }
+    }
+
+    private var system: String {
+        let preset = container.presets.defaultPreset
+        switch kind {
+        case .brief, .cleanup:
+            return SmartReadPrompts.system(mode: kind == .brief ? .brief : .cleanup,
+                                           language: preset.languageOverride,
+                                           instructions: preset.smartReadInstructions)
+        case .dictation:
+            return SmartReadPrompts.dictationCleanupSystem(vocabulary: container.preferences.vocabularyTerms)
+        }
+    }
+
+    private var user: String {
+        kind == .dictation ? SmartReadPrompts.dictationUser("…transcript…") : SmartReadPrompts.user(text: "…selected text…")
     }
 }
 

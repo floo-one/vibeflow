@@ -5,19 +5,21 @@ import VibeFlowCore
 
 // MARK: - NotchIndicator
 
-/// Black wings that grow out of the notch while dictating, like FreeFlow: a live waveform on
-/// the left, a red dot (listening) or a spinner (transcribing, cleaning, pasting) on the right.
-/// Screens without a notch get the same shape hanging from the middle of the menu bar.
+/// Black wings that grow out of the notch whenever VibeFlow is busy, like FreeFlow. The left
+/// wing says what is happening (microphone, sparkles, speaker), the right wing how it is going:
+/// the chosen listening style while dictating, a spinner while working, a moving waveform
+/// symbol while speaking. Screens without a notch get the same shape hanging from the middle
+/// of the menu bar.
 ///
 /// One transparent, click-through panel stays on screen; the SwiftUI view inside it reads the
-/// dictation state and draws nothing while idle.
+/// dictation and read states and draws nothing while idle.
 @MainActor
 final class NotchIndicator {
     private let panel: NSPanel
     private let layout = NotchLayout()
     private var screenObserver: NSObjectProtocol?
 
-    init(dictation: DictationSession, preferences: Preferences, level: @escaping @MainActor () -> Float) {
+    init(dictation: DictationSession, reading: ReadSession, preferences: Preferences, level: @escaping @MainActor () -> Float) {
         panel = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -28,7 +30,7 @@ final class NotchIndicator {
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
 
         let layout = layout
-        let view = NotchIndicatorView(dictation: dictation, preferences: preferences, layout: layout, level: level) { [weak self] in
+        let view = NotchIndicatorView(dictation: dictation, reading: reading, preferences: preferences, layout: layout, level: level) { [weak self] in
             self?.place()
         }
         panel.contentView = NSHostingView(rootView: view.environment(\.colorScheme, .dark))
@@ -77,38 +79,75 @@ final class NotchLayout {
 // MARK: - View
 
 private enum NotchPhase: Equatable {
-    case hidden, listening, working
+    case hidden
+    /// Dictation is recording.
+    case listening
+    /// Dictation is transcribing, cleaning or pasting.
+    case dictationWorking
+    /// A read is capturing the selection or waiting for the first audio.
+    case preparing
+    /// Smart read is waiting for the model.
+    case thinking
+    case speaking
+
+    var symbol: String? {
+        switch self {
+        case .hidden: return nil
+        case .listening, .dictationWorking: return "mic.fill"
+        case .preparing, .speaking: return "speaker.wave.2.fill"
+        case .thinking: return "sparkles"
+        }
+    }
 }
 
 private struct NotchIndicatorView: View {
     let dictation: DictationSession
+    let reading: ReadSession
     let preferences: Preferences
     let layout: NotchLayout
     let level: @MainActor () -> Float
     let willShow: @MainActor () -> Void
 
+    /// Dictation wins: it stops a running read (D3), so both are rarely busy at once.
     private var phase: NotchPhase {
         guard preferences.notchIndicator else { return .hidden }
         switch dictation.state {
-        case .idle: return .hidden
         case .recording: return .listening
-        case .transcribing, .cleaning, .pasting: return .working
+        case .transcribing, .cleaning, .pasting: return .dictationWorking
+        case .idle: break
+        }
+        switch reading.state {
+        case .idle, .awaitingConfirm: return .hidden
+        case .capturing, .buffering: return .preparing
+        case .transforming: return .thinking
+        case .speaking: return .speaking
         }
     }
 
     var body: some View {
+        let phase = phase
         let shown = phase != .hidden
         let wing = NotchLayout.wingWidth
         HStack(spacing: 0) {
             Group {
-                if phase == .listening { Waveform(level: level) }
+                if let symbol = phase.symbol {
+                    Image(systemName: symbol)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white.opacity(phase == .listening || phase == .speaking ? 1 : 0.7))
+                        .contentTransition(.symbolEffect(.replace))
+                }
             }
             .frame(width: wing)
             Color.clear.frame(width: layout.notchWidth)
             Group {
                 switch phase {
-                case .listening: Circle().fill(.red).frame(width: 8, height: 8)
-                case .working: ProgressView().controlSize(.mini)
+                case .listening: ListeningIndicator(style: preferences.listeningStyle, level: level)
+                case .dictationWorking, .preparing, .thinking: ProgressView().controlSize(.mini)
+                case .speaking:
+                    Image(systemName: "waveform")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .symbolEffect(.variableColor.iterative.dimInactiveLayers, options: .repeating)
                 case .hidden: EmptyView()
                 }
             }
@@ -121,6 +160,42 @@ private struct NotchIndicatorView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(.spring(response: 0.32, dampingFraction: 0.8), value: phase)
         .onChange(of: shown) { _, isShown in if isShown { willShow() } }
+    }
+}
+
+private struct ListeningIndicator: View {
+    let style: ListeningStyle
+    let level: @MainActor () -> Float
+
+    var body: some View {
+        switch style {
+        case .dot: Circle().fill(.red).frame(width: 8, height: 8)
+        case .pulse: Pulse(level: level)
+        case .bars: Waveform(level: level)
+        }
+    }
+}
+
+/// The red dot with a soft ring around it. The ring follows a smoothed level, so it swells
+/// with speech instead of flickering with every syllable.
+private struct Pulse: View {
+    let level: @MainActor () -> Float
+    @State private var smoothed: Double = 0
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 30)) { context in
+            ZStack {
+                Circle()
+                    .fill(.red.opacity(0.35))
+                    .frame(width: 8 + 10 * smoothed, height: 8 + 10 * smoothed)
+                Circle().fill(.red).frame(width: 8, height: 8)
+            }
+            .onChange(of: context.date) {
+                // Rise quickly, fall slowly.
+                let target = Double(level())
+                smoothed += (target - smoothed) * (target > smoothed ? 0.35 : 0.08)
+            }
+        }
     }
 }
 
