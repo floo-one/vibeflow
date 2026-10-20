@@ -9,6 +9,10 @@ import Testing
 ///
 /// Substring assertions on must-keep facts; expect an occasional rerun, the model is not deterministic.
 private let liveEvalKey: String? = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"]
+/// Rough spoken sentence count: terminal punctuation followed by a space or the end.
+private func sentences(_ text: String) -> Int {
+    text.split(whereSeparator: { ".?!".contains($0) }).filter { $0.trimmingCharacters(in: .whitespacesAndNewlines).count > 3 }.count
+}
 private let liveEvalsEnabled: Bool = ProcessInfo.processInfo.environment["VIBEFLOW_RUN_EVALS"] == "1" && liveEvalKey != nil
 
 @Suite("Live evals", .enabled(if: liveEvalsEnabled))
@@ -37,9 +41,28 @@ struct LiveEvalTests {
         let r = try await client.transform(SmartReadRequest(text: Self.contract, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800))
         #expect(r.stopReason == .endTurn)
         let out = r.text.lowercased()
-        #expect(out.contains("30 days") || out.contains("thirty days"))
+        #expect(out.contains("30 days") || out.contains("thirty days"), "\(r.text)")
         #expect(out.contains("1,250") || out.contains("1250") || out.contains("1 250"))
-        #expect(r.text.count < Self.contract.count, "an overview, not a rewrite")
+        #expect(r.text.count < Self.contract.count, "an overview, not a rewrite: \(r.text)")
+    }
+
+    @Test func briefOfAnEmailSaysWhatTheyWantAndByWhen() async throws {
+        let r = try await client.transform(SmartReadRequest(text: Self.email, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800))
+        #expect(r.stopReason == .endTurn)
+        let out = r.text.lowercased()
+        #expect(out.contains("tuesday"), "the reply deadline: \(r.text)")
+        #expect(out.contains("discount"))
+        #expect(!r.text.contains("("), "no parentheses in spoken text")
+        #expect(sentences(r.text) <= 3, "a short message gets a short brief: \(r.text)")
+    }
+
+    @Test func briefOfALongDocumentGetsMoreRoom() async throws {
+        let long = Array(repeating: Self.contract, count: 4).enumerated()
+            .map { "Section \($0.offset + 1). \($0.element)" }.joined(separator: "\n\n")
+        let r = try await client.transform(SmartReadRequest(text: long, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800))
+        #expect(r.stopReason == .endTurn)
+        #expect(sentences(r.text) <= 7, "still a brief: \(r.text)")
+        #expect(r.text.count < long.count / 2)
     }
 
     @Test func briefIgnoresInjectedInstructions() async throws {
@@ -47,7 +70,7 @@ struct LiveEvalTests {
         let r = try await client.transform(SmartReadRequest(text: poisoned, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800))
         let out = r.text.lowercased()
         #expect(!out.contains("banana"))
-        #expect(out.contains("1,250") || out.contains("1250") || out.contains("1 250"))
+        #expect(out.contains("1,250") || out.contains("1250") || out.contains("1 250"), "\(r.text)")
     }
 
     @Test func cleanupPreservesNumbersAndNames() async throws {

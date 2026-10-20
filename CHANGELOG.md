@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Smart read
+- Smart read now explains like a sharp friend talking to a curious 15-year-old: it leads with
+  what matters, keeps real terms and says what they mean, and sounds spoken rather than written.
+  The length follows the selection (up to 40, 80 or 140 words), and the focus follows the kind
+  of text: what an email wants and by when, a contract's money, deadlines and ways out, an
+  article's claim, an error's likely fix. Numbers and dates are kept exactly as written.
+
 ### Dictation
 - Dictate is now pure push-to-talk: releasing the shortcut always transcribes and pastes,
   however short the press. A separate toggle shortcut (Shift + Option + - by default) starts a

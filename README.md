@@ -11,8 +11,8 @@ and your words are typed where your cursor is.
 - **Read** (Option + .): the selection, spoken with an ElevenLabs voice, usually in well
   under a second. Tables, links and Markdown are rewritten for listening: a table row is read
   as "Campaign: X, Budget: Y", a link as its text, a bare URL as its domain.
-- **Smart read** (Option + ,): Claude explains the selection like you are 10, in a few short
-  sentences, then it is spoken.
+- **Smart read** (Option + ,): Claude explains the selection like a sharp friend talking to a
+  curious 15-year-old, in a few spoken sentences that grow with the selection, then it is spoken.
 - **Dictate** (Option + -): hold to talk, release to paste. For longer dictation, press
   Shift + Option + - once to start and again to stop. Groq Whisper transcribes, a quick cleanup fixes
   punctuation, casing and misheard words, and the text lands in the field you were typing in.
