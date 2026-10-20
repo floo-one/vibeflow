@@ -130,3 +130,24 @@ struct LivePasteboard: VibeFlowCore.Pasteboard {
         pb.setString(text, forType: .string)
     }
 }
+
+// MARK: - Dictation cues on NSSound
+
+/// Short system sounds when the microphone opens and closes, like FreeFlow. Loaded once and
+/// restarted on each cue so a quick press-release-press still plays every sound.
+@MainActor
+final class DictationSounds {
+    private let started = NSSound(named: "Tink")
+    private let stopped = NSSound(named: "Pop")
+
+    init() {
+        started?.volume = 0.5
+        stopped?.volume = 0.5
+    }
+
+    func play(_ cue: DictationCue) {
+        let sound = cue == .recordingStarted ? started : stopped
+        sound?.stop()
+        sound?.play()
+    }
+}
