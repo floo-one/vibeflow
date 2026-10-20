@@ -32,6 +32,9 @@ final class LiveAudioRecorder: AudioRecorder {
 
     var isRecording: Bool { recording != nil }
 
+    /// Loudness of the latest buffer, 0 (silence) to 1, for the notch waveform.
+    var level: Float { recording?.level ?? 0 }
+
     func start(deviceUID: String?) throws {
         cancel()
         guard permission == .granted else { throw RecordingError.permissionDenied }
@@ -69,6 +72,9 @@ private final class CaptureRecording: NSObject, AVCaptureAudioDataOutputSampleBu
     private let lock = NSLock()
     private var pcm = Data()
     private var finished = false
+    private var latestLevel: Float = 0
+
+    var level: Float { lock.withLock { latestLevel } }
 
     init(device: AVCaptureDevice) throws {
         super.init()
@@ -113,6 +119,20 @@ private final class CaptureRecording: NSObject, AVCaptureAudioDataOutputSampleBu
         return data
     }
 
+    /// RMS of 16-bit samples on a -50 to -10 dBFS scale, so speech fills the range.
+    private static func level(of chunk: Data) -> Float {
+        let sumOfSquares: Float = chunk.withUnsafeBytes { raw in
+            raw.bindMemory(to: Int16.self).reduce(0) { sum, sample in
+                let x = Float(sample) / Float(Int16.max)
+                return sum + x * x
+            }
+        }
+        let count = chunk.count / MemoryLayout<Int16>.size
+        guard count > 0, sumOfSquares > 0 else { return 0 }
+        let decibels = 10 * log10(sumOfSquares / Float(count))
+        return min(max((decibels + 50) / 40, 0), 1)
+    }
+
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let block = CMSampleBufferGetDataBuffer(sampleBuffer) else { return }
         let length = CMBlockBufferGetDataLength(block)
@@ -122,9 +142,11 @@ private final class CaptureRecording: NSObject, AVCaptureAudioDataOutputSampleBu
             CMBlockBufferCopyDataBytes(block, atOffset: 0, dataLength: length, destination: raw.baseAddress!)
         }
         guard status == kCMBlockBufferNoErr else { return }
+        let level = Self.level(of: chunk)
         lock.withLock {
             guard !finished else { return }
             pcm.append(chunk)
+            latestLevel = level
         }
     }
 }

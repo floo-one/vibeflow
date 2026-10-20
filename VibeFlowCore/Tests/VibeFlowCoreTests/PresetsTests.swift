@@ -95,6 +95,18 @@ struct PreferencesTests {
         #expect(q.microphoneUID == "usb-mic")
     }
 
+    @Test func dictationCuesDefaultOnAndPersist() {
+        let defaults = scratchDefaults()
+        let p = Preferences(defaults: defaults)
+        #expect(p.dictationSounds)
+        #expect(p.notchIndicator)
+        p.dictationSounds = false
+        p.notchIndicator = false
+        let q = Preferences(defaults: defaults)
+        #expect(!q.dictationSounds)
+        #expect(!q.notchIndicator)
+    }
+
     @Test func vocabularyAcceptsLinesAndCommas() {
         #expect(Preferences.parseVocabulary("VibeFlow, Groq\n  Kokoro \n\n,ElevenLabs") == ["VibeFlow", "Groq", "Kokoro", "ElevenLabs"])
     }
