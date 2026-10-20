@@ -26,7 +26,7 @@ public enum InsertionResult: Sendable, Equatable {
 ///    the clipboard and nothing is pasted.
 /// 2. Snapshot the clipboard text (ClipboardSnapshot, 200 ms bound), write the dictation
 ///    (transient, so clipboard managers ignore it), press the plain Cmd-V menu item or post a
-///    synthesized Cmd-V when the app has none.
+///    synthesized Cmd-V when the app has none. Text ending in punctuation gets a trailing space.
 /// 3. After 750 ms, restore the snapshot only if nobody wrote the clipboard since.
 @MainActor
 public final class TextInsertion {
@@ -50,8 +50,9 @@ public final class TextInsertion {
 
         let snapshot = await ClipboardSnapshot.take(from: pasteboard, clock: clock)
         let pb = pasteboard
+        let pasted = Self.spacedAfterPunctuation(text)
         let wrote: Bool? = await runBlocking(within: ClipboardSnapshot.deadline, clock: clock) {
-            pb.setString(text, transient: true)
+            pb.setString(pasted, transient: true)
             return true
         }
         guard wrote == true else {
@@ -68,6 +69,13 @@ public final class TextInsertion {
         try? await clock.sleep(for: Self.restoreDelay)
         let note = await snapshot.restore(to: pasteboard, ifChangeCountIs: afterOwnWrite, clock: clock)
         return .pasted(note: note)
+    }
+
+    /// Dictation that ends a sentence gets a trailing space so the next dictation or typing
+    /// does not run into the dot.
+    public static func spacedAfterPunctuation(_ text: String) -> String {
+        guard let last = text.last, ".!?…:;,".contains(last) else { return text }
+        return text + " "
     }
 
     /// nil = safe to paste.
