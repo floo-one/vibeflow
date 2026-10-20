@@ -83,7 +83,7 @@ struct DictationFlowTests {
         #expect(h.groq.lastLanguage == "de-DE")
         #expect(h.cleaner.calls == 1)
         #expect(h.accessibility.pastePresses.count == 1)
-        #expect(h.pasteboard.writes.first?.text == "Hello world.")
+        #expect(h.pasteboard.writes.first?.text == "Hello world. ", "space after the final dot")
         #expect(h.pasteboard.string() == "my clipboard", "clipboard restored")
         #expect(h.session.status == "Pasted")
         #expect(h.session.lastError == nil)
