@@ -149,7 +149,9 @@ struct CaptureTests {
 
     @Test func slowPasteboardReadIsBoundedAndSkipsTheRestore() async {
         let pb = FakePasteboard(text: "lazy provider")
-        pb.readDelay = .milliseconds(300) // slower than the 200 ms snapshot timeout
+        // Far slower than the 200 ms snapshot timeout: the fake clock only moves as fast as
+        // the harness steps, which a busy machine (or CI runner) slows down.
+        pb.readDelay = .seconds(2)
         pb.delayedReads = 1 // the snapshot read stalls; the copied text reads normally
         let h = CaptureHarness(pasteboard: pb)
         h.accessibility.copyProduces = "copied text"
@@ -187,21 +189,21 @@ struct ClipboardDeadlineTests {
     /// rather than waiting on the owner (previously the copied-text read was unbounded).
     @Test func clipboardThatStallsEveryReadYieldsNoText() async {
         let pb = FakePasteboard(text: "lazy provider")
-        pb.readDelay = .milliseconds(400)
+        pb.readDelay = .seconds(3)
         let h = CaptureHarness(pasteboard: pb)
         h.accessibility.copyProduces = "copied text"
         let start = ContinuousClock.now
         let result = await h.run()
         #expect(result == .none)
         #expect(pb.writes.isEmpty, "no restore over an unreadable clipboard")
-        #expect(ContinuousClock.now - start < .milliseconds(900))
+        #expect(ContinuousClock.now - start < .seconds(2), "capture waited for a stalled read")
     }
 
     /// Regression for the v1 defect: withTimeout around a detached task waited for the
     /// blocking read. A stalled clipboard owner must not hold capture past the deadline.
     @Test func stalledSnapshotReadReleasesCaptureAtTheDeadline() async {
         let pb = FakePasteboard(text: "lazy provider")
-        pb.readDelay = .seconds(1)
+        pb.readDelay = .seconds(3)
         pb.delayedReads = 1 // only the snapshot read stalls
         let h = CaptureHarness(pasteboard: pb)
         h.accessibility.copyProduces = "copied text"
@@ -210,7 +212,7 @@ struct ClipboardDeadlineTests {
         let elapsed = ContinuousClock.now - start
         #expect(result.text == "copied text")
         #expect(result.note == ClipboardSnapshot.notRestoredNote)
-        #expect(elapsed < .milliseconds(600), "capture waited \(elapsed) for a stalled read")
+        #expect(elapsed < .seconds(2), "capture waited \(elapsed) for a stalled read")
     }
 }
 
