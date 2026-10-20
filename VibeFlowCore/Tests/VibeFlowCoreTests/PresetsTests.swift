@@ -107,6 +107,16 @@ struct PreferencesTests {
         #expect(!q.notchIndicator)
     }
 
+    @Test func listeningStyleDefaultsToDotAndPersists() {
+        let defaults = scratchDefaults()
+        let p = Preferences(defaults: defaults)
+        #expect(p.listeningStyle == .dot)
+        p.listeningStyle = .bars
+        #expect(Preferences(defaults: defaults).listeningStyle == .bars)
+        defaults.set("sparkle", forKey: "feel.listeningStyle")
+        #expect(Preferences(defaults: defaults).listeningStyle == .dot)
+    }
+
     @Test func vocabularyAcceptsLinesAndCommas() {
         #expect(Preferences.parseVocabulary("VibeFlow, Groq\n  Kokoro \n\n,ElevenLabs") == ["VibeFlow", "Groq", "Kokoro", "ElevenLabs"])
     }

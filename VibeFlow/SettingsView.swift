@@ -120,7 +120,12 @@ private struct LookAndFeelTab: View {
         Form {
             Section {
                 Toggle("Sound when dictation starts and stops", isOn: $prefs.dictationSounds)
-                Toggle("Show dictation around the notch", isOn: $prefs.notchIndicator)
+                Toggle("Show activity around the notch", isOn: $prefs.notchIndicator)
+                Picker("While listening", selection: $prefs.listeningStyle) {
+                    ForEach(ListeningStyle.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .disabled(!prefs.notchIndicator)
             }
         }
         .formStyle(.grouped)
