@@ -42,10 +42,17 @@ struct TextInsertionTests {
         let result = await h.run()
         #expect(result == .pasted(note: nil))
         #expect(h.accessibility.pastePresses == [h.target.app])
-        #expect(h.pasteboard.writes.map(\.text) == ["Hello Anna.", "my clipboard"])
+        #expect(h.pasteboard.writes.map(\.text) == ["Hello Anna. ", "my clipboard"])
         let allTransient = h.pasteboard.writes.allSatisfy { $0.transient }
         #expect(allTransient)
         #expect(h.pasteboard.string() == "my clipboard")
+    }
+
+    @Test func sentencePunctuationGetsATrailingSpace() {
+        #expect(TextInsertion.spacedAfterPunctuation("Hello.") == "Hello. ")
+        #expect(TextInsertion.spacedAfterPunctuation("Really?") == "Really? ")
+        #expect(TextInsertion.spacedAfterPunctuation("no punctuation") == "no punctuation")
+        #expect(TextInsertion.spacedAfterPunctuation("") == "")
     }
 
     @Test func restoreWaitsTheFullDelay() async throws {
@@ -58,7 +65,7 @@ struct TextInsertionTests {
         #expect(spins < 400, "paste never reached the restore delay")
         h.clock.advance(by: .milliseconds(749))
         try await Task.sleep(for: .milliseconds(20))
-        #expect(h.pasteboard.string() == "Hello.", "not restored before 750 ms")
+        #expect(h.pasteboard.string() == "Hello. ", "not restored before 750 ms")
         h.clock.advance(by: .milliseconds(1))
         _ = await task.value
         #expect(h.pasteboard.string() == "my clipboard")
