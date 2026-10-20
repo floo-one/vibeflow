@@ -4,7 +4,7 @@ import VibeFlowCore
 import SwiftUI
 
 enum SettingsTab: Hashable {
-    case general, reading, dictation, lookAndFeel, keys
+    case general, reading, dictation, clocks, lookAndFeel, keys
 }
 
 /// Settings: a dropdown per voice, model and device, the keys and the shortcuts. Nothing else.
@@ -23,6 +23,9 @@ struct SettingsView: View {
             DictationTab()
                 .tabItem { Label("Dictation", systemImage: "mic") }
                 .tag(SettingsTab.dictation)
+            ClocksTab()
+                .tabItem { Label("Clocks", systemImage: "clock") }
+                .tag(SettingsTab.clocks)
             LookAndFeelTab()
                 .tabItem { Label("Look & Feel", systemImage: "sparkles") }
                 .tag(SettingsTab.lookAndFeel)

@@ -35,6 +35,7 @@ public final class Preferences {
         static let vocabulary = "dictation.vocabulary"
         static let microphoneUID = "dictation.microphoneUID"
         static let speakerUID = "speakerUID"
+        static let worldClocks = "clocks.worldClocks"
         static let dictationSounds = "feel.dictationSounds"
         static let notchIndicator = "feel.notchIndicator"
         static let listeningStyle = "feel.listeningStyle"
@@ -71,6 +72,10 @@ public final class Preferences {
         didSet { defaults.set(speakerUID, forKey: Key.speakerUID) }
     }
 
+    /// Clocks in the menu bar, in order; empty hides the item. Starts with Berlin.
+    public var worldClocks: [WorldClock] {
+        didSet { defaults.set(try? JSONEncoder().encode(worldClocks), forKey: Key.worldClocks) }
+    }
     /// Tink when the microphone opens, Pop when it closes.
     public var dictationSounds: Bool {
         didSet { defaults.set(dictationSounds, forKey: Key.dictationSounds) }
@@ -93,6 +98,8 @@ public final class Preferences {
         vocabulary = defaults.string(forKey: Key.vocabulary) ?? ""
         microphoneUID = defaults.string(forKey: Key.microphoneUID)
         speakerUID = defaults.string(forKey: Key.speakerUID)
+        worldClocks = defaults.data(forKey: Key.worldClocks)
+            .flatMap { try? JSONDecoder().decode([WorldClock].self, from: $0) } ?? [.berlin]
         dictationSounds = defaults.object(forKey: Key.dictationSounds) as? Bool ?? true
         notchIndicator = defaults.object(forKey: Key.notchIndicator) as? Bool ?? true
         listeningStyle = defaults.string(forKey: Key.listeningStyle).flatMap(ListeningStyle.init(rawValue:)) ?? .dot
