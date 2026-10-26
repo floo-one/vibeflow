@@ -80,7 +80,7 @@ idle -> (key down) recording -> (key up) transcribing -> cleaning -> pasting -> 
 - Read or smart read hotkey while recording: dictation is cancelled and nothing is pasted. While transcribing or cleaning: in-flight requests are cancelled, nothing is pasted.
 - Recordings under 0.3 s are discarded. Hard cap 2 minutes; past it the recording stops and is transcribed.
 - Empty or no-speech transcript (empty after trimming, or the Whisper no-speech marker): nothing is pasted, status "Didn't catch that".
-- Paste target is the app frozen at key down. If it quit or is no longer frontmost at paste time, nothing is pasted; the text is placed on the clipboard (status "Copied, the app lost focus") so it is not lost.
+- Paste target is whatever app and field have focus when the text is ready (changed 2026-10-26; it used to be the app frozen at key down, which dropped the paste whenever focus moved). The user can start dictating anywhere and click into the destination while talking or transcribing. The preset (and its local-only rule) is still frozen at key down. With no frontmost app or a password field focused, nothing is pasted and the text is placed on the clipboard so it is not lost.
 
 ### Dictation cleanup
 

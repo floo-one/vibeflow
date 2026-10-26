@@ -407,16 +407,34 @@ struct DictationRecoveryTests {
         #expect(h.pasteboard.writes.first?.text == "fixed endpoint")
     }
 
+    @Test func focusChangeWhileDictatingPastesWhereTheCursorIsNow() async {
+        let h = DictationHarness()
+        h.session.recordKeyDown()
+        // The user switches to another app and clicks into a field while talking.
+        let notes = FrontmostApp(pid: 200, bundleID: "com.apple.Notes")
+        h.accessibility.frontmost = notes
+        h.accessibility.focused = FocusedElement("notes-body")
+        await h.settle()
+        h.session.recordKeyUp()
+        await h.finish()
+
+        #expect(h.accessibility.pastePresses == [notes])
+        #expect(h.session.lastError == nil)
+        #expect(h.session.status == "Pasted")
+        // The preset still comes from the app that had focus at key down.
+        #expect(h.presets.lookups == ["com.apple.Safari"])
+    }
+
     @Test func pasteFailureKeepsTheTextForCopy() async {
         let h = DictationHarness()
         h.session.recordKeyDown()
-        h.accessibility.focused = FocusedElement("field-2") // the user clicked elsewhere
+        h.accessibility.isSecureInputActive = true // the user clicked into a password field
         await h.settle()
         h.session.recordKeyUp()
         await h.finish()
 
         #expect(h.accessibility.pastePresses.isEmpty)
-        #expect(h.session.lastError == DictationError(message: "Copied instead of pasted: the text field changed", actions: [.copyText, .discard]))
+        #expect(h.session.lastError == DictationError(message: "Copied instead of pasted: a password field has focus", actions: [.copyText, .discard]))
         #expect(h.session.lastFailure?.text == "Hello world.")
 
         h.pasteboard.externalWrite("something else")
