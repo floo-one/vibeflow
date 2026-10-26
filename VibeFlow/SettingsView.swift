@@ -4,7 +4,7 @@ import VibeFlowCore
 import SwiftUI
 
 enum SettingsTab: Hashable {
-    case general, reading, dictation, clocks, lookAndFeel, keys
+    case general, reading, smartRead, dictation, clocks, lookAndFeel, keys
 }
 
 /// Settings: a dropdown per voice, model and device, the keys and the shortcuts. Nothing else.
@@ -20,6 +20,9 @@ struct SettingsView: View {
             ReadingTab()
                 .tabItem { Label("Reading", systemImage: "waveform") }
                 .tag(SettingsTab.reading)
+            SmartReadTab()
+                .tabItem { Label("Smart Read", systemImage: "text.badge.star") }
+                .tag(SettingsTab.smartRead)
             DictationTab()
                 .tabItem { Label("Dictation", systemImage: "mic") }
                 .tag(SettingsTab.dictation)
@@ -78,8 +81,6 @@ private struct ReadingTab: View {
                 VoicePicker(voiceID: $store.defaultPreset.elevenLabsVoiceID)
                 ModelPicker(title: "Voice model", options: ModelOptions.voice, selection: $prefs.voiceModel)
                 SpeedSlider(speed: $store.defaultPreset.speed)
-                ModelPicker(title: "Smart read model", options: ModelOptions.smartRead, selection: $prefs.smartReadModel)
-                PromptsButton(initial: .brief)
             }
             Section {
                 DevicePicker(title: "Speaker", automaticLabel: "System output", devices: speakers, selection: $prefs.speakerUID)
@@ -87,6 +88,24 @@ private struct ReadingTab: View {
         }
         .formStyle(.grouped)
         .task { speakers = AudioDevices.outputs() }
+    }
+}
+
+// MARK: - Smart Read
+
+/// Smart read speaks with the Reading voice; this tab holds what it does before speaking.
+private struct SmartReadTab: View {
+    @Environment(AppContainer.self) private var container
+
+    var body: some View {
+        @Bindable var prefs = container.preferences
+        Form {
+            Section {
+                ModelPicker(title: "Smart read model", options: ModelOptions.smartRead, selection: $prefs.smartReadModel)
+                PromptsButton(initial: .brief)
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 

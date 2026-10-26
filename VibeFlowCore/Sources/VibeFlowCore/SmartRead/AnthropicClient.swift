@@ -66,14 +66,34 @@ public final class AnthropicClient: SmartReadClient {
         req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         req.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
         req.timeoutInterval = 25
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": model,
             "max_tokens": maxTokens,
             "system": system,
             "messages": [["role": "user", "content": user]],
         ]
+        body.merge(thinkingFields(model: model, maxTokens: maxTokens)) { _, new in new }
         req.httpBody = try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
         return req
+    }
+
+    /// Extra headroom for models whose thinking cannot be turned off.
+    static let thinkingHeadroom = 4_000
+
+    /// The 5.5 models think by default, and thinking counts against max_tokens: an 800-token
+    /// brief on Haiku 5.5 stopped at max_tokens with no text at all. Each model turns thinking
+    /// off its own way; Opus 5.5 cannot, so it gets low effort and headroom instead.
+    static func thinkingFields(model: String, maxTokens: Int) -> [String: Any] {
+        switch model {
+        case "claude-haiku-5-5":
+            return ["thinking": ["type": "disabled"]]
+        case "claude-sonnet-5-5":
+            return ["thinking": ["type": "between_tools"]]
+        case "claude-opus-5-5":
+            return ["output_config": ["effort": "low"], "max_tokens": maxTokens + thinkingHeadroom]
+        default:
+            return [:]
+        }
     }
 
     static func stopReason(_ raw: String?) -> StopReason {
