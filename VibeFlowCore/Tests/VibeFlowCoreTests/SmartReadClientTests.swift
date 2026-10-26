@@ -36,6 +36,22 @@ struct AnthropicClientTests {
         #expect(body["tools"] == nil)
     }
 
+    @Test func thinkingIsTurnedOffPerModelSoItCannotEatTheBrief() async throws {
+        for (model, check) in [
+            ("claude-haiku-5-5", { (b: [String: Any]) in (b["thinking"] as? [String: String]) == ["type": "disabled"] && b["max_tokens"] as? Int == 800 }),
+            ("claude-sonnet-5-5", { b in (b["thinking"] as? [String: String]) == ["type": "between_tools"] && b["max_tokens"] as? Int == 800 }),
+            ("claude-opus-5-5", { b in b["thinking"] == nil && (b["output_config"] as? [String: String]) == ["effort": "low"] && b["max_tokens"] as? Int == 800 + AnthropicClient.thinkingHeadroom }),
+            ("claude-haiku-4-5", { b in b["thinking"] == nil && b["output_config"] == nil && b["max_tokens"] as? Int == 800 }),
+        ] as [(String, ([String: Any]) -> Bool)] {
+            http.body = Self.ok(text: "ok")
+            var r = request
+            r.model = model
+            _ = try await client.transform(r)
+            let body = try #require(try JSONSerialization.jsonObject(with: http.requests.last!.httpBody!) as? [String: Any])
+            #expect(check(body), "\(model): \(body)")
+        }
+    }
+
     @Test func perAppInstructionsAreAppendedTrimmedAndCapped() async throws {
         http.body = Self.ok(text: "ok")
         var r = request

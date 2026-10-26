@@ -13,7 +13,7 @@ public struct SessionConfiguration: Sendable, Equatable {
     public var transformTimeout: Duration = .seconds(20)
     public var hotkeyConfirmWindow: Duration = .seconds(5)
     public var menuConfirmWindow: Duration = .seconds(10)
-    public var smartReadModel: String = "claude-haiku-4-5"
+    public var smartReadModel: String = "claude-haiku-5-5"
     public var briefMaxTokens: Int = 800
 
     public init() {}
