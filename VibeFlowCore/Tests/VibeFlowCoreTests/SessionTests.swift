@@ -320,6 +320,30 @@ struct SmartReadTests {
         #expect(h.smartRead.requests.first?.instructions == "Only deadlines.")
     }
 
+    @Test func aiAssistantAppMarksTheRequestAsAnAIReply() async throws {
+        let h = SessionHarness { $0.accessibility.frontmost = FrontmostApp(pid: 300, bundleID: "com.anthropic.claudefordesktop") }
+        h.session.hotkey(.smartRead)
+        await h.settle()
+        #expect(h.smartRead.requests.first?.aiReply == true)
+
+        let browser = SessionHarness()
+        browser.session.hotkey(.smartRead)
+        await browser.settle()
+        #expect(browser.smartRead.requests.first?.aiReply == false, "a browser page can be anything")
+    }
+
+    @Test func clipboardSmartReadInAnAIAppIsAnAIReply() async throws {
+        let h = SessionHarness { $0.accessibility.frontmost = FrontmostApp(pid: 300, bundleID: "com.openai.chat") }
+        h.session.clipboardHotkey(.smartRead, text: "I'd keep the cron job. Want nightly or hourly?")
+        await h.settle()
+        #expect(h.smartRead.requests.first?.aiReply == true, "a reply copied with the Copy button is still the assistant")
+
+        let menu = SessionHarness { $0.accessibility.frontmost = FrontmostApp(pid: 300, bundleID: "com.openai.chat") }
+        menu.session.menuRead(.smartRead, text: "I'd keep the cron job. Want nightly or hourly?")
+        await menu.settle()
+        #expect(menu.smartRead.requests.first?.aiReply == false, "menu reads do not guess the source app")
+    }
+
     @Test func disabledInPresetFallsBackToPlainRead() async throws {
         let h = SessionHarness {
             $0.presets.byBundle["com.apple.Safari"] = AppPreset(bundleID: "com.apple.Safari", smartReadEnabled: false)

@@ -226,12 +226,15 @@ public struct SmartReadRequest: Sendable, Equatable {
     public var maxTokens: Int
     /// Per-app guidance from the preset (trusted, user-authored), nil = none.
     public var instructions: String?
+    /// The text was copied from an AI assistant app, so the brief speaks as that assistant.
+    public var aiReply: Bool
 
-    public init(text: String, mode: SmartReadMode, language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil) {
+    public init(text: String, mode: SmartReadMode, language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil, aiReply: Bool = false) {
         self.text = text
         self.mode = mode
         self.language = language
         self.instructions = instructions
+        self.aiReply = aiReply
         self.model = model
         self.maxTokens = maxTokens
     }

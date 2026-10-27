@@ -13,6 +13,8 @@ and your words are typed where your cursor is.
   as "Campaign: X, Budget: Y", a link as its text, a bare URL as its domain.
 - **Smart read** (Option + ,): Claude explains the selection like a sharp friend talking to a
   curious 15-year-old, in a few spoken sentences that grow with the selection, then it is spoken.
+  In the ChatGPT, Codex, Claude and Gemini Mac apps it speaks a reply as that assistant instead,
+  in first person, ending on any question it asked you.
 - **Dictate** (Option + -): hold to talk, release to paste. For longer dictation, press
   Shift + Option + - once to start and again to stop. Groq Whisper transcribes, a quick cleanup fixes
   punctuation, casing and misheard words, and the text lands in the field you were typing in.
@@ -116,7 +118,8 @@ cd VibeFlowCore && swift test
 ```
 
 Live goldens that call the real Anthropic API (injection resistance, brief keeps
-qualifications, cleanup keeps numbers and names) run only on request:
+qualifications, cleanup keeps numbers and names, AI replies spoken as the assistant) run only
+on request:
 
 ```bash
 VIBEFLOW_RUN_EVALS=1 ANTHROPIC_API_KEY=... swift test --filter LiveEvalTests
