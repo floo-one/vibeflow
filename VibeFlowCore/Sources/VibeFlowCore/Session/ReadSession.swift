@@ -132,6 +132,8 @@ public final class ReadSession {
         let origin: ReadOrigin
         let app: FrontmostApp?
         let preset: AppPreset
+        /// The hotkey fired in an AI assistant app, so smart read speaks as that assistant.
+        var aiReply = false
         var text: String?
         var spokenText: String?
         var usingApple = false
@@ -199,6 +201,10 @@ public final class ReadSession {
         stickyStatus = false
         let preset = presets.preset(for: nil)
         let session = Current(kind: kind, origin: origin, app: nil, preset: preset)
+        // A reply copied with the AI app's Copy button is still that assistant talking.
+        if origin == .clipboardHotkey {
+            session.aiReply = SmartReadPrompts.isAIAssistant(bundleID: accessibility.frontmostApp()?.bundleID)
+        }
         current = session
         proceedAfterCapture(session, text: text, note: nil)
     }
@@ -239,6 +245,7 @@ public final class ReadSession {
         let app = accessibility.frontmostApp()
         let preset = presets.preset(for: app?.bundleID)
         let session = Current(kind: kind, origin: origin, app: app, preset: preset)
+        session.aiReply = SmartReadPrompts.isAIAssistant(bundleID: app?.bundleID)
         current = session
         state = .capturing
         status = "Capturing selection"
@@ -330,7 +337,7 @@ public final class ReadSession {
             model: configuration.smartReadModel,
             maxTokens: configuration.maxTokens(for: preset.smartReadMode, inputCharacters: text.count),
             instructions: preset.smartReadInstructions,
-            aiReply: SmartReadPrompts.isAIAssistant(bundleID: session.app?.bundleID)
+            aiReply: session.aiReply
         )
         let token = session.token
         let client = smartRead
