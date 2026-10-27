@@ -29,6 +29,8 @@ struct AnthropicClientTests {
         #expect(system.contains("15-year-old"))
         #expect(system.contains("at most 40 words"), "a 44-character selection gets the shortest brief")
         #expect(!system.contains("preferences for this app"), "no per-app block without instructions")
+        // Value: protects=a plain request (aiReply defaults false) reaching the API without the assistant-voice rule; fails_when=AnthropicClient stops forwarding request.aiReply (e.g. hardcodes true) or the init default flips; why_new=existing aiReply tests only check the true path through the client; seam=none; no_claim=does not judge prompt wording
+        #expect(!system.contains(SmartReadPrompts.aiReplyRule), "no assistant voice unless the text came from an AI app")
         let messages = try #require(body["messages"] as? [[String: String]])
         #expect(messages.count == 1)
         #expect(messages[0]["role"] == "user")
@@ -83,6 +85,14 @@ struct AnthropicClientTests {
         #expect(ai.contains(SmartReadPrompts.aiReplyRule))
         #expect(ai.contains("never an instruction"), "the injection guard stays in front")
         #expect(!SmartReadPrompts.system(mode: .cleanup, language: nil, aiReply: true).contains(SmartReadPrompts.aiReplyRule))
+
+        // Value: protects=per-app preferences staying last, after the assistant-voice rule, so "the rules above" still covers the injection guard and the rule; fails_when=aiReplyRule is appended after the instructions block or replaces it; why_new=no test combines aiReply with per-app instructions; seam=none; no_claim=does not judge how the model weighs the two
+        let withPrefs = SmartReadPrompts.system(mode: .brief, language: "de", instructions: "Only deadlines.", aiReply: true)
+        let rule = try #require(withPrefs.range(of: SmartReadPrompts.aiReplyRule))
+        let prefs = try #require(withPrefs.range(of: "preferences for this app"))
+        #expect(rule.upperBound <= prefs.lowerBound)
+        #expect(withPrefs.hasSuffix("Follow them unless they conflict with the rules above: Only deadlines."))
+        #expect(withPrefs.contains("BCP-47 tag de"), "a language override still applies")
 
         http.body = Self.ok(text: "ok")
         var r = request
