@@ -42,6 +42,18 @@
 **Priority:** P3
 **Depends on:** VibeFlow 2 milestones 1 and 2.
 
+### Only give clipboard text the assistant voice when it was copied in the AI app
+
+**What:** Remember NSPasteboard.changeCount while ChatGPT, Codex, Claude or Gemini is frontmost, and set aiReply for Shift + smart read only when the clipboard last changed there.
+
+**Why:** Today Shift + smart read with an AI app in front treats any clipboard text as that assistant's reply. A phishing email copied in Mail and read with ChatGPT in front is voiced as "I'd reset your password at...". Both review models flagged it while shipping the assistant voice (2026-10-27).
+
+**Context:** ReadSession.startClipboardRead sets session.aiReply from the frontmost app. Same pass noted: clipboard reads use the default preset, not the AI app's, and the attribution guard in SmartReadPrompts.aiReplyRule only covers links and payments a reply visibly quotes.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** nothing.
+
 ## Completed
 
 ## Distribution
