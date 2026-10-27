@@ -499,3 +499,33 @@ struct DictationMicrophoneTests {
         #expect(h.session.lastError == DictationError(message: "No microphone found", actions: [.openDictationSettings]))
     }
 }
+
+@Suite("DictationSession: paste again") @MainActor
+struct DictationPasteAgainTests {
+    @Test func aPastedDictationIsKeptAndPastesAgain() async {
+        let h = DictationHarness()
+        #expect(h.session.lastText == nil)
+        await h.hold()
+        await h.finish()
+        #expect(h.session.lastText == "Hello world.", "the space after the dot is added at paste time")
+
+        let paste = Task { await h.session.pasteAgain("Hello world.") }
+        await h.finish()
+        while h.accessibility.pastePresses.count < 2 { await h.settle(); h.clock.advance(by: .milliseconds(50)) }
+        h.clock.advance(by: .seconds(1))
+        await paste.value
+        #expect(h.accessibility.pastePresses.count == 2)
+        #expect(h.pasteboard.writes.filter { $0.text == "Hello world. " }.count == 2)
+        #expect(h.session.status == "Pasted")
+        #expect(h.pasteboard.string() == "my clipboard", "clipboard restored")
+    }
+
+    @Test func pasteAgainIsIgnoredWhileRecording() async {
+        let h = DictationHarness()
+        h.session.recordKeyDown()
+        await h.settle()
+        await h.session.pasteAgain("old text")
+        #expect(h.accessibility.pastePresses.isEmpty)
+        #expect(h.session.state == .recording(handsFree: false))
+    }
+}

@@ -107,6 +107,9 @@ public final class DictationSession {
     public private(set) var status: String = "Ready"
     public private(set) var lastError: DictationError?
     public private(set) var lastFailure: FailedDictation?
+    /// The text of the last dictation that got as far as pasting, for "Paste last dictation".
+    /// Kept in memory only.
+    public private(set) var lastText: String?
 
     private let recorder: any AudioRecorder
     private let accessibility: any AccessibilityBridge
@@ -222,6 +225,26 @@ public final class DictationSession {
             return true
         }
         status = wrote == true ? "Copied to clipboard" : "The clipboard did not respond"
+    }
+
+    /// Paste text into whatever has focus now, the same way a dictation pastes: the menu's
+    /// "Paste last dictation" and "Paste last AI answer". Ignored while a dictation runs.
+    public func pasteAgain(_ text: String) async {
+        guard state == .idle else { return }
+        lastError = nil
+        guard let target = frozenTarget() else {
+            let pb = pasteboard
+            _ = await runBlocking(within: ClipboardSnapshot.deadline, clock: clock) {
+                pb.setString(text, transient: false)
+                return true
+            }
+            status = "Copied instead of pasted: no app had focus"
+            return
+        }
+        switch await insertion.insert(text, into: target) {
+        case .pasted(let note): status = note ?? "Pasted"
+        case .copiedInstead(let reason): status = "Copied instead of pasted: \(reason)"
+        }
     }
 
     /// Forget the kept recording (D13).
@@ -383,6 +406,7 @@ public final class DictationSession {
             result = .copiedInstead(reason: "no app had focus")
         }
         guard isCurrent(session.id) else { return }
+        lastText = text
 
         switch result {
         case .pasted(let note):

@@ -309,6 +309,7 @@ struct SmartReadTests {
         #expect(request.language == "de")
         #expect(request.maxTokens == 800)
         #expect(h.elevenLabs.requests.first?.text == "Kurzfassung.")
+        #expect(h.session.lastAnswer == "Kurzfassung.", "kept for Paste last AI answer")
     }
 
     @Test func presetInstructionsReachTheRequest() async throws {
@@ -360,6 +361,7 @@ struct SmartReadTests {
         await h.settle()
         #expect(h.session.lastError?.message == "Smart read incomplete")
         #expect(h.elevenLabs.requests.isEmpty)
+        #expect(h.session.lastAnswer == nil, "an incomplete brief is never offered for pasting")
     }
 
     @Test func rateLimitedIsReportedWithReadOriginal() async throws {

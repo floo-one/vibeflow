@@ -94,6 +94,8 @@ final class AppContainer {
         KeyboardShortcuts.onKeyDown(for: .record) { [weak self] in self?.recordKeyDown() }
         KeyboardShortcuts.onKeyUp(for: .record) { [weak self] in self?.dictation.recordKeyUp() }
         KeyboardShortcuts.onKeyDown(for: .recordToggle) { [weak self] in self?.toggleRecording() }
+        KeyboardShortcuts.onKeyUp(for: .pasteLastDictation) { [weak self] in self?.pasteLastDictation() }
+        KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in self?.pasteLastAnswer() }
 
         warmConnections()
     }
@@ -103,9 +105,22 @@ final class AppContainer {
         dictation.recordKeyDown()
     }
 
-    private func toggleRecording() {
+    /// Shortcut and menu "Start dictation".
+    func toggleRecording() {
         showsDictation = true
         dictation.toggleRecording()
+    }
+
+    /// Shortcut and menu "Paste last dictation".
+    func pasteLastDictation() { pasteAgain(dictation.lastText) }
+
+    /// Shortcut and menu "Paste last AI answer": the last smart read result.
+    func pasteLastAnswer() { pasteAgain(session.lastAnswer) }
+
+    private func pasteAgain(_ text: String?) {
+        guard let text else { return }
+        showsDictation = true
+        Task { await dictation.pasteAgain(text) }
     }
 
     /// A read shortcut while dictating cancels the dictation and does nothing else.
@@ -139,7 +154,9 @@ final class AppContainer {
         player.outputDeviceUID = preferences.speakerUID
     }
 
-    private func hotkey(_ kind: ReadKind) {
+    /// Shortcut and menu "Read selection": the menu does not take focus, so the selection
+    /// is still the frontmost app's.
+    func hotkey(_ kind: ReadKind) {
         if dictationCancelledByRead() { return }
         applyReadSettings()
         session.hotkey(kind)
