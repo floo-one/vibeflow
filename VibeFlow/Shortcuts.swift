@@ -13,9 +13,10 @@ extension KeyboardShortcuts.Name {
     static let record = Self("record", default: .init(.minus, modifiers: [.option]))
     /// Dictate, toggle: press to start recording hands-free, press again to stop. Default: Shift-Option-Minus.
     static let recordToggle = Self("recordToggle", default: .init(.minus, modifiers: [.option, .shift]))
-    /// Paste the last dictation again. Default: Option-V.
-    static let pasteLastDictation = Self("pasteLastDictation", default: .init(.v, modifiers: [.option]))
-    /// Paste the last smart read result. Default: Shift-Option-V. Not "pasteAnswer": an old
-    /// build stored that name on Option-Minus, the push-to-talk key.
-    static let pasteLastAnswer = Self("pasteLastAnswer", default: .init(.v, modifiers: [.option, .shift]))
+    /// Paste the last dictation again. Default: Control-Option-V, which types no character, so
+    /// typing can never paste by accident.
+    static let pasteLastDictation = Self("pasteLastDictation", default: .init(.v, modifiers: [.control, .option]))
+    /// Paste the last smart read result. Default: Shift-Control-Option-V. Not "pasteAnswer": an
+    /// old build stored that name on Option-Minus, the push-to-talk key.
+    static let pasteLastAnswer = Self("pasteLastAnswer", default: .init(.v, modifiers: [.control, .option, .shift]))
 }

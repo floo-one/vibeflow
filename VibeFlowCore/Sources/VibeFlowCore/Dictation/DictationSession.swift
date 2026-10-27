@@ -111,9 +111,6 @@ public final class DictationSession {
     /// The text of the last dictation that got as far as pasting, for "Paste last dictation".
     /// Kept in memory only.
     public private(set) var lastText: String?
-    /// True while `pasteAgain` runs, so a second press cannot snapshot the first one's text
-    /// as the clipboard to restore.
-    private var pastingAgain = false
 
     private let recorder: any AudioRecorder
     private let accessibility: any AccessibilityBridge
@@ -230,30 +227,39 @@ public final class DictationSession {
     }
 
     /// Paste text into whatever has focus now, the same way a dictation pastes: the menu's
-    /// "Paste last dictation" and "Paste last AI answer". Ignored while a dictation or another
-    /// paste runs.
+    /// "Paste last dictation" and "Paste last AI answer". It runs in the pasting state, so no
+    /// dictation, Retry or second paste starts while it owns the clipboard. When it cannot paste,
+    /// the clipboard is left alone: the text is still kept for another try.
     public func pasteAgain(_ text: String) async {
-        guard state == .idle, !pastingAgain else { return }
-        pastingAgain = true
-        defer { pastingAgain = false }
-        lastError = nil
+        guard state == .idle else { return }
         guard let target = focusedTarget() else {
-            let pb = pasteboard
-            _ = await runBlocking(within: ClipboardSnapshot.deadline, clock: clock) {
-                pb.setString(text, transient: false)
-                return true
-            }
-            status = "Copied instead of pasted: no app had focus"
+            status = "Not pasted: no app had focus"
             return
         }
-        switch await insertion.insert(text, into: target) {
-        case .pasted(let note): status = note ?? "Pasted"
-        case .copiedInstead(let reason): status = "Copied instead of pasted: \(reason)"
+        if let reason = insertion.invalidTargetReason(target) {
+            status = "Not pasted: \(reason)"
+            return
+        }
+        state = .pasting
+        status = "Pasting"
+        let result = await insertion.insert(text, into: target)
+        state = .idle
+        switch result {
+        case .pasted(let note):
+            status = note ?? "Pasted"
+            // Re-pasting a failed dictation's text resolves it; anything else leaves its actions.
+            if text == lastFailure?.text {
+                lastFailure = nil
+                lastError = nil
+            }
+        case .copiedInstead(let reason):
+            status = "Not pasted: \(reason)"
         }
     }
 
     /// Forget the kept recording (D13).
     public func discard() {
+        if let text = lastFailure?.text, text == lastText { lastText = nil }
         lastFailure = nil
         lastError = nil
         status = "Ready"

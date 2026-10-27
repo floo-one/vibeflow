@@ -17,9 +17,10 @@
 ### Menu
 - The menu bar menu lists every action with the shortcut it is set to right now: read and smart
   read the selection or the clipboard, start or stop dictation, and where push-to-talk lives.
-- Paste last dictation (Option + V) pastes your most recent dictation again, and Paste last AI
-  answer (Shift + Option + V) pastes the last smart read result. Both are in the menu and in
-  Settings, kept in memory only, and restore your clipboard afterwards.
+- Paste last dictation (Control + Option + V) pastes your most recent dictation again, and Paste
+  last AI answer (Shift + Control + Option + V) pastes the last smart read result. Both are in the
+  menu and in Settings, kept in memory only, and restore your clipboard afterwards. When there is
+  nowhere to paste, nothing is pasted and your clipboard is left alone.
 
 ### Clocks
 - A second menu bar item shows the time in other time zones, each with its flag. It starts

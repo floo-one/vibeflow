@@ -18,8 +18,9 @@ and your words are typed where your cursor is.
   punctuation, casing and misheard words, and the text lands in the field you were typing in.
   About 0.8 s from release to text.
 - **Clipboard**: add Shift (Shift + Option + . or ,) to read or smart read the clipboard.
-- **Paste again**: Option + V pastes your last dictation again, Shift + Option + V pastes the
-  last smart read result. The menu bar menu lists every action with the shortcut it is set to.
+- **Paste again**: Control + Option + V pastes your last dictation again, Shift + Control +
+  Option + V pastes the last smart read result. The menu bar menu lists every action with the
+  shortcut it is set to.
 - Press a read shortcut again to stop. Every shortcut can be changed in Settings.
 - **Clocks**: other time zones in the menu bar, each with its flag (🇩🇪 14:05  🇺🇸 08:05).
   Add them in Settings > Clocks by searching a city, country, abbreviation or time zone.

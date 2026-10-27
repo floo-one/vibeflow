@@ -123,8 +123,10 @@ final class AppContainer {
         Task { await dictation.pasteAgain(text) }
     }
 
-    /// A read shortcut while dictating cancels the dictation and does nothing else.
+    /// A read shortcut while dictating cancels the dictation and does nothing else. While a
+    /// paste owns the clipboard it is ignored, so a read's Copy cannot snapshot the pasted text.
     private func dictationCancelledByRead() -> Bool {
+        if dictation.state == .pasting { return true }
         if dictation.cancel() { return true }
         showsDictation = false
         return false

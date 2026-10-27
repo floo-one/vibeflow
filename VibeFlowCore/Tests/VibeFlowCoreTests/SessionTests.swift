@@ -330,6 +330,12 @@ struct SmartReadTests {
         #expect(h.smartRead.requests.isEmpty)
         #expect(h.elevenLabs.requests.count == 1)
         #expect(h.session.status == "Smart read disabled for com.apple.Safari")
+        // Extended by /ship coverage audit.
+        // Value: protects=only an AI result becomes the "last AI answer", never the original text read plainly;
+        // fails_when=lastAnswer is set in speak() or before the smartReadEnabled guard;
+        // why_new=lastAnswer was only asserted on smart-read success and incomplete; seam=none;
+        // no_claim=none beyond protects (fake providers; unit only)
+        #expect(h.session.lastAnswer == nil)
     }
 
     @Test func missingAnthropicKeyOffersKeysAndReadOriginal() async throws {
