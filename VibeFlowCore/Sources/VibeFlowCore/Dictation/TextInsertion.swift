@@ -1,7 +1,7 @@
 import Foundation
 
 /// Where dictated text should go: the app and, when the app exposes one, the exact text field
-/// that had focus at key down (D10).
+/// that has focus when the text is ready to paste.
 public struct PasteTarget: Sendable, Equatable {
     public var app: FrontmostApp
     public var field: FocusedElement?
