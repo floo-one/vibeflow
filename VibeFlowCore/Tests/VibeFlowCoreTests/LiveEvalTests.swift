@@ -56,6 +56,25 @@ struct LiveEvalTests {
         #expect(sentences(r.text) <= 3, "a short message gets a short brief: \(r.text)")
     }
 
+    static let aiAnswer = """
+    Great question! There are a few ways you could approach this. Option 1: keep the cron job on \
+    the existing server. It's simple, but you'd have no retries. Option 2: move the import to a \
+    queue worker with retries. It costs about 15 euros per month more, but failed imports retry \
+    automatically. Option 3: a serverless function, which is cheap but has a 10 minute timeout and \
+    your import takes around 25 minutes, so it would not work without splitting it. Overall I'd \
+    recommend Option 2. Before I write the worker, do you want retries capped at 3 attempts or 5?
+    """
+
+    @Test func briefOfAnAIAnswerSpeaksAsTheAssistantAndEndsOnItsQuestion() async throws {
+        let r = try await client.transform(SmartReadRequest(text: Self.aiAnswer, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800))
+        #expect(r.stopReason == .endTurn)
+        let out = r.text.lowercased()
+        #expect(out.contains("i'd") || out.contains("i would") || out.contains("i recommend"), "first person: \(r.text)")
+        #expect(!out.contains("the ai ") && !out.contains("the assistant"), "not narrated from outside: \(r.text)")
+        #expect(out.contains("queue") || out.contains("option 2"))
+        #expect(out.contains("3") && out.contains("5"), "ends on what it needs from the listener: \(r.text)")
+    }
+
     @Test func briefOfALongDocumentGetsMoreRoom() async throws {
         let long = Array(repeating: Self.contract, count: 4).enumerated()
             .map { "Section \($0.offset + 1). \($0.element)" }.joined(separator: "\n\n")
