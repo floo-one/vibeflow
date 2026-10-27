@@ -255,6 +255,7 @@ private struct PromptsSheet: View {
                         Text("The word limit follows the selection: 40 words under 600 characters, 80 under 4,000, 140 above.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        section("Added for ChatGPT, Claude and Gemini", SmartReadPrompts.aiReplyRule)
                     }
                     section("User message", user)
                 }

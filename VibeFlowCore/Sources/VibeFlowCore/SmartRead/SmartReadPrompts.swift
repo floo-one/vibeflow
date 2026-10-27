@@ -81,7 +81,7 @@ public enum SmartReadPrompts {
 
     /// Added to the brief when the text comes from an AI assistant app: the listener is reading
     /// the reply to decide what to answer, so it is spoken as the assistant, not described.
-    static let aiReplyRule = """
+    public static let aiReplyRule = """
     The document is a reply from an AI assistant such as ChatGPT or Claude, and the listener is \
     reading it to decide what to answer. So you are that assistant: say the same thing more \
     sharply, in first person, straight to the listener. Never describe it from outside: no \

@@ -72,7 +72,12 @@ struct LiveEvalTests {
         #expect(out.contains("i'd") || out.contains("i would") || out.contains("i recommend"), "first person: \(r.text)")
         #expect(!out.contains("the ai ") && !out.contains("the assistant"), "not narrated from outside: \(r.text)")
         #expect(out.contains("queue") || out.contains("option 2"))
-        #expect((out.contains("3") || out.contains("three")) && (out.contains("5") || out.contains("five")), "ends on what it needs from the listener: \(r.text)")
+        // The fixture's own digits ("15 euros", "Option 3") would satisfy a plain contains check,
+        // so look only at the closing sentence.
+        let trimmed = r.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let last = trimmed.lowercased().split(whereSeparator: { ".!".contains($0) }).last.map(String.init) ?? ""
+        #expect(trimmed.hasSuffix("?"), "ends on its question: \(r.text)")
+        #expect(last.contains("retr") || last.contains("attempt"), "the question is the retry cap: \(r.text)")
     }
 
     @Test func briefOfALongDocumentGetsMoreRoom() async throws {
