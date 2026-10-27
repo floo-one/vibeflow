@@ -87,8 +87,9 @@ public struct DictationSetup: Sendable {
 
 /// One dictation from record key down to idle (milestone 1, D3, D5, D13).
 ///
-/// - Push-to-talk: key down while idle stops any read (D3), freezes the app, its focused field
-///   and its preset, then records; key up stops, transcribes and pastes.
+/// - Push-to-talk: key down while idle stops any read (D3), freezes the frontmost app's preset,
+///   then records; key up stops, transcribes and pastes at whatever has focus by then, so the
+///   user can start talking in one app and click into another before the text lands.
 /// - Toggle: one press starts the same recording hands-free, the next press of either shortcut
 ///   stops it. The 2-minute cap ends any recording.
 /// - Key down while busy is ignored, never queued.
@@ -146,14 +147,12 @@ public final class DictationSession {
 
     private final class Current {
         let id = SessionID()
-        let target: PasteTarget?
         let preset: AppPreset
         let setup: DictationSetup
         var timers: [Task<Void, Never>] = []
         var task: Task<Void, Never>?
 
-        init(target: PasteTarget?, preset: AppPreset, setup: DictationSetup) {
-            self.target = target
+        init(preset: AppPreset, setup: DictationSetup) {
             self.preset = preset
             self.setup = setup
         }
@@ -211,7 +210,7 @@ public final class DictationSession {
     public func retry() {
         guard state == .idle, let failure = lastFailure else { return }
         lastError = nil
-        let session = Current(target: frozenTarget(), preset: failure.preset, setup: setup())
+        let session = Current(preset: failure.preset, setup: setup())
         current = session
         process(failure.audio, session: session)
     }
@@ -282,8 +281,7 @@ public final class DictationSession {
             return
         }
 
-        let target = frozenTarget()
-        let preset = presets.preset(for: target?.app.bundleID)
+        let preset = presets.preset(for: accessibility.frontmostApp()?.bundleID)
         let setup = setup()
         do {
             try recorder.start(deviceUID: setup.microphoneUID)
@@ -299,7 +297,7 @@ public final class DictationSession {
             return
         }
 
-        let session = Current(target: target, preset: preset, setup: setup)
+        let session = Current(preset: preset, setup: setup)
         current = session
         state = .recording(handsFree: handsFree)
         cue(.recordingStarted)
@@ -314,7 +312,8 @@ public final class DictationSession {
         ]
     }
 
-    private func frozenTarget() -> PasteTarget? {
+    /// The app and field that have focus right now, resolved when the text is ready.
+    private func focusedTarget() -> PasteTarget? {
         accessibility.frontmostApp().map { PasteTarget(app: $0, field: accessibility.focusedElement()) }
     }
 
@@ -395,7 +394,7 @@ public final class DictationSession {
         state = .pasting
         status = "Pasting"
         let result: InsertionResult
-        if let target = session.target {
+        if let target = focusedTarget() {
             result = await insertion.insert(text, into: target)
         } else {
             let pb = pasteboard
