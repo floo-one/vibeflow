@@ -34,6 +34,7 @@ final class FakePresets: PresetResolving {
 @MainActor
 struct SessionHarness {
     let accessibility = FakeAccessibility()
+    let clipboardSource = FakeClipboardSource()
     let capture = FakeCapture()
     let presets = FakePresets()
     let elevenLabs = FakeSpeechProvider()
@@ -48,6 +49,7 @@ struct SessionHarness {
         smartRead.clock = clock
         session = ReadSession(
             accessibility: accessibility,
+            clipboardSource: clipboardSource,
             capture: capture,
             presets: presets,
             elevenLabs: elevenLabs,
