@@ -329,7 +329,8 @@ public final class ReadSession {
             language: preset.languageOverride ?? LanguageDetector.detect(text),
             model: configuration.smartReadModel,
             maxTokens: configuration.maxTokens(for: preset.smartReadMode, inputCharacters: text.count),
-            instructions: preset.smartReadInstructions
+            instructions: preset.smartReadInstructions,
+            aiReply: SmartReadPrompts.isAIAssistant(bundleID: session.app?.bundleID)
         )
         let token = session.token
         let client = smartRead

@@ -320,6 +320,18 @@ struct SmartReadTests {
         #expect(h.smartRead.requests.first?.instructions == "Only deadlines.")
     }
 
+    @Test func aiAssistantAppMarksTheRequestAsAnAIReply() async throws {
+        let h = SessionHarness { $0.accessibility.frontmost = FrontmostApp(pid: 300, bundleID: "com.anthropic.claudefordesktop") }
+        h.session.hotkey(.smartRead)
+        await h.settle()
+        #expect(h.smartRead.requests.first?.aiReply == true)
+
+        let browser = SessionHarness()
+        browser.session.hotkey(.smartRead)
+        await browser.settle()
+        #expect(browser.smartRead.requests.first?.aiReply == false, "a browser page can be anything")
+    }
+
     @Test func disabledInPresetFallsBackToPlainRead() async throws {
         let h = SessionHarness {
             $0.presets.byBundle["com.apple.Safari"] = AppPreset(bundleID: "com.apple.Safari", smartReadEnabled: false)

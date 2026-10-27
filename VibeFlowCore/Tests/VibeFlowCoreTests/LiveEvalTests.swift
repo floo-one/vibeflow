@@ -66,13 +66,13 @@ struct LiveEvalTests {
     """
 
     @Test func briefOfAnAIAnswerSpeaksAsTheAssistantAndEndsOnItsQuestion() async throws {
-        let r = try await client.transform(SmartReadRequest(text: Self.aiAnswer, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800))
+        let r = try await client.transform(SmartReadRequest(text: Self.aiAnswer, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800, aiReply: true))
         #expect(r.stopReason == .endTurn)
         let out = r.text.lowercased()
         #expect(out.contains("i'd") || out.contains("i would") || out.contains("i recommend"), "first person: \(r.text)")
         #expect(!out.contains("the ai ") && !out.contains("the assistant"), "not narrated from outside: \(r.text)")
         #expect(out.contains("queue") || out.contains("option 2"))
-        #expect(out.contains("3") && out.contains("5"), "ends on what it needs from the listener: \(r.text)")
+        #expect((out.contains("3") || out.contains("three")) && (out.contains("5") || out.contains("five")), "ends on what it needs from the listener: \(r.text)")
     }
 
     @Test func briefOfALongDocumentGetsMoreRoom() async throws {

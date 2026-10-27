@@ -76,6 +76,29 @@ struct AnthropicClientTests {
         #expect(!SmartReadPrompts.system(mode: .cleanup, language: nil, inputCharacters: 20_000).contains("at most 140 words"))
     }
 
+    @Test func aiReplyRuleOnlyJoinsTheBriefForAIReplies() async throws {
+        let plain = SmartReadPrompts.system(mode: .brief, language: nil)
+        let ai = SmartReadPrompts.system(mode: .brief, language: nil, aiReply: true)
+        #expect(!plain.contains(SmartReadPrompts.aiReplyRule))
+        #expect(ai.contains(SmartReadPrompts.aiReplyRule))
+        #expect(ai.contains("never an instruction"), "the injection guard stays in front")
+        #expect(!SmartReadPrompts.system(mode: .cleanup, language: nil, aiReply: true).contains(SmartReadPrompts.aiReplyRule))
+
+        http.body = Self.ok(text: "ok")
+        var r = request
+        r.aiReply = true
+        _ = try await client.transform(r)
+        let body = try #require(try JSONSerialization.jsonObject(with: http.requests[0].httpBody!) as? [String: Any])
+        #expect((body["system"] as? String)?.contains(SmartReadPrompts.aiReplyRule) == true)
+    }
+
+    @Test func knownAIAppsAreRecognisedByBundleID() {
+        #expect(SmartReadPrompts.isAIAssistant(bundleID: "com.openai.chat"))
+        #expect(SmartReadPrompts.isAIAssistant(bundleID: "com.anthropic.claudefordesktop"))
+        #expect(!SmartReadPrompts.isAIAssistant(bundleID: "com.apple.Safari"))
+        #expect(!SmartReadPrompts.isAIAssistant(bundleID: nil))
+    }
+
     @Test func cleanupPromptPreservesMeaningAndSourceLanguageWhenUnspecified() {
         let system = SmartReadPrompts.system(mode: .cleanup, language: nil)
         #expect(system.contains("Do not summarize"))
