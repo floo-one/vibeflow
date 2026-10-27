@@ -17,6 +17,9 @@ final class FakePasteboard: Pasteboard, @unchecked Sendable {
     var readDelay: Duration = .zero
     /// How many reads are slowed by `readDelay` (default: all of them).
     var delayedReads = Int.max
+    /// Simulates an owner that does not answer: while set, writes block until the test signals
+    /// it, so a deadline always wins regardless of how fast the machine is.
+    var writeGate: DispatchSemaphore?
 
     init(text: String? = nil, nonText: Bool = false) {
         self.text = text
@@ -37,6 +40,7 @@ final class FakePasteboard: Pasteboard, @unchecked Sendable {
     }
 
     func setString(_ text: String, transient: Bool) {
+        if let gate = lock.withLock({ writeGate }) { gate.wait() }
         lock.withLock {
             self.text = text
             changeCountValue += 1
