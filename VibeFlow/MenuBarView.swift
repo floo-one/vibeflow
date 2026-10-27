@@ -4,8 +4,8 @@ import VibeFlowCore
 import SwiftUI
 
 /// The menu (design: Menu bar status, D6 remedies): status line, Last error with up to two
-/// actions, Stop, Read anyway, every action (reads, dictation, paste last dictation or AI answer) with the shortcut it is currently set to, Grant
-/// Accessibility access, Settings, Quit.
+/// actions, Stop, Read anyway, every action (reads, dictation, paste last dictation or AI
+/// answer) with the shortcut it is currently set to, Grant Accessibility access, Settings, Quit.
 struct MenuBarView: View {
     @Environment(AppContainer.self) private var container
     @Environment(\.openSettings) private var openSettings

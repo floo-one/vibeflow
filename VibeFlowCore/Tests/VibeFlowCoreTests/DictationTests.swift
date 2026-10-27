@@ -529,12 +529,25 @@ struct DictationPasteAgainTests {
 
         let paste = Task { await h.session.pasteAgain("Hello world.") }
         await h.finish()
-        while h.accessibility.pastePresses.count < 2 { await h.settle(); h.clock.advance(by: .milliseconds(50)) }
+        for _ in 0..<100 where h.accessibility.pastePresses.count < 2 { await h.settle(); h.clock.advance(by: .milliseconds(50)) }
         h.clock.advance(by: .seconds(1))
         await paste.value
         #expect(h.accessibility.pastePresses.count == 2)
         #expect(h.pasteboard.writes.filter { $0.text == "Hello world. " }.count == 2)
         #expect(h.session.status == "Pasted")
+        #expect(h.pasteboard.string() == "my clipboard", "clipboard restored")
+    }
+
+    @Test func aSecondPasteWhileTheFirstRunsIsIgnored() async {
+        let h = DictationHarness()
+        let first = Task { await h.session.pasteAgain("first") }
+        await h.settle()
+        let second = Task { await h.session.pasteAgain("second") }
+        for _ in 0..<40 { await h.settle(); h.clock.advance(by: .milliseconds(50)) }
+        await first.value
+        await second.value
+        #expect(h.accessibility.pastePresses.count == 1)
+        #expect(!h.pasteboard.writes.contains { $0.text == "second" })
         #expect(h.pasteboard.string() == "my clipboard", "clipboard restored")
     }
 

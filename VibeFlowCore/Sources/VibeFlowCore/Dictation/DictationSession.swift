@@ -111,6 +111,9 @@ public final class DictationSession {
     /// The text of the last dictation that got as far as pasting, for "Paste last dictation".
     /// Kept in memory only.
     public private(set) var lastText: String?
+    /// True while `pasteAgain` runs, so a second press cannot snapshot the first one's text
+    /// as the clipboard to restore.
+    private var pastingAgain = false
 
     private let recorder: any AudioRecorder
     private let accessibility: any AccessibilityBridge
@@ -227,11 +230,14 @@ public final class DictationSession {
     }
 
     /// Paste text into whatever has focus now, the same way a dictation pastes: the menu's
-    /// "Paste last dictation" and "Paste last AI answer". Ignored while a dictation runs.
+    /// "Paste last dictation" and "Paste last AI answer". Ignored while a dictation or another
+    /// paste runs.
     public func pasteAgain(_ text: String) async {
-        guard state == .idle else { return }
+        guard state == .idle, !pastingAgain else { return }
+        pastingAgain = true
+        defer { pastingAgain = false }
         lastError = nil
-        guard let target = frozenTarget() else {
+        guard let target = focusedTarget() else {
             let pb = pasteboard
             _ = await runBlocking(within: ClipboardSnapshot.deadline, clock: clock) {
                 pb.setString(text, transient: false)
