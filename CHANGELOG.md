@@ -1,8 +1,22 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 (2026-10-28)
 
 ### Smart read
+- Ask back: hold Option + , (the smart read shortcut), say a question about what you just
+  heard, let go. Claude answers in a few spoken sentences, grounded in the text, and says in a
+  few words when it goes beyond it. The text, the brief and the last ten questions stay in
+  context; selecting something new starts over, and a hold while VibeFlow speaks interrupts it.
+  Answers stream: each sentence goes to the voice as soon as it is complete, so the answer
+  starts after the first sentence instead of after the whole reply. An answer cut off at the
+  length cap stops at its last full sentence and says "Answer cut short". A tap of the shortcut
+  still smart reads, and the microphone opens only after the shortcut is held for 0.3 s.
+- The menu shows the last question and answer with a Copy answer button, and Paste last smart
+  read pastes the last answer as well as the last brief.
+- Settings > Smart Read holds the model, a speed of its own (briefs and answers are listened to
+  more slowly than a text you skim) and the prompts, separate from Reading.
+- Claude Haiku 5.5 is the default smart read model, with thinking switched off so it answers
+  at once.
 - Smart read now explains like a sharp friend talking to a curious 15-year-old: it leads with
   what matters, keeps real terms and says what they mean, and sounds spoken rather than written.
   The length follows the selection (up to 40, 80 or 140 words), and the focus follows the kind
@@ -26,6 +40,13 @@
   last smart read (Shift + Control + Option + V) pastes the last smart read result. Both are in the
   menu and in Settings, kept in memory only, and restore your clipboard afterwards. When there is
   nowhere to paste, nothing is pasted and your clipboard is left alone.
+
+### History
+- Every read and every question with its answer is kept on this Mac, in one JSON file readable
+  only by your account. The menu's History submenu reads an entry aloud again or opens the
+  History window, where an entry can be read again, copied or deleted. Settings > General
+  chooses how much to keep (7, 30 or 90 days, or the last 100 or 500 entries) and clears it.
+  Nothing from history is sent anywhere beyond the reads and questions you trigger.
 
 ### Clocks
 - A second menu bar item shows the time in other time zones, each with its flag. It starts

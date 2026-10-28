@@ -15,6 +15,11 @@ and your words are typed where your cursor is.
   curious 15-year-old, in a few spoken sentences that grow with the selection, then it is spoken.
   In the ChatGPT, Codex, Claude and Gemini Mac apps it speaks a reply as that assistant instead,
   in first person, ending on any question it asked you.
+- **Ask back** (hold Option + ,): hold the smart read shortcut, ask a question about what you
+  just heard, let go. Claude answers in one to three spoken sentences, grounded in the text, and
+  the voice starts after the first sentence. Hold again for the next question; the text, the
+  brief and your last ten questions stay in context. Holding while it speaks interrupts it.
+  Smart read has its own speed and model in Settings > Smart Read.
 - **Dictate** (Option + -): hold to talk, release to paste. For longer dictation, press
   Shift + Option + - once to start and again to stop. Groq Whisper transcribes, a quick cleanup fixes
   punctuation, casing and misheard words, and the text lands in the field you were typing in.
@@ -24,6 +29,9 @@ and your words are typed where your cursor is.
   Option + V pastes the last smart read result. The menu bar menu lists every action with the
   shortcut it is set to.
 - Press a read shortcut again to stop. Every shortcut can be changed in Settings.
+- **History**: every read and every question with its answer, on this Mac only. The menu's
+  History submenu reads an entry again or opens it; Settings > General sets how much to keep
+  and clears it.
 - **Clocks**: other time zones in the menu bar, each with its flag (🇩🇪 14:05  🇺🇸 08:05).
   Add them in Settings > Clocks by searching a city, country, abbreviation or time zone.
 
@@ -38,7 +46,7 @@ Add them in Settings > Keys. Each one is optional; here is what you get with and
 |---|---|---|---|
 | ElevenLabs | The natural reading voice | [elevenlabs.io](https://elevenlabs.io/app/settings/api-keys), free monthly allowance | Reads use the best Apple voice installed for the text's language |
 | Anthropic | Smart read | [console.anthropic.com](https://console.anthropic.com/settings/keys), pay as you go | Smart read is unavailable |
-| Groq | Dictation and its cleanup | [console.groq.com](https://console.groq.com/keys), free tier | macOS 26: dictation uses Apple's on-device recognizer, without cleanup. macOS 15: no dictation |
+| Groq | Dictation, its cleanup, and asking back | [console.groq.com](https://console.groq.com/keys), free tier | macOS 26: dictation uses Apple's on-device recognizer, without cleanup. macOS 15: no dictation |
 
 Smallest setups:
 - **No keys:** reading aloud with an Apple voice, plus dictation on macOS 26.
@@ -51,10 +59,15 @@ Smallest setups:
 - A **read** sends the selected text to ElevenLabs. Without a key or a connection it uses an
   Apple voice and sends nothing.
 - A **smart read** also sends the selected text to Anthropic.
+- **Asking back** sends your recording to Groq (or Apple's on-device recognizer, as for
+  dictation), then the selected text, the brief and your last ten questions and answers to
+  Anthropic, and the answer to ElevenLabs sentence by sentence.
 - A **dictation** sends your recording to Groq for transcription, then the transcript to Groq
   again for cleanup. If Groq is offline, rate limited or down, or no Groq key is set, Apple's
   on-device recognizer transcribes instead and nothing is sent (macOS 26; on macOS 15 there is
   no on-device fallback).
+- **History stays on this Mac**, in Application Support/VibeFlow/history.json, readable only by
+  your account. Settings > General chooses how much to keep and deletes it all.
 - **Recordings stay in memory.** The last failed dictation is kept only so you can Retry, Copy
   or Discard it from the menu; the next dictation or quitting the app removes it. Apple
   on-device transcription writes a temporary audio file that is deleted as soon as it is read.

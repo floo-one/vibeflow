@@ -1,6 +1,6 @@
 # Design: Ask a follow-up about what you just heard
 
-Status: draft plan, 2026-10-21. Replaces the "Conversation (milestone 2)" section of
+Status: shipped 2026-10-28 in 1.1.0 (plan drafted 2026-10-21). Replaces the "Conversation (milestone 2)" section of
 docs/designs/vibeflow-2-dictation-conversation.md with a smaller version that fits how VibeFlow
 works today (push-to-talk only, the notch, minimal Settings). Eng-reviewed 2026-10-21 (report at
 the end); one open decision, R3.
@@ -611,31 +611,31 @@ routing waits for A.
 Synthesized from this review's findings. Each task derives from a specific
 finding above. Run with Claude Code or Codex; checkbox as you ship.
 
-- [ ] **T1 (P1, human: ~4h / CC: ~20min)** — SmartRead — Answer prompt and multi-message client
+- [x] **T1 (P1, human: ~4h / CC: ~20min)** — SmartRead — Answer prompt and multi-message client
   - Surfaced by: Scope Challenge finding 5, R4 (D7)
   - Files: VibeFlowCore/Sources/VibeFlowCore/SmartRead/SmartReadPrompts.swift, AnthropicClient.swift, Ports.swift, Tests/SmartReadClientTests.swift, Tests/Fakes.swift
   - Verify: `cd VibeFlowCore && swift test` (roles alternate with and without brief; max_tokens case)
-- [ ] **T2 (P1, human: ~6h / CC: ~30min)** — Session — Conversation at capture time, beginQuestion/ask under one token, spoken errors
+- [x] **T2 (P1, human: ~6h / CC: ~30min)** — Session — Conversation at capture time, beginQuestion/ask under one token, spoken errors
   - Surfaced by: D3, O3, R9 (D12), R11 (D14), R6 (D9)
   - Files: VibeFlowCore/Sources/VibeFlowCore/Session/ReadSession.swift, Tests/SessionTests.swift, Tests/SessionFakes.swift
   - Verify: swift test; readOriginal-after-failure test still green; cancel-before-ask test
-- [ ] **T3 (P1, human: ~2h / CC: ~10min)** — Capture — nothing selected versus capture failed
+- [x] **T3 (P1, human: ~2h / CC: ~10min)** — Capture — nothing selected versus capture failed
   - Surfaced by: R8 (D11), outside voice O1
   - Files: VibeFlowCore/Sources/VibeFlowCore/Capture/*.swift, Tests/CaptureTests.swift
   - Verify: swift test; failed capture after reading A never asks about A
-- [ ] **T4 (P1, human: ~3h / CC: ~15min)** — Dictation — question purpose and cue on first buffer
+- [x] **T4 (P1, human: ~3h / CC: ~15min)** — Dictation — question purpose and cue on first buffer
   - Surfaced by: R5 (D8), R10 (D13), R2 (D5)
   - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/DictationSession.swift, Ports.swift, VibeFlow/LiveAudioRecorder.swift, Tests/DictationTests.swift
   - Verify: swift test; late-ready fake recorder delays the cue; a dictation still pastes
-- [ ] **T5 (P1, human: ~3h / CC: ~15min)** — App — PressClassifier, smart read key routing, notch symbol
+- [x] **T5 (P1, human: ~3h / CC: ~15min)** — App — PressClassifier, smart read key routing, notch symbol
   - Surfaced by: R2 (D5), R6 (D9)
   - Files: VibeFlowCore/Sources/VibeFlowCore/Session/PressClassifier.swift, VibeFlow/AppContainer.swift, VibeFlow/NotchIndicator.swift, Tests (new PressClassifier tests)
   - Verify: swift test; xcodebuild build; ten taps and ten holds in the built app, `/usr/bin/log show --last 5m --predicate 'subsystem == "one.floo.vibeflow"'`
-- [ ] **T6 (P2, human: ~1h / CC: ~10min)** — Eval — small live answer eval
+- [x] **T6 (P2, human: ~1h / CC: ~10min)** — Eval — small live answer eval
   - Surfaced by: R7 (D10)
   - Files: VibeFlowCore/Tests/VibeFlowCoreTests/LiveEvalTests.swift
   - Verify: run the gated live suite with keys set
-- [ ] **T7 (P3, human: ~30min / CC: ~5min)** — Docs — README and CLAUDE.md shortcut line
+- [x] **T7 (P3, human: ~30min / CC: ~5min)** — Docs — README and CLAUDE.md shortcut line
   - Surfaced by: plan build order step 4
   - Files: README.md, CLAUDE.md
   - Verify: read through

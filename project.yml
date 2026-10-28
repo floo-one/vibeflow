@@ -50,8 +50,8 @@ targets:
       path: VibeFlow/Info.plist
       properties:
         CFBundleDisplayName: VibeFlow
-        CFBundleShortVersionString: "1.0.0"
-        CFBundleVersion: "1"
+        CFBundleShortVersionString: "1.1.0"
+        CFBundleVersion: "2"
         LSUIElement: true            # agent app: no Dock icon, no focus steal
         LSMinimumSystemVersion: "15.0"
         NSHumanReadableCopyright: "MIT License"
