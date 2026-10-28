@@ -57,9 +57,12 @@ On release VibeFlow captures the selection the same way smart read does today, t
 
 - Selection non-empty and different from the current context: start a new context with it.
 - Accessibility reports nothing selected, or the same text: continue the current context.
-- Capture failed (Copy failure, timeout, clipboard drift, app switch): "Couldn't read the
-  selection", nothing is asked (eng review D11). In apps that need the Copy fallback, keep the
-  text selected to ask follow-ups.
+- Capture failed (Copy failure, clipboard drift, app switch): "Couldn't read the selection",
+  nothing is asked (eng review D11). Revised 2026-10-29 after the first real use: a Copy that
+  changes nothing within 300 ms counts as nothing selected, not as a failure. Chrome's web
+  area has no selected-text attribute and keeps Edit > Copy enabled with no selection, so every
+  hold after clicking away failed with "Couldn't read the selection" instead of continuing the
+  context; a real Copy there lands in about 50 ms.
 - No selection and no context, or the context is older than 30 minutes: "Select text to ask about".
 
 So "go back and ask" works even after switching apps, and selecting something new silently

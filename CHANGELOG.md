@@ -11,6 +11,8 @@
   starts after the first sentence instead of after the whole reply. An answer cut off at the
   length cap stops at its last full sentence and says "Answer cut short". A tap of the shortcut
   still smart reads, and the microphone opens only after the shortcut is held for 0.3 s.
+  With nothing selected, a hold asks about the last text, also in Chrome and other apps where
+  VibeFlow has to use Edit > Copy to read the selection.
 - The menu shows the last question and answer with a Copy answer button, and Paste last smart
   read pastes the last answer as well as the last brief.
 - Settings > Smart Read holds the model, a speed of its own (briefs and answers are listened to

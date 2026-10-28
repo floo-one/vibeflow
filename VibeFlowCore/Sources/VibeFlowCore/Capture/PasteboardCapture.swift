@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let log = Logger(subsystem: "one.floo.vibeflow", category: "capture")
 
 /// The Edit > Copy fallback (design: Capture step 3, decisions D9 and D10).
 ///
@@ -6,7 +9,9 @@ import Foundation
 ///   because a lazily provided pasteboard can block until the owning app answers).
 /// - Press the source app's Edit > Copy menu item through Accessibility.
 /// - Accept the result only if changeCount became exactly N+1 within 300 ms, the source
-///   app is still frontmost, and the new string is non-empty after trimming.
+///   app is still frontmost, and the new string is non-empty after trimming. No change within
+///   300 ms is "nothing selected": apps that keep Copy enabled with no selection write nothing.
+///   Drift, a lost focus or an unreadable clipboard are failures.
 /// - Restore the snapshot (transient, so clipboard managers ignore it) only if changeCount
 ///   is still N+1. Never restore after a timeout, drift or cancellation; never read stale text.
 @MainActor
@@ -35,6 +40,7 @@ public final class PasteboardCapture {
         do {
             try accessibility.pressCopyMenuItem(in: app)
         } catch {
+            log.notice("Copy fallback: pressing Edit > Copy failed (\(String(describing: error), privacy: .public))")
             return .failed
         }
 
@@ -42,7 +48,13 @@ public final class PasteboardCapture {
         let expected = before + 1
         var elapsed: Duration = .zero
         while pasteboard.changeCount < expected {
-            if elapsed >= Self.copyTimeout { return .failed }
+            if elapsed >= Self.copyTimeout {
+                // Chrome and Electron apps keep Edit > Copy enabled with nothing selected and
+                // then write nothing, while a real Copy lands in about 50 ms. So an unchanged
+                // clipboard means nothing was selected, not that the Copy failed (2026-10-29).
+                log.notice("Copy fallback: the clipboard did not change within \(Self.copyTimeout.description, privacy: .public): nothing selected")
+                return .none
+            }
             do { try await clock.sleep(for: Self.pollInterval) } catch { return .failed } // cancelled
             elapsed += Self.pollInterval
         }
@@ -51,10 +63,20 @@ public final class PasteboardCapture {
         // window is indistinguishable from the Copy itself; the PID and content checks below
         // are the strongest attribution macOS offers.
         do { try await clock.sleep(for: Self.pollInterval) } catch { return .failed }
-        guard pasteboard.changeCount == expected else { return .failed } // drift: someone else wrote too
-        guard accessibility.frontmostApp()?.pid == app.pid else { return .failed }
+        guard pasteboard.changeCount == expected else { // drift: someone else wrote too
+            log.notice("Copy fallback: the clipboard changed more than once")
+            return .failed
+        }
+        guard accessibility.frontmostApp()?.pid == app.pid else {
+            log.notice("Copy fallback: the app lost focus during the Copy")
+            return .failed
+        }
 
-        guard let raw = await readPasteboardText(pasteboard, clock: clock) else { return .failed }
+        guard let raw = await readPasteboardText(pasteboard, clock: clock) else {
+            log.notice("Copy fallback: the copied clipboard could not be read as text")
+            return .failed
+        }
+        log.notice("Copy fallback: copied \(raw.count, privacy: .public) characters")
         let copied = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !copied.isEmpty else { return .none }
 

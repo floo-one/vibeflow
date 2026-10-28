@@ -79,11 +79,15 @@ struct CaptureTests {
         #expect(result.text == "late copy")
     }
 
-    @Test func copyTimeoutYieldsNoTextAndNoRestore() async {
+    // Chrome keeps Edit > Copy enabled with nothing selected and writes nothing; its web area has
+    // no selected-text attribute either, so the timeout is the only "nothing selected" signal
+    // there. A question in Chrome with nothing selected used to fail with "Couldn't read the
+    // selection" instead of continuing the context (2026-10-29).
+    @Test func copyTimeoutMeansNothingSelectedAndNoRestore() async {
         let h = CaptureHarness()
         h.accessibility.copyProduces = nil // the app never writes
         let result = await h.run()
-        #expect(result == .failed)
+        #expect(result == .none)
         #expect(h.pasteboard.writes.isEmpty, "never overwrite a clipboard we did not change")
         #expect(h.pasteboard.string() == "previous clipboard")
     }
@@ -180,6 +184,7 @@ struct CaptureTests {
         let result = await h.run()
         #expect(result == .none, "Copy is disabled with nothing selected; that is not a failure")
         h.accessibility.selectedText = nil
+        h.accessibility.copyError = .copyMenuItemNotFound
         #expect(await h.run() == .failed, "without Accessibility's word, a failed Copy stays a failure")
     }
 
