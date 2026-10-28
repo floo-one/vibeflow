@@ -846,6 +846,36 @@ struct DictationPasteAgainTests {
     // why_new=paste again was only guarded against dictation, not against a read's Copy; seam=none
     // (readIsCapturing is wired by AppContainer to ReadSession.state); no_claim=the live ReadSession
     // capture timing (flag stands in for ReadSession.state == .capturing; unit only)
+    // Regression (/ship run 3 adversarial: Claude + Codex adversarial + Codex structured).
+    // Value: protects=Copy dictated text waits while paste again owns the clipboard, so the paste lands and the
+    // user's clipboard comes back; fails_when=copyText writes the clipboard regardless of state;
+    // why_new=copyText was only tested while idle; seam=none;
+    // no_claim=menu greying of the failure actions (app target; unit only)
+    @Test func copyDictatedTextDuringPasteAgainWaits() async throws {
+        let h = DictationHarness()
+        h.session.recordKeyDown()
+        h.accessibility.isSecureInputActive = true
+        await h.settle()
+        h.session.recordKeyUp()
+        await h.finish()
+        _ = try #require(h.session.lastFailure?.text)
+        h.accessibility.isSecureInputActive = false
+        let writes = h.pasteboard.writes.count
+        let clipboardBefore = h.pasteboard.string() // the failed dictation was copied there
+
+        let paste = Task { await h.session.pasteAgain("the last smart read") }
+        await h.settle()
+        #expect(h.session.state == .pasting)
+        let copy = Task { await h.session.copyText() }
+        for _ in 0..<40 { await h.settle(); h.clock.advance(by: .milliseconds(50)) }
+        await paste.value
+        await copy.value
+        #expect(!h.pasteboard.writes.dropFirst(writes).contains { $0.text == "Hello world." && !$0.transient },
+                "Copy does not write while the paste owns the clipboard")
+        #expect(h.pasteboard.string() == clipboardBefore, "the clipboard from before the paste comes back")
+        #expect(h.session.status == "Pasted")
+    }
+
     @Test func pasteAgainWhileAReadCopiesTheSelectionIsRefused() async {
         let h = DictationHarness()
         h.readCapturing = true

@@ -20,6 +20,7 @@ struct MenuBarView: View {
                 Text(error.message).foregroundStyle(.red)
                 ForEach(error.actions, id: \.self) { action in
                     Button(label(for: action)) { perform(action) }
+                        .disabled(dictation.state.isBusy) // a paste again owns the clipboard
                 }
             }
         } else {

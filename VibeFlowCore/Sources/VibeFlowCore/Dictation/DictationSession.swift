@@ -219,9 +219,9 @@ public final class DictationSession {
         process(failure.audio, session: session)
     }
 
-    /// Put the kept text on the clipboard (D13).
+    /// Put the kept text on the clipboard (D13). Waits while a paste owns the clipboard.
     public func copyText() async {
-        guard let text = lastFailure?.text else { return }
+        guard state == .idle, let text = lastFailure?.text else { return }
         let pb = pasteboard
         let wrote = await runBlocking(within: ClipboardSnapshot.deadline, clock: clock) {
             pb.setString(text, transient: false)
