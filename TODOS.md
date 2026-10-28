@@ -18,7 +18,7 @@
 
 ### Conversational mode: talk with an AI through VibeFlow and Flow
 
-**Status:** designed 2026-10-01 in docs/designs/vibeflow-2-dictation-conversation.md (dictation plus conversation in one app). Milestone 1 (dictation) passed eng review 2026-10-02; milestone 2 (conversation) still needs its own eng review after a week of dictation use.
+**Status:** designed 2026-10-01 in docs/designs/vibeflow-2-dictation-conversation.md (dictation plus conversation in one app). Milestone 1 (dictation) passed eng review 2026-10-02; milestone 2 (conversation) still needs its own eng review after a week of dictation use. Revised 2026-10-21: level one is now "hold the smart read key to ask a follow-up", planned and eng-reviewed in docs/designs/smart-read-follow-up.md.
 
 **What:** A flowing back-and-forth where VibeFlow speaks an AI reply, you answer by voice (Wispr Flow) or by selecting text, and the conversation keeps context across turns: follow-up questions about what was just read, "more detail", "read the original", "what should I reply".
 
@@ -29,6 +29,30 @@
 **Effort:** L
 **Priority:** P2
 **Depends on:** v1 shipped; one week of daily use of smart read.
+
+### Prompt caching for follow-up questions
+
+**What:** Mark the document block of a follow-up question with `cache_control` so repeat questions about the same text reuse it.
+
+**Why:** Every question re-sends the whole selection, up to 40,000 characters. Deferred in the follow-up eng review (D1, 2026-10-21) because the gain is unmeasured.
+
+**Context:** docs/designs/smart-read-follow-up.md. Start in AnthropicClient's message builder. Trigger: answers about long documents feel slow.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** follow-up questions shipped.
+
+### Last question and answer in the menu, with Copy answer
+
+**What:** Two menu lines with the last spoken question and VibeFlow's answer, plus a Copy answer button.
+
+**Why:** Commands, numbers and names in a spoken answer can't be pasted. Deferred in the follow-up eng review (D2, 2026-10-21).
+
+**Context:** docs/designs/smart-read-follow-up.md. Start with a published `lastExchange` on ReadSession and MenuBarView.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** follow-up questions shipped.
 
 ### Reply drafting loop
 

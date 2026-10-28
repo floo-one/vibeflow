@@ -63,9 +63,9 @@ struct TextInsertionTests {
             try await Task.sleep(for: .milliseconds(5)); spins += 1
         }
         #expect(spins < 400, "paste never reached the restore delay")
-        h.clock.advance(by: .milliseconds(749))
+        h.clock.advance(by: .milliseconds(1499))
         try await Task.sleep(for: .milliseconds(20))
-        #expect(h.pasteboard.string() == "Hello. ", "not restored before 750 ms")
+        #expect(h.pasteboard.string() == "Hello. ", "not restored before 1.5 s")
         h.clock.advance(by: .milliseconds(1))
         _ = await task.value
         #expect(h.pasteboard.string() == "my clipboard")

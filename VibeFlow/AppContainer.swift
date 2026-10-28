@@ -4,6 +4,9 @@ import KeyboardShortcuts
 import Observation
 import VibeFlowCore
 import ServiceManagement
+import OSLog
+
+private let log = Logger(subsystem: "one.floo.vibeflow", category: "shortcuts")
 
 /// Composition root: stores, live services, the session, global shortcuts.
 @MainActor
@@ -16,11 +19,20 @@ final class AppContainer {
     let session: ReadSession
     let dictation: DictationSession
     let onDeviceModel: OnDeviceModelStatus
+    /// Reads and answered questions, on this Mac only (Application Support/VibeFlow/history.json).
+    let history: HistoryStore
+    /// The entry the History window shows; set by the menu's History submenu.
+    var historySelection: HistoryEntry.ID?
+    @ObservationIgnored private var appNames: [String: String] = [:]
     let accessibility = LiveAccessibility()
     private let clipboardSource = LiveClipboardSource()
     private let player = PCMStreamPlayer()
     private let recorder = LiveAudioRecorder()
     @ObservationIgnored private var notch: NotchIndicator?
+    /// Tap the smart read shortcut to smart read, hold it to ask a follow-up question.
+    @ObservationIgnored private var smartReadPress: PressClassifier?
+    /// The question being answered, from the release of a hold until its transcript arrives.
+    @ObservationIgnored private var pendingQuestion: SessionID?
     private let elevenLabs: ElevenLabsProvider
     let catalogs: RemoteCatalogs
     /// Which settings tab is showing; "Add key" buttons jump to Keys.
@@ -57,8 +69,12 @@ final class AppContainer {
             smartRead: AnthropicClient(http: http, secrets: secrets),
             secrets: secrets,
             clock: clock,
-            configuration: preferences.sessionConfiguration
+            configuration: preferences.sessionConfiguration,
+            answerVoice: elevenLabs
         )
+        let history = HistoryStore(fileURL: HistoryStore.defaultFileURL, retention: preferences.historyRetention)
+        session.onRecord = { history.add($0) }
+        self.history = history
         self.session = session
 
         let onDevice: (any Transcriber)? = AppleTranscriber.isAvailable ? AppleTranscriber() : nil
@@ -91,7 +107,20 @@ final class AppContainer {
         onDeviceModel.prepare(language: presets.defaultPreset.languageOverride) // D9
 
         KeyboardShortcuts.onKeyUp(for: .read) { [weak self] in self?.hotkey(.read) }
-        KeyboardShortcuts.onKeyUp(for: .smartRead) { [weak self] in self?.hotkey(.smartRead) }
+        smartReadPress = PressClassifier(
+            clock: clock,
+            onTap: { [weak self] in
+                log.notice("Smart read shortcut: tap")
+                self?.hotkey(.smartRead)
+            },
+            onHoldStart: { [weak self] in
+                log.notice("Smart read shortcut: hold")
+                self?.questionHoldStarted()
+            },
+            onHoldEnd: { [weak self] in self?.questionHoldEnded() }
+        )
+        KeyboardShortcuts.onKeyDown(for: .smartRead) { [weak self] in self?.smartReadPress?.keyDown() }
+        KeyboardShortcuts.onKeyUp(for: .smartRead) { [weak self] in self?.smartReadPress?.keyUp() }
         KeyboardShortcuts.onKeyUp(for: .readClipboard) { [weak self] in self?.clipboardHotkey(.read) }
         KeyboardShortcuts.onKeyUp(for: .smartReadClipboard) { [weak self] in self?.clipboardHotkey(.smartRead) }
         KeyboardShortcuts.onKeyDown(for: .record) { [weak self] in self?.recordKeyDown() }
@@ -124,6 +153,61 @@ final class AppContainer {
         guard let text else { return }
         showsDictation = true
         Task { await dictation.pasteAgain(text) }
+    }
+
+    // MARK: Follow-up questions (docs/designs/smart-read-follow-up.md)
+
+    /// Held past the threshold: stop any read (the dictation side does it, D3) and record.
+    private func questionHoldStarted() {
+        if dictationCancelledByRead() { return }
+        applyReadSettings()
+        showsDictation = true // microphone problems show as dictation errors
+        dictation.startQuestion { [weak self] result in self?.questionTranscribed(result) }
+    }
+
+    /// Released: the read session captures the selection while the question is transcribed.
+    private func questionHoldEnded() {
+        guard dictation.isAskingQuestion else { return }
+        showsDictation = false
+        pendingQuestion = session.beginQuestion()
+        dictation.finishQuestion()
+    }
+
+    private func questionTranscribed(_ result: QuestionTranscript) {
+        guard let id = pendingQuestion else { return }
+        pendingQuestion = nil
+        switch result {
+        case .text(let question): session.ask(question, for: id)
+        case .failed(let message, let spoken): session.questionFailed(message, spoken: spoken, for: id)
+        }
+    }
+
+    /// History: read an entry aloud again (the answer, for a question).
+    func readAgain(_ entry: HistoryEntry) {
+        if dictationCancelledByRead() { return }
+        applyReadSettings()
+        session.readAgain(entry.text)
+    }
+
+    func copy(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    /// "Safari" for com.apple.Safari, "Clipboard" for clipboard reads. Looked up once per app.
+    func appName(for bundleID: String?) -> String {
+        guard let bundleID else { return "Clipboard" }
+        if let name = appNames[bundleID] { return name }
+        let name = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+            .map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") } ?? bundleID
+        appNames[bundleID] = name
+        return name
+    }
+
+    func copyLastAnswer() {
+        guard let answer = session.lastExchange?.answer else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(answer, forType: .string)
     }
 
     /// A read shortcut while dictating cancels the dictation and does nothing else. While a

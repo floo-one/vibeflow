@@ -16,6 +16,43 @@ final class FakeCapture: SelectionCapturing {
     }
 }
 
+/// A live voice stream that records what it is fed.
+@MainActor
+final class FakeStreamingSpeech: StreamingSpeech {
+    let events: AsyncThrowingStream<SpeechEvent, Error>
+    private let continuation: AsyncThrowingStream<SpeechEvent, Error>.Continuation
+    private(set) var pieces: [String] = []
+    private(set) var finishedText = false
+    private(set) var cancelCount = 0
+
+    init() {
+        var c: AsyncThrowingStream<SpeechEvent, Error>.Continuation!
+        events = AsyncThrowingStream { c = $0 }
+        continuation = c
+    }
+
+    func append(_ text: String) { pieces.append(text) }
+    func finishText() { finishedText = true }
+    func emit(_ event: SpeechEvent) { continuation.yield(event) }
+    func fail(_ failure: SpeechFailure) { continuation.finish(throwing: failure) }
+    func finish() { continuation.yield(.finished); continuation.finish() }
+    func cancel() { cancelCount += 1; continuation.finish() }
+}
+
+@MainActor
+final class FakeStreamingVoice: StreamingSpeechProvider {
+    private(set) var requests: [SpeechRequest] = []
+    private(set) var streams: [FakeStreamingSpeech] = []
+    var last: FakeStreamingSpeech? { streams.last }
+
+    func beginStream(_ request: SpeechRequest) -> any StreamingSpeech {
+        requests.append(request)
+        let s = FakeStreamingSpeech()
+        streams.append(s)
+        return s
+    }
+}
+
 @MainActor
 final class FakePresets: PresetResolving {
     var byBundle: [String: AppPreset] = [:]
@@ -42,9 +79,10 @@ struct SessionHarness {
     let smartRead = FakeSmartReadClient()
     let secrets = FakeSecrets([.elevenLabs: "el", .anthropic: "an"])
     let clock = FakeClock()
+    let answerVoice = FakeStreamingVoice()
     let session: ReadSession
 
-    init(configure: (SessionHarness) -> Void = { _ in }) {
+    init(streamingAnswers: Bool = false, configuration: SessionConfiguration = SessionConfiguration(), configure: (SessionHarness) -> Void = { _ in }) {
         capture.clock = clock
         smartRead.clock = clock
         session = ReadSession(
@@ -56,7 +94,9 @@ struct SessionHarness {
             apple: apple,
             smartRead: smartRead,
             secrets: secrets,
-            clock: clock
+            clock: clock,
+            configuration: configuration,
+            answerVoice: streamingAnswers ? answerVoice : nil
         )
         configure(self)
     }

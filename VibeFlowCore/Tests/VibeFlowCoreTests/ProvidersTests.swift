@@ -200,3 +200,113 @@ struct ElevenLabsStreamTests {
         #expect(!result.events.contains(.finished))
     }
 }
+
+// MARK: - Streaming text input (follow-up answers)
+
+/// A scripted socket: incoming messages are fed by the test, outgoing ones recorded.
+final class FakeWebSocket: WebSocketClient, WebSocketConnection, @unchecked Sendable {
+    private let lock = NSLock()
+    private var _sent: [String] = []
+    private(set) var requests: [URLRequest] = []
+    private(set) var closed = false
+    private let incoming: AsyncThrowingStream<String, Error>
+    private let feed: AsyncThrowingStream<String, Error>.Continuation
+    var sent: [String] { lock.withLock { _sent } }
+
+    init() {
+        var c: AsyncThrowingStream<String, Error>.Continuation!
+        incoming = AsyncThrowingStream { c = $0 }
+        feed = c
+    }
+
+    func connect(_ request: URLRequest) -> any WebSocketConnection {
+        lock.withLock { requests.append(request) }
+        return self
+    }
+    func send(_ text: String) async throws { lock.withLock { _sent.append(text) } }
+    func receive() async throws -> String? {
+        var iterator = incoming.makeAsyncIterator()
+        return try await iterator.next()
+    }
+    func close() { lock.withLock { closed = true } }
+
+    func serve(_ message: String) { feed.yield(message) }
+    func drop(_ error: Error) { feed.finish(throwing: error) }
+
+    static func audio(_ samples: Int, chars: [String] = []) -> String {
+        var obj: [String: Any] = ["audio": Data(repeating: 0x01, count: samples * 2).base64EncodedString(), "isFinal": NSNull()]
+        if !chars.isEmpty { obj["alignment"] = ["chars": chars] }
+        return String(data: try! JSONSerialization.data(withJSONObject: obj), encoding: .utf8)!
+    }
+}
+
+@Suite("ElevenLabsProvider: streaming text input") @MainActor
+struct ElevenLabsTextStreamTests {
+    let socket = FakeWebSocket()
+    let player = FakeAudioPlayer()
+    var provider: ElevenLabsProvider {
+        ElevenLabsProvider(client: FakeByteStreamClient(), webSocket: socket, player: player, secrets: FakeSecrets([.elevenLabs: "test-key"]))
+    }
+    let request = SpeechRequest(text: "", voiceID: "voice1", speed: 1.5)
+
+    func settle() async {
+        for _ in 0..<20 { await Task.yield() }
+        try? await Task.sleep(for: .milliseconds(5))
+        for _ in 0..<20 { await Task.yield() }
+    }
+
+    @Test func opensTheSocketWithModelFormatKeyAndSpeed() async throws {
+        let stream = provider.beginStream(request)
+        await settle()
+        let url = try #require(socket.requests.first?.url?.absoluteString)
+        #expect(url == "wss://api.elevenlabs.io/v1/text-to-speech/voice1/stream-input?model_id=\(ElevenLabsProvider.defaultModel)&output_format=pcm_24000")
+        #expect(socket.requests.first?.value(forHTTPHeaderField: "xi-api-key") == "test-key")
+        let initMessage = try #require(try JSONSerialization.jsonObject(with: Data(socket.sent[0].utf8)) as? [String: Any])
+        #expect(initMessage["text"] as? String == " ")
+        #expect((initMessage["voice_settings"] as? [String: Any])?["speed"] as? Double == 1.2, "clamped to the API range")
+        #expect(player.rates.last == 1.25, "the rest of 1.5 is played faster")
+        stream.cancel()
+    }
+
+    @Test func sendsTextInOrderThenClosesAndPlaysUntilFinal() async throws {
+        let stream = provider.beginStream(request)
+        stream.append("First sentence.")
+        stream.append(" Second one.")
+        stream.finishText()
+        await settle()
+        #expect(Array(socket.sent.dropFirst()) == [#"{"text":"First sentence."}"#, #"{"text":" Second one."}"#, #"{"text":""}"#])
+
+        let events = Task { () -> [SpeechEvent] in
+            var all: [SpeechEvent] = []
+            for try await e in stream.events { all.append(e) }
+            return all
+        }
+        socket.serve(FakeWebSocket.audio(240, chars: ["F", "i"]))
+        socket.serve(#"{"isFinal":true}"#)
+        await settle()
+        let got = try await events.value
+        #expect(got == [.started, .progress(characterOffset: 2), .finished])
+        #expect(player.scheduled.count == 1)
+    }
+
+    @Test func errorBeforeAudioFailsSoTheSessionFallsBack() async throws {
+        let stream = provider.beginStream(request)
+        socket.serve(#"{"message":"Invalid API key","error":"invalid_api_key"}"#)
+        await #expect(throws: SpeechFailure.unauthorized) { for try await _ in stream.events {} }
+    }
+
+    @Test func dropAfterAudioIsConnectionLostWithTheAlignedOffset() async throws {
+        let stream = provider.beginStream(request)
+        socket.serve(FakeWebSocket.audio(240, chars: ["a", "b", "c"]))
+        await settle()
+        socket.drop(URLError(.networkConnectionLost))
+        await #expect(throws: SpeechFailure.connectionLost(lastPlayedOffset: 3)) { for try await _ in stream.events {} }
+    }
+
+    @Test func missingKeyFailsAtOnce() async {
+        let p = ElevenLabsProvider(client: FakeByteStreamClient(), webSocket: socket, player: player, secrets: FakeSecrets())
+        let stream = p.beginStream(request)
+        await #expect(throws: SpeechFailure.unauthorized) { for try await _ in stream.events {} }
+        #expect(socket.requests.isEmpty)
+    }
+}

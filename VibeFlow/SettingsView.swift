@@ -51,7 +51,7 @@ private struct GeneralTab: View {
         Form {
             Section {
                 KeyboardShortcuts.Recorder("Read selection", name: .read)
-                KeyboardShortcuts.Recorder("Smart read selection", name: .smartRead)
+                KeyboardShortcuts.Recorder("Smart read selection (hold to ask)", name: .smartRead)
                 KeyboardShortcuts.Recorder("Read clipboard", name: .readClipboard)
                 KeyboardShortcuts.Recorder("Smart read clipboard", name: .smartReadClipboard)
                 KeyboardShortcuts.Recorder("Dictate (hold to talk)", name: .record)
@@ -63,6 +63,7 @@ private struct GeneralTab: View {
                 Toggle("Launch at login", isOn: $prefs.launchAtLogin)
                     .onChange(of: prefs.launchAtLogin) { container.applyLaunchAtLogin() }
             }
+            HistorySettings()
         }
         .formStyle(.grouped)
     }
@@ -95,7 +96,8 @@ private struct ReadingTab: View {
 
 // MARK: - Smart Read
 
-/// Smart read speaks with the Reading voice; this tab holds what it does before speaking.
+/// Briefs and follow-up answers: their own model and a speed separate from plain reads, since
+/// a summary is listened to more slowly than a text you skim.
 private struct SmartReadTab: View {
     @Environment(AppContainer.self) private var container
 
@@ -103,8 +105,12 @@ private struct SmartReadTab: View {
         @Bindable var prefs = container.preferences
         Form {
             Section {
-                ModelPicker(title: "Smart read model", options: ModelOptions.smartRead, selection: $prefs.smartReadModel)
+                ModelPicker(title: "Model", options: ModelOptions.smartRead, selection: $prefs.smartReadModel)
+                SpeedSlider(speed: $prefs.smartReadSpeed)
                 PromptsButton(initial: .brief)
+            } footer: {
+                Text("Hold the smart read shortcut to ask about what you just heard. The menu can copy the last answer or paste it where the cursor is.")
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
