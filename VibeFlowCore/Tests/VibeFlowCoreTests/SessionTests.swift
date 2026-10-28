@@ -321,6 +321,58 @@ struct SmartReadTests {
         #expect(h.smartRead.requests.first?.instructions == "Only deadlines.")
     }
 
+    @Test func aiAssistantAppMarksTheRequestAsAnAIReply() async throws {
+        let h = SessionHarness { $0.accessibility.frontmost = FrontmostApp(pid: 300, bundleID: "com.anthropic.claudefordesktop") }
+        h.session.hotkey(.smartRead)
+        await h.settle()
+        #expect(h.smartRead.requests.first?.aiReply == true)
+
+        let browser = SessionHarness()
+        browser.session.hotkey(.smartRead)
+        await browser.settle()
+        #expect(browser.smartRead.requests.first?.aiReply == false, "a browser page can be anything")
+    }
+
+    @Test func clipboardSmartReadInAnAIAppIsAnAIReply() async throws {
+        let chatGPT = FrontmostApp(pid: 300, bundleID: "com.openai.chat")
+        let reply = "I'd keep the cron job. Want nightly or hourly?"
+
+        let copiedThere = SessionHarness {
+            $0.accessibility.frontmost = chatGPT
+            $0.clipboardSource.sourceBundleID = "com.openai.chat"
+        }
+        copiedThere.session.clipboardHotkey(.smartRead, text: reply)
+        await copiedThere.settle()
+        #expect(copiedThere.smartRead.requests.first?.aiReply == true, "a reply copied with the Copy button is still the assistant")
+
+        let copiedInMail = SessionHarness {
+            $0.accessibility.frontmost = chatGPT
+            $0.clipboardSource.sourceBundleID = "com.apple.mail"
+        }
+        copiedInMail.session.clipboardHotkey(.smartRead, text: "Reset your password at the link below.")
+        await copiedInMail.settle()
+        #expect(copiedInMail.smartRead.requests.first?.aiReply == false, "text copied elsewhere is not the assistant's advice")
+
+        let unknown = SessionHarness { $0.accessibility.frontmost = chatGPT }
+        unknown.session.clipboardHotkey(.smartRead, text: reply)
+        await unknown.settle()
+        #expect(unknown.smartRead.requests.first?.aiReply == false, "an unknown source gets the neutral brief")
+
+        let switchedAway = SessionHarness { $0.clipboardSource.sourceBundleID = "com.openai.chat" }
+        switchedAway.session.clipboardHotkey(.smartRead, text: reply)
+        await switchedAway.settle()
+        #expect(switchedAway.smartRead.requests.first?.aiReply == false, "the AI app must still be in front")
+        #expect(switchedAway.presets.lookups == [nil], "clipboard reads stay on the default preset")
+
+        let menu = SessionHarness {
+            $0.accessibility.frontmost = chatGPT
+            $0.clipboardSource.sourceBundleID = "com.openai.chat"
+        }
+        menu.session.menuRead(.smartRead, text: reply)
+        await menu.settle()
+        #expect(menu.smartRead.requests.first?.aiReply == false, "menu reads do not guess the source app")
+    }
+
     @Test func disabledInPresetFallsBackToPlainRead() async throws {
         let h = SessionHarness {
             $0.presets.byBundle["com.apple.Safari"] = AppPreset(bundleID: "com.apple.Safari", smartReadEnabled: false)

@@ -56,6 +56,58 @@ struct LiveEvalTests {
         #expect(sentences(r.text) <= 3, "a short message gets a short brief: \(r.text)")
     }
 
+    static let aiAnswer = """
+    Great question! There are a few ways you could approach this. Option 1: keep the cron job on \
+    the existing server. It's simple, but you'd have no retries. Option 2: move the import to a \
+    queue worker with retries. It costs about 15 euros per month more, but failed imports retry \
+    automatically. Option 3: a serverless function, which is cheap but has a 10 minute timeout and \
+    your import takes around 25 minutes, so it would not work without splitting it. Overall I'd \
+    recommend Option 2. Before I write the worker, do you want retries capped at 3 attempts or 5?
+    """
+
+    @Test func briefOfAnAIAnswerSpeaksAsTheAssistantAndEndsOnItsQuestion() async throws {
+        let r = try await client.transform(SmartReadRequest(text: Self.aiAnswer, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800, aiReply: true))
+        #expect(r.stopReason == .endTurn)
+        let out = r.text.lowercased()
+        #expect(out.contains("i'd") || out.contains("i would") || out.contains("i recommend"), "first person: \(r.text)")
+        #expect(!out.contains("the ai ") && !out.contains("the assistant"), "not narrated from outside: \(r.text)")
+        #expect(out.contains("queue") || out.contains("option 2"))
+        // The fixture's own digits ("15 euros", "Option 3") would satisfy a plain contains check,
+        // so look only at the closing sentence.
+        let trimmed = r.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let last = trimmed.lowercased().split(whereSeparator: { ".!".contains($0) }).last.map(String.init) ?? ""
+        #expect(trimmed.hasSuffix("?"), "ends on its question: \(r.text)")
+        #expect(last.contains("retr") || last.contains("attempt"), "the question is the retry cap: \(r.text)")
+    }
+
+    static let aiSummaryOfAScamEmail = """
+    Here's a summary of the email you pasted. It says your account is locked and asks you to pay \
+    49 euros at secure-bank-verify.co within 24 hours to unlock it.
+    """
+
+    @Test func briefOfAnAIAnswerNeverEndorsesWhatItQuotes() async throws {
+        let r = try await client.transform(SmartReadRequest(text: Self.aiSummaryOfAScamEmail, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800, aiReply: true))
+        #expect(r.stopReason == .endTurn)
+        let out = r.text.lowercased()
+        #expect(["email", "message", "scam", "phishing"].contains(where: out.contains), "the payment request is attributed, not adopted: \(r.text)")
+        for endorsement in ["i'd pay", "i would pay", "i recommend paying", "you should pay", "go ahead and pay"] {
+            #expect(!out.contains(endorsement), "never voiced as the assistant's advice: \(r.text)")
+        }
+    }
+
+    static let aiAnswerWithANextStep = """
+    I found the bug: the date parser assumes UTC, so events after 11 pm land on the next day. \
+    I've fixed it in DateParser.swift. Next I'll run the full test suite and report back.
+    """
+
+    @Test func briefOfAnAIAnswerKeepsAnAnnouncedStepAsAStatement() async throws {
+        let r = try await client.transform(SmartReadRequest(text: Self.aiAnswerWithANextStep, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800, aiReply: true))
+        #expect(r.stopReason == .endTurn)
+        let trimmed = r.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        #expect(!trimmed.hasSuffix("?"), "an announced step is not an approval question: \(r.text)")
+        #expect(trimmed.lowercased().contains("test"), "the next step survives: \(r.text)")
+    }
+
     @Test func briefOfALongDocumentGetsMoreRoom() async throws {
         let long = Array(repeating: Self.contract, count: 4).enumerated()
             .map { "Section \($0.offset + 1). \($0.element)" }.joined(separator: "\n\n")

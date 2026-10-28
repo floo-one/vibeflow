@@ -8,6 +8,11 @@
   The length follows the selection (up to 40, 80 or 140 words), and the focus follows the kind
   of text: what an email wants and by when, a contract's money, deadlines and ways out, an
   article's claim, an error's likely fix. Numbers and dates are kept exactly as written.
+- In the ChatGPT, Codex, Claude and Gemini Mac apps, smart read speaks a reply as that assistant,
+  in first person and more sharply, and ends on what it needs from you: its question, or the
+  step it announced. Selecting the reply or copying it and pressing Shift + Option + , both
+  work; copied text gets the assistant voice only when it was copied in that app. Warnings about data, security or money are kept, and links or payment requests the reply
+  quotes are attributed instead of voiced as advice. Settings > Prompts shows the added rule.
 
 ### Dictation
 - Dictate is now pure push-to-talk: releasing the shortcut always transcribes and pastes,

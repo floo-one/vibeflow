@@ -1,4 +1,4 @@
-// The seven seams between VibeFlowCore and the outside world (design D3, D4, D10).
+// The eight seams between VibeFlowCore and the outside world (design D3, D4, D10).
 // The app target's LiveServices supplies the real implementations; VibeFlowCoreTests
 // supplies in-memory fakes. Nothing in VibeFlowCore imports AppKit outside these seams.
 
@@ -226,12 +226,15 @@ public struct SmartReadRequest: Sendable, Equatable {
     public var maxTokens: Int
     /// Per-app guidance from the preset (trusted, user-authored), nil = none.
     public var instructions: String?
+    /// The text was copied from an AI assistant app, so the brief speaks as that assistant.
+    public var aiReply: Bool
 
-    public init(text: String, mode: SmartReadMode, language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil) {
+    public init(text: String, mode: SmartReadMode, language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil, aiReply: Bool = false) {
         self.text = text
         self.mode = mode
         self.language = language
         self.instructions = instructions
+        self.aiReply = aiReply
         self.model = model
         self.maxTokens = maxTokens
     }
@@ -278,6 +281,17 @@ public protocol SecretsStore: Sendable {
     func read(_ key: SecretKey) -> String?
     func write(_ value: String, for key: SecretKey) throws
     func delete(_ key: SecretKey) throws
+}
+
+// MARK: - 8. ClipboardSourcing (assistant voice for Shift + smart read)
+
+/// Where the clipboard text came from. macOS does not record who wrote the pasteboard, so the
+/// app layer attributes each change to the app that was frontmost while changeCount moved
+/// (ClipboardSourceTracker).
+@MainActor
+public protocol ClipboardSourcing: AnyObject {
+    /// Bundle ID of the app that was frontmost when the clipboard last changed, nil when unknown.
+    func clipboardSourceBundleID() -> String?
 }
 
 

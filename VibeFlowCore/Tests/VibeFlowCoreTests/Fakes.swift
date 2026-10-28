@@ -300,6 +300,15 @@ final class FakeSecrets: SecretsStore, @unchecked Sendable {
     func delete(_ key: SecretKey) throws { lock.withLock { values[key] = nil } }
 }
 
+// MARK: - 8. ClipboardSourcing
+
+@MainActor
+final class FakeClipboardSource: ClipboardSourcing {
+    /// The app the clipboard was copied in, nil = unknown (the default).
+    var sourceBundleID: String?
+    func clipboardSourceBundleID() -> String? { sourceBundleID }
+}
+
 
 // MARK: - Dictation fakes
 
