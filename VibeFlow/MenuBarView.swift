@@ -71,10 +71,10 @@ struct MenuBarView: View {
 
         Button("Paste last dictation") { container.pasteLastDictation() }
             .globalKeyboardShortcut(.pasteLastDictation)
-            .disabled(dictation.lastText == nil || dictation.state.isBusy)
+            .disabled(dictation.lastText == nil || clipboardBusy)
         Button("Paste last AI answer") { container.pasteLastAnswer() }
             .globalKeyboardShortcut(.pasteLastAnswer)
-            .disabled(session.lastAnswer == nil || dictation.state.isBusy)
+            .disabled(session.lastAnswer == nil || clipboardBusy)
 
         Divider()
 
@@ -84,6 +84,9 @@ struct MenuBarView: View {
         Button("Quit VibeFlow") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
     }
+
+    /// A dictation or a read's Copy owns the clipboard, so pasting again would collide with it.
+    private var clipboardBusy: Bool { dictation.state.isBusy || session.state == .capturing }
 
     private var isDictatingHandsFree: Bool { dictation.state == .recording(handsFree: true) }
 

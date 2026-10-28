@@ -81,6 +81,7 @@ final class AppContainer {
                                                   secrets: secrets, http: http, onDevice: onDevice, microphoneUID: microphone)
             },
             stopReading: { session.stop() }, // D3
+            readIsCapturing: { session.state == .capturing },
             cue: { if preferences.dictationSounds { sounds.play($0) } }
         )
         notch = NotchIndicator(dictation: dictation, reading: session, preferences: preferences, level: { [recorder] in recorder.level })

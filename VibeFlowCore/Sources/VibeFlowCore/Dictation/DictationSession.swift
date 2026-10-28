@@ -120,6 +120,8 @@ public final class DictationSession {
     private let clock: any SessionClock
     private let setup: @MainActor () -> DictationSetup
     private let stopReading: @MainActor () -> Void
+    /// True while a read is copying the selection through the clipboard; paste again waits for it.
+    private let readIsCapturing: @MainActor () -> Bool
     private let cue: @MainActor (DictationCue) -> Void
 
     public init(
@@ -130,6 +132,7 @@ public final class DictationSession {
         clock: any SessionClock,
         setup: @escaping @MainActor () -> DictationSetup,
         stopReading: @escaping @MainActor () -> Void,
+        readIsCapturing: @escaping @MainActor () -> Bool,
         cue: @escaping @MainActor (DictationCue) -> Void = { _ in }
     ) {
         self.recorder = recorder
@@ -139,6 +142,7 @@ public final class DictationSession {
         self.clock = clock
         self.setup = setup
         self.stopReading = stopReading
+        self.readIsCapturing = readIsCapturing
         self.cue = cue
         self.insertion = TextInsertion(accessibility: accessibility, pasteboard: pasteboard, clock: clock)
     }
@@ -229,9 +233,14 @@ public final class DictationSession {
     /// Paste text into whatever has focus now, the same way a dictation pastes: the menu's
     /// "Paste last dictation" and "Paste last AI answer". It runs in the pasting state, so no
     /// dictation, Retry or second paste starts while it owns the clipboard. When it cannot paste,
-    /// the clipboard is left alone: the text is still kept for another try.
+    /// the clipboard is left alone: the text is still kept for another try. While a read copies the
+    /// selection, the read owns the clipboard and paste again is refused.
     public func pasteAgain(_ text: String) async {
         guard state == .idle else { return }
+        guard !readIsCapturing() else {
+            status = "Not pasted: a read is copying the selection"
+            return
+        }
         guard let target = focusedTarget() else {
             status = "Not pasted: no app had focus"
             return

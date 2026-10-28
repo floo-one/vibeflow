@@ -16,6 +16,8 @@ final class DictationHarness {
     let cleaner = FakeCleaner()
     var setup: DictationSetup
     private(set) var readStops = 0
+    /// What the session sees as "a read is copying the selection right now".
+    var readCapturing = false
     private(set) var recordingWhenReadStopped: Bool?
     private(set) var cues: [DictationCue] = []
     private(set) var session: DictationSession!
@@ -43,6 +45,7 @@ final class DictationHarness {
                 self.readStops += 1
                 self.recordingWhenReadStopped = self.recorder.isRecording
             },
+            readIsCapturing: { [unowned self] in self.readCapturing },
             cue: { [unowned self] in self.cues.append($0) }
         )
     }
@@ -731,7 +734,7 @@ struct DictationPasteAgainTests {
     // with the reason, and keeps a failed dictation's error; fails_when=the .copiedInstead result is
     // reported as pasted, presses Cmd-V, or clears lastFailure/lastError;
     // why_new=only the pre-checked refusals (no focus, password field) reach a not-pasted branch;
-    // seam=none (FakePasteboard.writeDelay is a test-only fake knob);
+    // seam=none (FakePasteboard.writeGate is a test-only fake knob);
     // no_claim=real lazy NSPasteboard providers (FakePasteboard with a blocking write; unit only)
     @Test func aClipboardThatDoesNotRespondIsReportedAsNotPasted() async throws {
         let h = DictationHarness()
@@ -814,5 +817,24 @@ struct DictationPasteAgainTests {
         h.session.discard()
         #expect(h.session.lastFailure == nil)
         #expect(h.session.lastText == "Hello world.")
+    }
+
+    // Regression (/ship adversarial review: Claude + Codex + Codex structured).
+    // Value: protects=paste again waits while a read copies the selection, so the user's clipboard is not
+    // replaced by the copied selection; fails_when=pasteAgain ignores readIsCapturing;
+    // why_new=paste again was only guarded against dictation, not against a read's Copy; seam=none
+    // (readIsCapturing is wired by AppContainer to ReadSession.state); no_claim=the live ReadSession
+    // capture timing (flag stands in for ReadSession.state == .capturing; unit only)
+    @Test func pasteAgainWhileAReadCopiesTheSelectionIsRefused() async {
+        let h = DictationHarness()
+        h.readCapturing = true
+        let paste = Task { await h.session.pasteAgain("again") }
+        for _ in 0..<40 { await h.settle(); h.clock.advance(by: .milliseconds(50)) }
+        await paste.value
+        #expect(h.session.state == .idle)
+        #expect(h.accessibility.pastePresses.isEmpty)
+        #expect(h.pasteboard.writes.isEmpty, "the read owns the clipboard until its Copy is done")
+        #expect(h.pasteboard.string() == "my clipboard")
+        #expect(h.session.status == "Not pasted: a read is copying the selection")
     }
 }
