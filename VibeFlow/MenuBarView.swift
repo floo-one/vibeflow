@@ -72,7 +72,7 @@ struct MenuBarView: View {
         Button("Paste last dictation") { container.pasteLastDictation() }
             .globalKeyboardShortcut(.pasteLastDictation)
             .disabled(dictation.lastText == nil || clipboardBusy)
-        Button("Paste last AI answer") { container.pasteLastAnswer() }
+        Button("Paste last smart read") { container.pasteLastAnswer() }
             .globalKeyboardShortcut(.pasteLastAnswer)
             .disabled(session.lastAnswer == nil || clipboardBusy)
 

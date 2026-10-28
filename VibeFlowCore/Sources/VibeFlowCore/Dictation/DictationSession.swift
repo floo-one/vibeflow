@@ -231,7 +231,7 @@ public final class DictationSession {
     }
 
     /// Paste text into whatever has focus now, the same way a dictation pastes: the menu's
-    /// "Paste last dictation" and "Paste last AI answer". It runs in the pasting state, so no
+    /// "Paste last dictation" and "Paste last smart read". It runs in the pasting state, so no
     /// dictation, Retry or second paste starts while it owns the clipboard. When it cannot paste,
     /// the clipboard is left alone: the text is still kept for another try. While a read copies the
     /// selection, the read owns the clipboard and paste again is refused.

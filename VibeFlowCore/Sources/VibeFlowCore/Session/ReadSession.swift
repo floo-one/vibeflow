@@ -64,7 +64,7 @@ public final class ReadSession {
     public private(set) var status: String = "Ready"
     public private(set) var lastError: LastError?
     public private(set) var accessibilityTrusted: Bool
-    /// The last complete smart read result, for "Paste last AI answer". Kept in memory only.
+    /// The last complete smart read result, for "Paste last smart read". Kept in memory only.
     public private(set) var lastAnswer: String?
     /// True while the status line carries a notice ("Using Apple voice", "Smart read disabled",
     /// "Continued with Apple voice") that progress updates must not overwrite.

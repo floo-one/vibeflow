@@ -117,7 +117,7 @@ final class AppContainer {
     /// Shortcut and menu "Paste last dictation".
     func pasteLastDictation() { pasteAgain(dictation.lastText) }
 
-    /// Shortcut and menu "Paste last AI answer": the last smart read result.
+    /// Shortcut and menu "Paste last smart read": the last smart read result.
     func pasteLastAnswer() { pasteAgain(session.lastAnswer) }
 
     private func pasteAgain(_ text: String?) {
