@@ -42,6 +42,8 @@
 **Priority:** P3
 **Depends on:** VibeFlow 2 milestones 1 and 2.
 
+## Completed
+
 ### Only give clipboard text the assistant voice when it was copied in the AI app
 
 **What:** Remember NSPasteboard.changeCount while ChatGPT, Codex, Claude or Gemini is frontmost, and set aiReply for Shift + smart read only when the clipboard last changed there.
@@ -54,7 +56,7 @@
 **Priority:** P2
 **Depends on:** nothing.
 
-## Completed
+**Completed:** 2026-10-28. ClipboardSourceTracker attributes each clipboard change to the app that was frontmost while NSPasteboard.changeCount moved (fed by NSWorkspace activations), and ReadSession gives Shift + smart read the assistant voice only when that app is the AI app in front. Transient pasteboard contents (VibeFlow's own restores) count as unknown.
 
 ## Distribution
 

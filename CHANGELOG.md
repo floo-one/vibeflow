@@ -11,7 +11,7 @@
 - In the ChatGPT, Codex, Claude and Gemini Mac apps, smart read speaks a reply as that assistant,
   in first person and more sharply, and ends on what it needs from you: its question, or the
   step it announced. Selecting the reply or copying it and pressing Shift + Option + , both
-  work. Warnings about data, security or money are kept, and links or payment requests the reply
+  work; copied text gets the assistant voice only when it was copied in that app. Warnings about data, security or money are kept, and links or payment requests the reply
   quotes are attributed instead of voiced as advice. Settings > Prompts shows the added rule.
 
 ### Dictation

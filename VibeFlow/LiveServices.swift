@@ -131,6 +131,36 @@ struct LivePasteboard: VibeFlowCore.Pasteboard {
     }
 }
 
+// MARK: - ClipboardSourcing on NSWorkspace activations
+
+/// Feeds every frontmost-app change and the pasteboard changeCount at that moment to
+/// ClipboardSourceTracker, which attributes each clipboard change to the app that was in front.
+@MainActor
+final class LiveClipboardSource: ClipboardSourcing {
+    private var tracker = ClipboardSourceTracker()
+    private var observer: (any NSObjectProtocol)?
+
+    init() {
+        tracker.appActivated(NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+                             changeCount: NSPasteboard.general.changeCount)
+        observer = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            let bundleID = (note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.bundleIdentifier
+            let changeCount = NSPasteboard.general.changeCount
+            MainActor.assumeIsolated { self?.tracker.appActivated(bundleID, changeCount: changeCount) }
+        }
+    }
+
+    func clipboardSourceBundleID() -> String? {
+        let pb = NSPasteboard.general
+        // VibeFlow's own restores and dictation pastes are marked transient: whatever app was in
+        // front then did not write that text. Other apps' transient writes are unknown too.
+        if pb.types?.contains(LivePasteboard.transientType) == true { return nil }
+        return tracker.source(changeCount: pb.changeCount)
+    }
+}
+
 // MARK: - Dictation cues on NSSound
 
 /// Short system sounds when the microphone opens and closes, like FreeFlow. Loaded once and

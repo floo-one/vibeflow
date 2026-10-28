@@ -17,6 +17,7 @@ final class AppContainer {
     let dictation: DictationSession
     let onDeviceModel: OnDeviceModelStatus
     let accessibility = LiveAccessibility()
+    private let clipboardSource = LiveClipboardSource()
     private let player = PCMStreamPlayer()
     private let recorder = LiveAudioRecorder()
     @ObservationIgnored private var notch: NotchIndicator?
@@ -48,6 +49,7 @@ final class AppContainer {
         self.elevenLabs = elevenLabs
         let session = ReadSession(
             accessibility: accessibility,
+            clipboardSource: clipboardSource,
             capture: SelectionCapture(accessibility: accessibility, pasteboard: pasteboard, clock: clock),
             presets: presets,
             elevenLabs: elevenLabs,
