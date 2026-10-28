@@ -4,7 +4,8 @@ Native macOS menu bar app: select text anywhere, press a global shortcut, hear i
 aloud in a natural voice. v1 (shipped locally) is speech out; VibeFlow 2 adds FreeFlow-style
 dictation and a conversation mode (docs/designs/vibeflow-2-dictation-conversation.md).
 Default shortcuts: Option + . read, Option + , smart read, Shift adds clipboard, Option + - push-to-talk
-dictation, Shift + Option + - toggle dictation.
+dictation, Shift + Option + - toggle dictation, Control + Option + V paste last dictation,
+Shift + Control + Option + V paste last smart read.
 
 ## Stack and decisions
 

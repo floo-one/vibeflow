@@ -17,6 +17,9 @@ final class FakePasteboard: Pasteboard, @unchecked Sendable {
     var readDelay: Duration = .zero
     /// How many reads are slowed by `readDelay` (default: all of them).
     var delayedReads = Int.max
+    /// Simulates an owner that does not answer: while set, writes block until the test signals
+    /// it, so a deadline always wins regardless of how fast the machine is.
+    var writeGate: DispatchSemaphore?
 
     init(text: String? = nil, nonText: Bool = false) {
         self.text = text
@@ -37,6 +40,7 @@ final class FakePasteboard: Pasteboard, @unchecked Sendable {
     }
 
     func setString(_ text: String, transient: Bool) {
+        if let gate = lock.withLock({ writeGate }) { gate.wait() }
         lock.withLock {
             self.text = text
             changeCountValue += 1
@@ -271,9 +275,25 @@ final class FakeSmartReadClient: SmartReadClient, @unchecked Sendable {
     /// If set, the call suspends until this clock passes the delay (for timeout tests).
     var delay: Duration = .zero
     var clock: FakeClock?
+    /// If set, each call parks until `releaseHeld()` and ignores cancellation, like a response
+    /// already on the wire: it lands even after the session cancelled the request.
+    var holdsResponses = false
+    private var held: [CheckedContinuation<Void, Never>] = []
+    var heldCount: Int { lock.withLock { held.count } }
+
+    /// Lets the oldest parked call return the scripted `result`.
+    func releaseHeld() {
+        let next: CheckedContinuation<Void, Never>? = lock.withLock { held.isEmpty ? nil : held.removeFirst() }
+        next?.resume()
+    }
 
     func transform(_ request: SmartReadRequest) async throws -> SmartReadResponse {
         lock.withLock { _requests.append(request) }
+        if holdsResponses {
+            await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+                lock.withLock { held.append(c) }
+            }
+        }
         if delay > .zero, let clock { try await clock.sleep(for: delay) }
         return try result.get()
     }

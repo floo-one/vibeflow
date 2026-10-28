@@ -108,6 +108,9 @@ public final class DictationSession {
     public private(set) var status: String = "Ready"
     public private(set) var lastError: DictationError?
     public private(set) var lastFailure: FailedDictation?
+    /// The text of the last dictation that got as far as pasting, for "Paste last dictation".
+    /// Kept in memory only.
+    public private(set) var lastText: String?
 
     private let recorder: any AudioRecorder
     private let accessibility: any AccessibilityBridge
@@ -117,6 +120,8 @@ public final class DictationSession {
     private let clock: any SessionClock
     private let setup: @MainActor () -> DictationSetup
     private let stopReading: @MainActor () -> Void
+    /// True while a read is copying the selection through the clipboard; paste again waits for it.
+    private let readIsCapturing: @MainActor () -> Bool
     private let cue: @MainActor (DictationCue) -> Void
 
     public init(
@@ -127,6 +132,7 @@ public final class DictationSession {
         clock: any SessionClock,
         setup: @escaping @MainActor () -> DictationSetup,
         stopReading: @escaping @MainActor () -> Void,
+        readIsCapturing: @escaping @MainActor () -> Bool,
         cue: @escaping @MainActor (DictationCue) -> Void = { _ in }
     ) {
         self.recorder = recorder
@@ -136,6 +142,7 @@ public final class DictationSession {
         self.clock = clock
         self.setup = setup
         self.stopReading = stopReading
+        self.readIsCapturing = readIsCapturing
         self.cue = cue
         self.insertion = TextInsertion(accessibility: accessibility, pasteboard: pasteboard, clock: clock)
     }
@@ -212,9 +219,9 @@ public final class DictationSession {
         process(failure.audio, session: session)
     }
 
-    /// Put the kept text on the clipboard (D13).
+    /// Put the kept text on the clipboard (D13). Waits while a paste owns the clipboard.
     public func copyText() async {
-        guard let text = lastFailure?.text else { return }
+        guard state == .idle, let text = lastFailure?.text else { return }
         let pb = pasteboard
         let wrote = await runBlocking(within: ClipboardSnapshot.deadline, clock: clock) {
             pb.setString(text, transient: false)
@@ -223,8 +230,45 @@ public final class DictationSession {
         status = wrote == true ? "Copied to clipboard" : "The clipboard did not respond"
     }
 
+    /// Paste text into whatever has focus now, the same way a dictation pastes: the menu's
+    /// "Paste last dictation" and "Paste last smart read". It runs in the pasting state, so no
+    /// dictation, Retry or second paste starts while it owns the clipboard. When it cannot paste,
+    /// the clipboard is left alone: the text is still kept for another try. While a read copies the
+    /// selection, the read owns the clipboard and paste again is refused.
+    public func pasteAgain(_ text: String) async {
+        guard state == .idle else { return }
+        guard !readIsCapturing() else {
+            status = "Not pasted: a read is copying the selection"
+            return
+        }
+        guard let target = focusedTarget() else {
+            status = "Not pasted: no app had focus"
+            return
+        }
+        if let reason = insertion.invalidTargetReason(target) {
+            status = "Not pasted: \(reason)"
+            return
+        }
+        state = .pasting
+        status = "Pasting"
+        let result = await insertion.insert(text, into: target)
+        state = .idle
+        switch result {
+        case .pasted(let note):
+            status = note ?? "Pasted"
+            // Re-pasting a failed dictation's text resolves it; anything else leaves its actions.
+            if text == lastFailure?.text {
+                lastFailure = nil
+                lastError = nil
+            }
+        case .copiedInstead(let reason):
+            status = "Not pasted: \(reason)"
+        }
+    }
+
     /// Forget the kept recording (D13).
     public func discard() {
+        if let text = lastFailure?.text, text == lastText { lastText = nil }
         lastFailure = nil
         lastError = nil
         status = "Ready"
@@ -382,6 +426,7 @@ public final class DictationSession {
             result = .copiedInstead(reason: "no app had focus")
         }
         guard isCurrent(session.id) else { return }
+        lastText = text
 
         switch result {
         case .pasted(let note):
