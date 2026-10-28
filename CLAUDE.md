@@ -38,8 +38,11 @@ Xcode 26.6 installed and selected (2026-10-01). The .xcodeproj is generated and 
 - Build: `xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug -derivedDataPath build/DerivedData build`
   (until a signing identity exists, append `CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=` for an ad-hoc build)
 - Core tests: `cd VibeFlowCore && swift test` (Swift Testing)
-- Built app: build/DerivedData/Build/Products/Debug/VibeFlow.app
-- Signing: automatic, personal team Y798SH49X3 (Apple ID in Xcode). Accessibility grant verified to survive rebuilds.
+- Two apps side by side: the installed release (Release config, "VibeFlow", one.floo.vibeflow, from the GitHub DMG in /Applications) is prod; the Debug build is "VibeFlow Dev" (one.floo.vibeflow.dev): own UserDefaults and TCC grants, DEV tag in the menu bar, Control added to default shortcuts via `#if DEBUG` in Shortcuts.swift. Keychain service "one.floo.vibeflow" is shared by both.
+- Built dev app: "build/DerivedData/Build/Products/Debug/VibeFlow Dev.app"
+- Signing: team X7UXDLS9F7 (paid Apple Developer Program, company Apple Account in Xcode) for every configuration. Debug: automatic, Apple Development certificate. Release: manual, "Developer ID Application", hardened runtime, timestamped. Accessibility grant verified to survive rebuilds.
+- Version: MARKETING_VERSION and CURRENT_PROJECT_VERSION in project.yml (Info.plist reads them).
+- Release: `scripts/release.sh` archives, exports with Developer ID (`scripts/ExportOptions.plist`), notarizes and staples app and DMG, then checks with `spctl`; result in build/release/VibeFlow-<version>.dmg. `--publish` (only on a clean main equal to origin/main, tag must be new, CHANGELOG needs "## <version>") also tags v<version> and creates the GitHub release with VibeFlow.dmg. Needs the `VibeFlowNotary` notarytool keychain profile (README "Build a release"). `--no-notarize` stops after the signed export. VibeFlow cannot go in the Mac App Store (Accessibility, simulated Cmd+C and global hotkeys do not work in the App Sandbox).
 - If xcodebuild fails at CodeSign with errSecInternalComponent, the login keychain is locked: run `security unlock-keychain ~/Library/Keychains/login.keychain-db` in a terminal (asks for the login password).
 - Read app logs with `/usr/bin/log show --last 5m --predicate 'subsystem == "one.floo.vibeflow"'` (plain `log` is a zsh builtin and silently does nothing). Use `.notice`, not `.info`, for lines that must persist.
 - Swift 6 gotcha: `kAXTrustedCheckOptionPrompt` is a non-Sendable global; use the literal key "AXTrustedCheckOptionPrompt".
