@@ -73,7 +73,8 @@ clipboard managers skip it), presses the app's Paste menu item (or Cmd-V), and r
 previous clipboard text 750 ms later unless something else was copied in between. Right
 before pasting it checks that the same app and the same text field still have focus and that
 no password field is active; otherwise the text is left on the clipboard instead, with a note
-in the menu.
+in the menu. Paste again pastes the same way, but when it cannot paste, or while a dictation
+is running or a read is copying the selection, it pastes nothing and leaves your clipboard alone.
 
 ## Microphone and speaker
 
