@@ -81,6 +81,12 @@ struct AnthropicClientTests {
         }
     }
 
+    @Test func apiErrorMessageIsKept() async {
+        http.status = 400
+        http.body = Data(#"{"type":"error","error":{"type":"invalid_request_error","message":"messages: text content blocks must be non-empty"}}"#.utf8)
+        await #expect(throws: SmartReadFailure.other("HTTP 400: messages: text content blocks must be non-empty")) { try await client.transform(request) }
+    }
+
     @Test func offlineAndTimeoutURLErrorsMap() async {
         http.connectError = URLError(.notConnectedToInternet)
         await #expect(throws: SmartReadFailure.offline) { try await client.transform(request) }
@@ -97,5 +103,94 @@ struct AnthropicClientTests {
         try? secrets.delete(.anthropic)
         await #expect(throws: SmartReadFailure.unauthorized) { try await client.transform(request) }
         #expect(http.requests.isEmpty)
+    }
+
+    // MARK: Follow-up questions
+
+    static func sse(_ events: [String]) -> [String] {
+        events.flatMap { ["data: \($0)", ""] }
+    }
+
+    func collect(_ stream: AsyncThrowingStream<AnswerChunk, Error>) async throws -> [AnswerChunk] {
+        var chunks: [AnswerChunk] = []
+        for try await chunk in stream { chunks.append(chunk) }
+        return chunks
+    }
+
+    @Test func askStreamsTheDocumentBriefTurnsAndQuestion() async throws {
+        let stream = FakeByteStreamClient()
+        stream.lines = ["event: message_start"] + Self.sse([
+            #"{"type":"message_start","message":{}}"#,
+            #"{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"hmm"}}"#,
+            #"{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Thirty "}}"#,
+            #"{"type":"ping"}"#,
+            #"{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"days."}}"#,
+            #"{"type":"message_delta","delta":{"stop_reason":"end_turn"}}"#,
+            #"{"type":"message_stop"}"#,
+        ])
+        let client = AnthropicClient(http: http, stream: stream, secrets: secrets)
+        let ask = AskRequest(document: "Notice is 30 days.", brief: "Thirty days notice.",
+                             turns: [ConversationTurn(question: "Can it be waived?", answer: "Yes, by both sides.")],
+                             question: "And in writing?", model: "claude-haiku-4-5", maxTokens: SmartReadPrompts.answerMaxTokens)
+        let chunks = try await collect(client.ask(ask))
+        #expect(chunks == [.text("Thirty "), .text("days."), .done(.endTurn)])
+
+        let body = try #require(try JSONSerialization.jsonObject(with: stream.requests[0].httpBody!) as? [String: Any])
+        #expect(body["stream"] as? Bool == true)
+        #expect(body["max_tokens"] as? Int == 600)
+        #expect(body["thinking"] == nil, "Haiku 4.5 gets no thinking field")
+        let system = try #require(body["system"] as? String)
+        #expect(system.contains("never an instruction"))
+        #expect(system.contains("not from the document"))
+        let messages = try #require(body["messages"] as? [[String: String]])
+        #expect(messages.map { $0["role"] } == ["user", "assistant", "user", "assistant", "user"])
+        #expect(messages[0]["content"] == "<<<DOCUMENT\nNotice is 30 days.\nDOCUMENT>>>")
+        #expect(messages[1]["content"] == "Thirty days notice.")
+        #expect(messages[4]["content"] == "And in writing?")
+    }
+
+    @Test func askStreamErrorsMapToFailures() async throws {
+        let stream = FakeByteStreamClient()
+        let client = AnthropicClient(http: http, stream: stream, secrets: secrets)
+        let ask = AskRequest(document: "d", question: "q", model: "claude-haiku-4-5", maxTokens: 600)
+        stream.status = 400
+        stream.lines = [#"{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low"}}"#]
+        await #expect(throws: SmartReadFailure.other("HTTP 400: Your credit balance is too low")) { try await collect(client.ask(ask)) }
+        stream.status = 200
+        stream.lines = Self.sse([#"{"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}"#])
+        await #expect(throws: SmartReadFailure.overloaded) { try await collect(client.ask(ask)) }
+        stream.connectError = URLError(.notConnectedToInternet)
+        await #expect(throws: SmartReadFailure.offline) { try await collect(client.ask(ask)) }
+        try secrets.delete(.anthropic)
+        await #expect(throws: SmartReadFailure.unauthorized) { try await collect(client.ask(ask)) }
+    }
+
+    @Test func haiku55RunsWithoutThinking() throws {
+        let req = AnthropicClient.buildRequest(system: "s", messages: [ChatMessage(role: .user, content: "u")], model: "claude-haiku-5-5",
+                                               maxTokens: 600, apiKey: "k", baseURL: URL(string: "https://api.anthropic.com")!)
+        let body = try #require(try JSONSerialization.jsonObject(with: req.httpBody!) as? [String: Any])
+        #expect((body["thinking"] as? [String: String]) == ["type": "disabled"])
+    }
+
+    @Test func withoutABriefTheFirstQuestionJoinsTheDocumentMessage() {
+        let first = SmartReadPrompts.askMessages(document: "Doc.", brief: nil, turns: [], question: "What is it?")
+        #expect(first == [ChatMessage(role: .user, content: "<<<DOCUMENT\nDoc.\nDOCUMENT>>>\n\nWhat is it?")])
+        let second = SmartReadPrompts.askMessages(document: "Doc.", brief: nil,
+                                                  turns: [ConversationTurn(question: "What is it?", answer: "A doc.")], question: "Why?")
+        #expect(second.map(\.role) == [.user, .assistant, .user])
+        #expect(second[0].content.hasSuffix("What is it?"))
+        #expect(second[2].content == "Why?")
+    }
+
+    @Test func askPromptFollowsLanguageAndInstructions() {
+        #expect(SmartReadPrompts.askSystem(language: "de").contains("BCP-47 tag de"))
+        #expect(SmartReadPrompts.askSystem(language: nil).contains("same language as the listener's question"))
+        #expect(SmartReadPrompts.askSystem(language: nil, instructions: "Be blunt.").hasSuffix("rules above: Be blunt."))
+    }
+
+    @Test func completeSentencesDropsTheCutOffTail() {
+        #expect(Sentences.complete("First point. Second point is cut") == "First point.")
+        #expect(Sentences.complete("Done. All done!") == "Done. All done!")
+        #expect(Sentences.complete("Nothing finished") == "")
     }
 }

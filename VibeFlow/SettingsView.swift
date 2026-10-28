@@ -4,7 +4,7 @@ import VibeFlowCore
 import SwiftUI
 
 enum SettingsTab: Hashable {
-    case general, reading, dictation, clocks, lookAndFeel, keys
+    case general, reading, smartRead, dictation, clocks, lookAndFeel, keys
 }
 
 /// Settings: a dropdown per voice, model and device, the keys and the shortcuts. Nothing else.
@@ -20,6 +20,9 @@ struct SettingsView: View {
             ReadingTab()
                 .tabItem { Label("Reading", systemImage: "waveform") }
                 .tag(SettingsTab.reading)
+            SmartReadTab()
+                .tabItem { Label("Smart Read", systemImage: "sparkles.rectangle.stack") }
+                .tag(SettingsTab.smartRead)
             DictationTab()
                 .tabItem { Label("Dictation", systemImage: "mic") }
                 .tag(SettingsTab.dictation)
@@ -48,7 +51,8 @@ private struct GeneralTab: View {
         Form {
             Section {
                 KeyboardShortcuts.Recorder("Read selection", name: .read)
-                KeyboardShortcuts.Recorder("Smart read selection", name: .smartRead)
+                KeyboardShortcuts.Recorder("Smart read selection (hold to ask)", name: .smartRead)
+                KeyboardShortcuts.Recorder("Paste last answer", name: .pasteAnswer)
                 KeyboardShortcuts.Recorder("Read clipboard", name: .readClipboard)
                 KeyboardShortcuts.Recorder("Smart read clipboard", name: .smartReadClipboard)
                 KeyboardShortcuts.Recorder("Dictate (hold to talk)", name: .record)
@@ -58,6 +62,7 @@ private struct GeneralTab: View {
                 Toggle("Launch at login", isOn: $prefs.launchAtLogin)
                     .onChange(of: prefs.launchAtLogin) { container.applyLaunchAtLogin() }
             }
+            HistorySettings()
         }
         .formStyle(.grouped)
     }
@@ -78,8 +83,6 @@ private struct ReadingTab: View {
                 VoicePicker(voiceID: $store.defaultPreset.elevenLabsVoiceID)
                 ModelPicker(title: "Voice model", options: ModelOptions.voice, selection: $prefs.voiceModel)
                 SpeedSlider(speed: $store.defaultPreset.speed)
-                ModelPicker(title: "Smart read model", options: ModelOptions.smartRead, selection: $prefs.smartReadModel)
-                PromptsButton(initial: .brief)
             }
             Section {
                 DevicePicker(title: "Speaker", automaticLabel: "System output", devices: speakers, selection: $prefs.speakerUID)
@@ -87,6 +90,29 @@ private struct ReadingTab: View {
         }
         .formStyle(.grouped)
         .task { speakers = AudioDevices.outputs() }
+    }
+}
+
+// MARK: - Smart Read
+
+/// Briefs and follow-up answers: their own model and a speed separate from plain reads, since
+/// a summary is listened to more slowly than a text you skim.
+private struct SmartReadTab: View {
+    @Environment(AppContainer.self) private var container
+
+    var body: some View {
+        @Bindable var prefs = container.preferences
+        Form {
+            Section {
+                ModelPicker(title: "Model", options: ModelOptions.smartRead, selection: $prefs.smartReadModel)
+                SpeedSlider(speed: $prefs.smartReadSpeed)
+                PromptsButton(initial: .brief)
+            } footer: {
+                Text("Hold the smart read shortcut to ask about what you just heard. Option + / pastes the last answer, and the menu can copy it.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 

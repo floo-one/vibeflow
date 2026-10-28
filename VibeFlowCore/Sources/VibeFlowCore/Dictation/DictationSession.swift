@@ -38,6 +38,13 @@ public enum DictationCue: Sendable, Equatable {
     case recordingStopped
 }
 
+/// What a recorded follow-up question became: its transcript, or why there is none. Failures
+/// carry a status line and a few words to say out loud (eng review D8, D14).
+public enum QuestionTranscript: Sendable, Equatable {
+    case text(String)
+    case failed(message: String, spoken: String)
+}
+
 /// Shown in the menu until the next dictation starts or the user discards it.
 public struct DictationError: Sendable, Equatable {
     public var message: String
@@ -146,19 +153,25 @@ public final class DictationSession {
         let target: PasteTarget?
         let preset: AppPreset
         let setup: DictationSetup
+        /// Set for a follow-up question: the transcript goes here, never to the cursor.
+        let question: (@MainActor (QuestionTranscript) -> Void)?
         var timers: [Task<Void, Never>] = []
         var task: Task<Void, Never>?
 
-        init(target: PasteTarget?, preset: AppPreset, setup: DictationSetup) {
+        init(target: PasteTarget?, preset: AppPreset, setup: DictationSetup, question: (@MainActor (QuestionTranscript) -> Void)? = nil) {
             self.target = target
             self.preset = preset
             self.setup = setup
+            self.question = question
         }
     }
 
     private var current: Current?
 
     private func isCurrent(_ id: SessionID) -> Bool { current?.id == id }
+
+    /// True while a follow-up question is being recorded or transcribed.
+    public var isAskingQuestion: Bool { current?.question != nil }
 
     // MARK: Inputs
 
@@ -174,7 +187,21 @@ public final class DictationSession {
 
     /// The push-to-talk shortcut came up: stop and transcribe.
     public func recordKeyUp() {
-        guard case .recording(handsFree: false) = state else { return }
+        guard case .recording(handsFree: false) = state, current?.question == nil else { return }
+        finishRecording()
+    }
+
+    /// The smart read shortcut was held: record a follow-up question. Same microphone,
+    /// transcriber, fallback and no-speech check as dictation; no cleanup, no paste, and a
+    /// failure keeps nothing (eng review D8). The result goes to `onTranscript`.
+    public func startQuestion(onTranscript: @escaping @MainActor (QuestionTranscript) -> Void) {
+        guard state == .idle else { return }
+        start(handsFree: false, question: onTranscript)
+    }
+
+    /// The smart read shortcut came up after a hold.
+    public func finishQuestion() {
+        guard case .recording(handsFree: false) = state, current?.question != nil else { return }
         finishRecording()
     }
 
@@ -233,10 +260,10 @@ public final class DictationSession {
 
     // MARK: Recording
 
-    private func start(handsFree: Bool) {
+    private func start(handsFree: Bool, question: (@MainActor (QuestionTranscript) -> Void)? = nil) {
         stopReading()
         lastError = nil
-        lastFailure = nil
+        if question == nil { lastFailure = nil }
 
         switch recorder.permission {
         case .granted:
@@ -262,8 +289,12 @@ public final class DictationSession {
         let target = frozenTarget()
         let preset = presets.preset(for: target?.app.bundleID)
         let setup = setup()
+        let session = Current(target: target, preset: preset, setup: setup, question: question)
+        current = session
+        state = .recording(handsFree: handsFree)
+        let id = session.id
         do {
-            try recorder.start(deviceUID: setup.microphoneUID)
+            try recorder.start(deviceUID: setup.microphoneUID) { [weak self] in self?.microphoneLive(id) }
         } catch let error as RecordingError {
             switch error {
             case .permissionDenied: fail(Self.microphoneOff, actions: [.openMicrophoneSettings])
@@ -276,12 +307,7 @@ public final class DictationSession {
             return
         }
 
-        let session = Current(target: target, preset: preset, setup: setup)
-        current = session
-        state = .recording(handsFree: handsFree)
-        cue(.recordingStarted)
         status = handsFree ? "Listening. Press the toggle shortcut again to stop" : "Listening"
-        let id = session.id
         session.timers = [
             Task { [weak self, clock] in
                 do { try await clock.sleep(for: Self.maximumDuration) } catch { return }
@@ -289,6 +315,12 @@ public final class DictationSession {
                 self.finishRecording(note: "Stopped at the 2-minute limit")
             },
         ]
+    }
+
+    /// The first audio arrived: now the start cue tells the speaker to talk (eng review D13).
+    private func microphoneLive(_ id: SessionID) {
+        guard isCurrent(id), case .recording = state else { return }
+        cue(.recordingStarted)
     }
 
     private func frozenTarget() -> PasteTarget? {
@@ -302,12 +334,21 @@ public final class DictationSession {
         let audio = recorder.stop()
         cue(.recordingStopped)
         guard audio.duration >= Self.minimumDuration else {
+            if let question = session.question {
+                finishQuestion(question, .failed(message: "Didn't catch that", spoken: "Didn't catch that."))
+                return
+            }
             finishIdle(status: "Too short, nothing recorded")
             return
         }
         // Real microphones always have a noise floor; all-zero samples mean the input device
         // delivered nothing (muted, virtual or unavailable), not a quiet room.
         guard audio.rms > 0 else {
+            if let question = session.question {
+                finishQuestion(question, .failed(message: "The microphone recorded no sound. Choose a microphone in Settings > Dictation",
+                                                 spoken: "The microphone recorded no sound."))
+                return
+            }
             fail("The microphone recorded no sound. Choose a microphone in Settings > Dictation", actions: [.openDictationSettings])
             return
         }
@@ -330,7 +371,7 @@ public final class DictationSession {
             cleaner = nil
         } else {
             transcriber = session.setup.transcriber
-            cleaner = session.setup.cleaner
+            cleaner = session.question == nil ? session.setup.cleaner : nil
             if let notice = session.setup.notice { notes.append(notice) }
         }
 
@@ -348,12 +389,27 @@ public final class DictationSession {
                 outcome = try await transcriber.transcribe(audio, language: language)
             } catch {
                 guard let self, self.isCurrent(id) else { return }
+                if let question = session.question {
+                    if error is CancellationError { return }
+                    self.finishQuestion(question, .failed(message: "Couldn't transcribe the question: \(Self.reason(error))",
+                                                          spoken: "Couldn't understand the question."))
+                    return
+                }
                 self.transcriptionFailed(error, name: transcriber.primaryName, audio: audio, session: session)
                 return
             }
             guard let self, self.isCurrent(id) else { return }
             if NoSpeech.isSilence(outcome.transcription, audio: audio) {
+                if let question = session.question {
+                    self.finishQuestion(question, .failed(message: "Didn't catch that", spoken: "Didn't catch that."))
+                    return
+                }
                 self.finishIdle(status: "Didn't catch that")
+                return
+            }
+            if let question = session.question {
+                let text = outcome.transcription.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                self.finishQuestion(question, text.isEmpty ? .failed(message: "Didn't catch that", spoken: "Didn't catch that.") : .text(text))
                 return
             }
             if let reason = outcome.fellBackBecause { notes.append("Transcribed on device: \(reason)") }
@@ -423,6 +479,30 @@ public final class DictationSession {
     }
 
     // MARK: Ending
+
+    /// A question is handed over and the dictation side goes quiet; its errors are shown and
+    /// spoken by the read session, not kept here.
+    private func finishQuestion(_ handler: @MainActor (QuestionTranscript) -> Void, _ result: QuestionTranscript) {
+        tearDown()
+        state = .idle
+        status = "Ready"
+        handler(result)
+    }
+
+    private static func reason(_ error: Error) -> String {
+        switch error as? TranscriptionFailure {
+        case .unauthorized: return "key rejected or missing"
+        case .rejected(let status, _): return "error \(status)"
+        case .rateLimited: return "rate limited"
+        case .serverError(let code): return "HTTP \(code)"
+        case .offline: return "offline"
+        case .timeout: return "timed out"
+        case .malformed: return "unreadable response"
+        case .assetsMissing(let language): return "the on-device model for \(language) is missing"
+        case .unavailable(let reason): return reason
+        case nil: return error.localizedDescription
+        }
+    }
 
     private static let microphoneOff = "Microphone access is off. Allow VibeFlow in System Settings > Privacy & Security > Microphone"
 

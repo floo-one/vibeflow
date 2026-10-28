@@ -60,7 +60,7 @@ final class DictationHarness {
         session.recordKeyUp()
     }
 
-    /// Advances time until the session is idle again (transcriber delays, the 750 ms restore).
+    /// Advances time until the session is idle again (transcriber delays, the 1.5 s restore).
     func finish() async {
         var steps = 0
         while session.state != .idle && steps < 300 {
@@ -497,5 +497,85 @@ struct DictationMicrophoneTests {
         h.session.recordKeyDown()
         #expect(h.session.state == .idle)
         #expect(h.session.lastError == DictationError(message: "No microphone found", actions: [.openDictationSettings]))
+    }
+}
+
+@Suite("DictationSession: follow-up questions and the start cue") @MainActor
+struct QuestionRecordingTests {
+    @Test func questionIsTranscribedWithoutCleanupOrPaste() async throws {
+        let h = DictationHarness()
+        var results: [QuestionTranscript] = []
+        h.session.startQuestion { results.append($0) }
+        #expect(h.session.state == .recording(handsFree: false))
+        h.session.finishQuestion()
+        await h.settle()
+        #expect(results == [.text("hello world")])
+        #expect(h.cleaner.calls == 0)
+        #expect(h.pasteboard.writes.isEmpty, "a question never touches the clipboard")
+        #expect(h.session.state == .idle)
+        #expect(h.session.lastFailure == nil)
+    }
+
+    @Test func recordKeyUpDoesNotEndAQuestionAndFinishQuestionDoesNotEndADictation() async throws {
+        let h = DictationHarness()
+        h.session.startQuestion { _ in }
+        h.session.recordKeyUp()
+        #expect(h.session.state == .recording(handsFree: false))
+        h.session.cancel()
+
+        h.session.recordKeyDown()
+        h.session.finishQuestion()
+        #expect(h.session.state == .recording(handsFree: false))
+    }
+
+    @Test func failedQuestionKeepsNothingAndSaysWhy() async throws {
+        let h = DictationHarness()
+        h.groq.result = .failure(.unauthorized)
+        var results: [QuestionTranscript] = []
+        h.session.startQuestion { results.append($0) }
+        h.session.finishQuestion()
+        await h.settle()
+        #expect(results == [.failed(message: "Couldn't transcribe the question: key rejected or missing", spoken: "Couldn't understand the question.")])
+        #expect(h.session.lastFailure == nil)
+        #expect(h.session.lastError == nil)
+    }
+
+    @Test func silentQuestionIsNotCaught() async throws {
+        let h = DictationHarness()
+        h.recorder.nextAudio = RecordedAudio(pcm16: Data(repeating: 0x40, count: 3_200)) // 0.1 s
+        var results: [QuestionTranscript] = []
+        h.session.startQuestion { results.append($0) }
+        h.session.finishQuestion()
+        await h.settle()
+        #expect(results == [.failed(message: "Didn't catch that", spoken: "Didn't catch that.")])
+        #expect(h.groq.callCount == 0)
+    }
+
+    @Test func emptyTranscriptIsNotSentAsAQuestion() async throws {
+        let h = DictationHarness()
+        h.groq.result = .success(Transcription(text: "  ", noSpeechProbabilities: [0.01]))
+        var results: [QuestionTranscript] = []
+        h.session.startQuestion { results.append($0) }
+        h.session.finishQuestion()
+        await h.settle()
+        #expect(results == [.failed(message: "Didn't catch that", spoken: "Didn't catch that.")])
+    }
+
+    @Test func startCueWaitsForTheFirstAudio() async throws {
+        let h = DictationHarness()
+        h.recorder.readyImmediately = false
+        h.session.recordKeyDown()
+        #expect(h.cues.isEmpty, "no cue while the microphone is still starting")
+        h.recorder.becomeReady()
+        #expect(h.cues == [.recordingStarted])
+    }
+
+    @Test func lateReadyAfterACancelPlaysNothing() async throws {
+        let h = DictationHarness()
+        h.recorder.readyImmediately = false
+        h.session.recordKeyDown()
+        h.session.cancel()
+        h.recorder.becomeReady()
+        #expect(h.cues.isEmpty)
     }
 }

@@ -466,6 +466,7 @@ No change.
 State: approved
 Actual answer: A) 750 ms (user answer to D6, 2026-10-02)
 Accepted scope: TextInsertion restores the snapshot 750 ms after pressing Cmd-V, only if changeCount is unchanged since its own write. The paste spike times the slowest app in the matrix and raises the constant if needed. Test: restore waits the delay on the fake clock and is skipped on a foreign write.
+Revised 2026-10-23 (user request): raised to 1.5 s after a slow paste picked up the restored clipboard instead of the dictation.
 History: none
 
 ### R5: Microphone choice and Bluetooth headphones

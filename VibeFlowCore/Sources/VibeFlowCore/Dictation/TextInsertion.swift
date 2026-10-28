@@ -27,10 +27,11 @@ public enum InsertionResult: Sendable, Equatable {
 /// 2. Snapshot the clipboard text (ClipboardSnapshot, 200 ms bound), write the dictation
 ///    (transient, so clipboard managers ignore it), press the plain Cmd-V menu item or post a
 ///    synthesized Cmd-V when the app has none. Text ending in punctuation gets a trailing space.
-/// 3. After 750 ms, restore the snapshot only if nobody wrote the clipboard since.
+/// 3. After 1.5 s, restore the snapshot only if nobody wrote the clipboard since.
 @MainActor
 public final class TextInsertion {
-    public static let restoreDelay: Duration = .milliseconds(750)
+    /// Long enough for apps that handle Cmd-V late, so they never paste the restored clipboard.
+    public static let restoreDelay: Duration = .milliseconds(1500)
 
     private let accessibility: any AccessibilityBridge
     private let pasteboard: any Pasteboard

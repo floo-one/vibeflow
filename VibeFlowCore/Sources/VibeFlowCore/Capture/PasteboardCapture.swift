@@ -35,26 +35,27 @@ public final class PasteboardCapture {
         do {
             try accessibility.pressCopyMenuItem(in: app)
         } catch {
-            return .none
+            return .failed
         }
 
         // Wait for exactly one ownership change.
         let expected = before + 1
         var elapsed: Duration = .zero
         while pasteboard.changeCount < expected {
-            if elapsed >= Self.copyTimeout { return .none }
-            do { try await clock.sleep(for: Self.pollInterval) } catch { return .none } // cancelled
+            if elapsed >= Self.copyTimeout { return .failed }
+            do { try await clock.sleep(for: Self.pollInterval) } catch { return .failed } // cancelled
             elapsed += Self.pollInterval
         }
         // One grace poll: a second write landing right after the Copy shows up as N+2 here.
         // Best-effort limit (D9): a foreign write that lands BEFORE the Copy inside the same
         // window is indistinguishable from the Copy itself; the PID and content checks below
         // are the strongest attribution macOS offers.
-        do { try await clock.sleep(for: Self.pollInterval) } catch { return .none }
-        guard pasteboard.changeCount == expected else { return .none } // drift: someone else wrote too
-        guard accessibility.frontmostApp()?.pid == app.pid else { return .none }
+        do { try await clock.sleep(for: Self.pollInterval) } catch { return .failed }
+        guard pasteboard.changeCount == expected else { return .failed } // drift: someone else wrote too
+        guard accessibility.frontmostApp()?.pid == app.pid else { return .failed }
 
-        let copied = await readPasteboardText(pasteboard, clock: clock)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard let raw = await readPasteboardText(pasteboard, clock: clock) else { return .failed }
+        let copied = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !copied.isEmpty else { return .none }
 
         let note = await snapshot.restore(to: pasteboard, ifChangeCountIs: expected, clock: clock)

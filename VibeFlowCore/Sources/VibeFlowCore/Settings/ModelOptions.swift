@@ -22,7 +22,8 @@ public enum ModelOptions {
     ]
 
     public static let smartRead = [
-        ModelOption("claude-haiku-4-5", "Claude Haiku 4.5 (fastest)"),
+        ModelOption("claude-haiku-4-5", "Claude Haiku 4.5"),
+        ModelOption("claude-haiku-5-5", "Claude Haiku 5.5 (newest, fast)"),
         ModelOption("claude-sonnet-5-5", "Claude Sonnet 5.5"),
         ModelOption("claude-opus-5-5", "Claude Opus 5.5 (most careful)"),
     ]

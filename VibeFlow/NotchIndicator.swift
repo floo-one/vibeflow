@@ -82,6 +82,8 @@ private enum NotchPhase: Equatable {
     case hidden
     /// Dictation is recording.
     case listening
+    /// A follow-up question is recording.
+    case asking
     /// Dictation is transcribing, cleaning or pasting.
     case dictationWorking
     /// A read is capturing the selection or waiting for the first audio.
@@ -94,6 +96,7 @@ private enum NotchPhase: Equatable {
         switch self {
         case .hidden: return nil
         case .listening, .dictationWorking: return "mic.fill"
+        case .asking: return "questionmark.bubble.fill"
         case .preparing, .speaking: return "speaker.wave.2.fill"
         case .thinking: return "sparkles"
         }
@@ -112,13 +115,14 @@ private struct NotchIndicatorView: View {
     private var phase: NotchPhase {
         guard preferences.notchIndicator else { return .hidden }
         switch dictation.state {
-        case .recording: return .listening
-        case .transcribing, .cleaning, .pasting: return .dictationWorking
+        case .recording: return dictation.isAskingQuestion ? .asking : .listening
+        case .transcribing, .cleaning, .pasting: return dictation.isAskingQuestion ? .thinking : .dictationWorking
         case .idle: break
         }
         switch reading.state {
         case .idle, .awaitingConfirm: return .hidden
-        case .capturing, .buffering: return .preparing
+        case .capturing: return reading.isAnsweringQuestion ? .thinking : .preparing
+        case .buffering: return .preparing
         case .transforming: return .thinking
         case .speaking: return .speaking
         }
@@ -133,7 +137,7 @@ private struct NotchIndicatorView: View {
                 if let symbol = phase.symbol {
                     Image(systemName: symbol)
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(phase == .listening || phase == .speaking ? 1 : 0.7))
+                        .foregroundStyle(.white.opacity(phase == .listening || phase == .asking || phase == .speaking ? 1 : 0.7))
                         .contentTransition(.symbolEffect(.replace))
                 }
             }
@@ -141,7 +145,7 @@ private struct NotchIndicatorView: View {
             Color.clear.frame(width: layout.notchWidth)
             Group {
                 switch phase {
-                case .listening: ListeningIndicator(style: preferences.listeningStyle, level: level)
+                case .listening, .asking: ListeningIndicator(style: preferences.listeningStyle, level: level)
                 case .dictationWorking, .preparing, .thinking: ProgressView().controlSize(.mini)
                 case .speaking:
                     Image(systemName: "waveform")

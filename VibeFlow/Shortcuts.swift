@@ -9,6 +9,8 @@ extension KeyboardShortcuts.Name {
     static let readClipboard = Self("readClipboard", default: .init(.period, modifiers: [.option, .shift]))
     /// Smart read the clipboard. Default: Shift-Option-Comma.
     static let smartReadClipboard = Self("smartReadClipboard", default: .init(.comma, modifiers: [.option, .shift]))
+    /// Paste the last follow-up answer at the cursor. Default: Option-Slash.
+    static let pasteAnswer = Self("pasteAnswer", default: .init(.slash, modifiers: [.option]))
     /// Dictate, push-to-talk: hold to record, release to transcribe and paste. Default: Option-Minus.
     static let record = Self("record", default: .init(.minus, modifiers: [.option]))
     /// Dictate, toggle: press to start recording hands-free, press again to stop. Default: Shift-Option-Minus.

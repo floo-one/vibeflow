@@ -35,7 +35,7 @@ final class LiveAudioRecorder: AudioRecorder {
     /// Loudness of the latest buffer, 0 (silence) to 1, for the notch waveform.
     var level: Float { recording?.level ?? 0 }
 
-    func start(deviceUID: String?) throws {
+    func start(deviceUID: String?, onReady: @escaping @MainActor @Sendable () -> Void) throws {
         cancel()
         guard permission == .granted else { throw RecordingError.permissionDenied }
         let chosen = deviceUID.flatMap { AVCaptureDevice(uniqueID: $0) }
@@ -43,7 +43,7 @@ final class LiveAudioRecorder: AudioRecorder {
             log.notice("Input \(deviceUID ?? "", privacy: .public) not found, using the default input")
         }
         guard let device = chosen ?? AVCaptureDevice.default(for: .audio) else { throw RecordingError.noInputDevice }
-        let recording = try CaptureRecording(device: device)
+        let recording = try CaptureRecording(device: device, onFirstBuffer: { Task { @MainActor in onReady() } })
         recording.start()
         self.recording = recording
         log.notice("Recording from \(device.localizedName, privacy: .public) (\(device.uniqueID, privacy: .public))")
@@ -73,10 +73,13 @@ private final class CaptureRecording: NSObject, AVCaptureAudioDataOutputSampleBu
     private var pcm = Data()
     private var finished = false
     private var latestLevel: Float = 0
+    /// Called once, on the sample queue, when the first audio arrives.
+    private var onFirstBuffer: (@Sendable () -> Void)?
 
     var level: Float { lock.withLock { latestLevel } }
 
-    init(device: AVCaptureDevice) throws {
+    init(device: AVCaptureDevice, onFirstBuffer: @escaping @Sendable () -> Void) throws {
+        self.onFirstBuffer = onFirstBuffer
         super.init()
         let input: AVCaptureDeviceInput
         do {
@@ -143,11 +146,14 @@ private final class CaptureRecording: NSObject, AVCaptureAudioDataOutputSampleBu
         }
         guard status == kCMBlockBufferNoErr else { return }
         let level = Self.level(of: chunk)
-        lock.withLock {
-            guard !finished else { return }
+        let first: (@Sendable () -> Void)? = lock.withLock {
+            guard !finished else { return nil }
             pcm.append(chunk)
             latestLevel = level
+            defer { onFirstBuffer = nil }
+            return onFirstBuffer
         }
+        first?()
     }
 }
 

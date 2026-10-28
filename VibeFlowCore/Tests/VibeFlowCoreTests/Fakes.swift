@@ -277,6 +277,34 @@ final class FakeSmartReadClient: SmartReadClient, @unchecked Sendable {
         if delay > .zero, let clock { try await clock.sleep(for: delay) }
         return try result.get()
     }
+
+    private var _asks: [AskRequest] = []
+    var asks: [AskRequest] { lock.withLock { _asks } }
+    /// Scripted outcome for the next follow-up question, streamed as one text chunk then done.
+    var askResult: Result<SmartReadResponse, SmartReadFailure> = .success(SmartReadResponse(text: "answer", stopReason: .endTurn))
+    /// When set, streamed instead of `askResult` (to test sentence-by-sentence forwarding).
+    var askChunks: [AnswerChunk]?
+
+    func ask(_ request: AskRequest) -> AsyncThrowingStream<AnswerChunk, Error> {
+        lock.withLock { _asks.append(request) }
+        let delay = delay, clock = clock, result = askResult, chunks = askChunks
+        return AsyncThrowingStream { continuation in
+            Task {
+                if delay > .zero, let clock { try? await clock.sleep(for: delay) }
+                switch result {
+                case .failure(let failure) where chunks == nil:
+                    continuation.finish(throwing: failure)
+                    return
+                case .success(let response) where chunks == nil:
+                    continuation.yield(.text(response.text))
+                    continuation.yield(.done(response.stopReason))
+                default:
+                    for chunk in chunks ?? [] { continuation.yield(chunk) }
+                }
+                continuation.finish()
+            }
+        }
+    }
 }
 
 // MARK: - 7. SecretsStore
@@ -316,11 +344,17 @@ final class FakeAudioRecorder: AudioRecorder {
         permission = grantOnRequest ? .granted : .denied
         return grantOnRequest
     }
-    func start(deviceUID: String?) throws {
+    /// false: the microphone stays silent until `becomeReady()`, like a slow capture session.
+    var readyImmediately = true
+    private var onReady: (@MainActor @Sendable () -> Void)?
+
+    func start(deviceUID: String?, onReady: @escaping @MainActor @Sendable () -> Void) throws {
         if let e = startError { throw e }
         startedDevices.append(deviceUID)
         isRecording = true
+        if readyImmediately { onReady() } else { self.onReady = onReady }
     }
+    func becomeReady() { onReady?(); onReady = nil }
     func stop() -> RecordedAudio {
         guard isRecording else { return .empty }
         isRecording = false

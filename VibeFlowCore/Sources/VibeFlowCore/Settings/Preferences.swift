@@ -30,6 +30,8 @@ public final class Preferences {
         static let launchAtLogin = "launchAtLogin"
         static let voiceModel = "voiceModel"
         static let smartReadModel = "smartReadModel"
+        static let smartReadSpeed = "smartRead.speed"
+        static let historyRetention = "history.retention"
         static let transcriptionModel = "dictation.transcriptionModel"
         static let cleanupModel = "dictation.cleanupModel"
         static let vocabulary = "dictation.vocabulary"
@@ -50,6 +52,14 @@ public final class Preferences {
     }
     public var smartReadModel: String {
         didSet { defaults.set(smartReadModel, forKey: Key.smartReadModel) }
+    }
+    /// How much History keeps (Settings > General).
+    public var historyRetention: HistoryRetention {
+        didSet { defaults.set(historyRetention.storageValue, forKey: Key.historyRetention) }
+    }
+    /// Speed for briefs and follow-up answers, separate from the read speed (Settings > Smart Read).
+    public var smartReadSpeed: Double {
+        didSet { defaults.set(smartReadSpeed, forKey: Key.smartReadSpeed) }
     }
     /// Groq Whisper model for dictation.
     public var transcriptionModel: String {
@@ -93,6 +103,8 @@ public final class Preferences {
         launchAtLogin = defaults.bool(forKey: Key.launchAtLogin)
         voiceModel = defaults.string(forKey: Key.voiceModel) ?? ModelOptions.voice[0].id
         smartReadModel = defaults.string(forKey: Key.smartReadModel) ?? ModelOptions.smartRead[0].id
+        smartReadSpeed = defaults.object(forKey: Key.smartReadSpeed) as? Double ?? 1.0
+        historyRetention = defaults.string(forKey: Key.historyRetention).flatMap(HistoryRetention.init(storageValue:)) ?? .default
         transcriptionModel = defaults.string(forKey: Key.transcriptionModel) ?? ModelOptions.transcription[0].id
         cleanupModel = defaults.string(forKey: Key.cleanupModel) ?? ModelOptions.cleanup[0].id
         vocabulary = defaults.string(forKey: Key.vocabulary) ?? ""
@@ -118,6 +130,7 @@ public final class Preferences {
     public var sessionConfiguration: SessionConfiguration {
         var config = SessionConfiguration()
         config.smartReadModel = smartReadModel
+        config.smartReadSpeed = smartReadSpeed
         return config
     }
 }
