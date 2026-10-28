@@ -42,6 +42,20 @@
 **Priority:** P3
 **Depends on:** VibeFlow 2 milestones 1 and 2.
 
+## Clipboard
+
+### One clipboard owner across reads, dictation and paste again
+
+**What:** A single clipboard owner that every clipboard transaction (a read's Copy capture, a dictation paste, paste again, Copy dictated text) must hold for its whole life, including writes that land late, so no two can overlap.
+
+**Why:** Each session guards only its own steps today. Known edges left from the menu/paste-again PR (#10): a read stopped mid-capture goes idle while its Copy can still land (~300 ms) and paste again passes its guard; Copy dictated text checks idle once but does not hold the clipboard while its write is in flight, so a paste again started then can collide. Both need a slow or hanging clipboard or a sub-second double action.
+
+**Context:** Same family as the inherited TextInsertion issues found in that review: a clipboard write that times out keeps running and can land after the paste gave up; ClipboardSnapshot keeps plain text only, so image, file and rich-text clipboards are replaced by any paste; focus is not re-checked after the async snapshot and write right before Cmd-V; and the restore writes the user's text back as transient, so ClipboardSourceTracker loses the AI-app source and the next clipboard smart read uses the narrator voice. Start from DictationSession.pasteAgain, TextInsertion.insert, PasteboardCapture and AppContainer's readIsCapturing / dictationCancelledByRead.
+
+**Effort:** M
+**Priority:** P2
+**Depends on:** None
+
 ## Completed
 
 ### Only give clipboard text the assistant voice when it was copied in the AI app

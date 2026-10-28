@@ -19,6 +19,14 @@
   however short the press. A separate toggle shortcut (Shift + Option + - by default) starts a
   hands-free recording with one press and stops it with the next.
 
+### Menu
+- The menu bar menu lists every action with the shortcut it is set to right now: read and smart
+  read the selection or the clipboard, start or stop dictation, and where push-to-talk lives.
+- Paste last dictation (Control + Option + V) pastes your most recent dictation again, and Paste
+  last smart read (Shift + Control + Option + V) pastes the last smart read result. Both are in the
+  menu and in Settings, kept in memory only, and restore your clipboard afterwards. When there is
+  nowhere to paste, nothing is pasted and your clipboard is left alone.
+
 ### Clocks
 - A second menu bar item shows the time in other time zones, each with its flag. It starts
   with Berlin. Settings > Clocks adds clocks by city, country, abbreviation or IANA name
@@ -30,7 +38,7 @@
   and uploads it from main.
 - Debug builds are a separate app, VibeFlow Dev, that runs next to the installed release: its
   own settings and permissions, a DEV tag in the menu bar, and Control added to every default
-  shortcut (Control + Option + . and so on). It uses the same API keys as the release.
+  shortcut (Control + Option + . and so on, Command added to the paste shortcuts). It uses the same API keys as the release.
 
 ## 1.0.0 (2026-10-06)
 

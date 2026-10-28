@@ -1,10 +1,11 @@
 import AppKit
+import KeyboardShortcuts
 import VibeFlowCore
 import SwiftUI
 
 /// The menu (design: Menu bar status, D6 remedies): status line, Last error with up to two
-/// actions, Stop, Speak clipboard, Smart read clipboard, Read anyway, Grant Accessibility
-/// access, Settings, Quit.
+/// actions, Stop, Read anyway, every action (reads, dictation, paste last dictation or AI
+/// answer) with the shortcut it is currently set to, Grant Accessibility access, Settings, Quit.
 struct MenuBarView: View {
     @Environment(AppContainer.self) private var container
     @Environment(\.openSettings) private var openSettings
@@ -19,6 +20,7 @@ struct MenuBarView: View {
                 Text(error.message).foregroundStyle(.red)
                 ForEach(error.actions, id: \.self) { action in
                     Button(label(for: action)) { perform(action) }
+                        .disabled(dictation.state.isBusy) // a paste again owns the clipboard
                 }
             }
         } else {
@@ -47,16 +49,47 @@ struct MenuBarView: View {
             Button("Read anyway") { session.readAnyway() }
         }
 
+        Button("Read selection") { container.hotkey(.read) }
+            .globalKeyboardShortcut(.read)
+        Button("Smart read selection") { container.hotkey(.smartRead) }
+            .globalKeyboardShortcut(.smartRead)
         Button("Speak clipboard") { container.menuRead(.read) }
+            .globalKeyboardShortcut(.readClipboard)
         Button("Smart read clipboard") { container.menuRead(.smartRead) }
+            .globalKeyboardShortcut(.smartReadClipboard)
 
         Divider()
 
+        Button(isDictatingHandsFree ? "Stop dictation" : "Start dictation") { container.toggleRecording() }
+            .globalKeyboardShortcut(.recordToggle)
+            .disabled(dictation.state.isBusy && !isDictatingHandsFree)
+        // Push-to-talk needs the key held down, so the menu only shows where it lives.
+        Button("Hold to dictate") {}
+            .globalKeyboardShortcut(.record)
+            .disabled(true)
+
+        Divider()
+
+        Button("Paste last dictation") { container.pasteLastDictation() }
+            .globalKeyboardShortcut(.pasteLastDictation)
+            .disabled(dictation.lastText == nil || clipboardBusy)
+        Button("Paste last smart read") { container.pasteLastAnswer() }
+            .globalKeyboardShortcut(.pasteLastAnswer)
+            .disabled(session.lastAnswer == nil || clipboardBusy)
+
+        Divider()
+
+        Button("Change shortcuts…") { SettingsWindow.present(openSettings, container: container, tab: .general) }
         Button("Settings…") { SettingsWindow.present(openSettings, container: container) }
             .keyboardShortcut(",")
         Button("Quit VibeFlow") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
     }
+
+    /// A dictation or a read's Copy owns the clipboard, so pasting again would collide with it.
+    private var clipboardBusy: Bool { dictation.state.isBusy || session.state == .capturing }
+
+    private var isDictatingHandsFree: Bool { dictation.state == .recording(handsFree: true) }
 
     private func label(for action: ErrorAction) -> String {
         switch action {

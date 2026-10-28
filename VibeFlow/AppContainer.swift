@@ -83,6 +83,7 @@ final class AppContainer {
                                                   secrets: secrets, http: http, onDevice: onDevice, microphoneUID: microphone)
             },
             stopReading: { session.stop() }, // D3
+            readIsCapturing: { session.state == .capturing },
             cue: { if preferences.dictationSounds { sounds.play($0) } }
         )
         notch = NotchIndicator(dictation: dictation, reading: session, preferences: preferences, level: { [recorder] in recorder.level })
@@ -96,6 +97,8 @@ final class AppContainer {
         KeyboardShortcuts.onKeyDown(for: .record) { [weak self] in self?.recordKeyDown() }
         KeyboardShortcuts.onKeyUp(for: .record) { [weak self] in self?.dictation.recordKeyUp() }
         KeyboardShortcuts.onKeyDown(for: .recordToggle) { [weak self] in self?.toggleRecording() }
+        KeyboardShortcuts.onKeyUp(for: .pasteLastDictation) { [weak self] in self?.pasteLastDictation() }
+        KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in self?.pasteLastAnswer() }
 
         warmConnections()
     }
@@ -105,13 +108,28 @@ final class AppContainer {
         dictation.recordKeyDown()
     }
 
-    private func toggleRecording() {
+    /// Shortcut and menu "Start dictation".
+    func toggleRecording() {
         showsDictation = true
         dictation.toggleRecording()
     }
 
-    /// A read shortcut while dictating cancels the dictation and does nothing else.
+    /// Shortcut and menu "Paste last dictation".
+    func pasteLastDictation() { pasteAgain(dictation.lastText) }
+
+    /// Shortcut and menu "Paste last smart read": the last smart read result.
+    func pasteLastAnswer() { pasteAgain(session.lastAnswer) }
+
+    private func pasteAgain(_ text: String?) {
+        guard let text else { return }
+        showsDictation = true
+        Task { await dictation.pasteAgain(text) }
+    }
+
+    /// A read shortcut while dictating cancels the dictation and does nothing else. While a
+    /// paste owns the clipboard it is ignored, so a read's Copy cannot snapshot the pasted text.
     private func dictationCancelledByRead() -> Bool {
+        if dictation.state == .pasting { return true }
         if dictation.cancel() { return true }
         showsDictation = false
         return false
@@ -141,7 +159,9 @@ final class AppContainer {
         player.outputDeviceUID = preferences.speakerUID
     }
 
-    private func hotkey(_ kind: ReadKind) {
+    /// Shortcut and menu "Read selection": the menu does not take focus, so the selection
+    /// is still the frontmost app's.
+    func hotkey(_ kind: ReadKind) {
         if dictationCancelledByRead() { return }
         applyReadSettings()
         session.hotkey(kind)

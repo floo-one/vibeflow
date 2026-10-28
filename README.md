@@ -20,6 +20,9 @@ and your words are typed where your cursor is.
   punctuation, casing and misheard words, and the text lands in the field you were typing in.
   About 0.8 s from release to text.
 - **Clipboard**: add Shift (Shift + Option + . or ,) to read or smart read the clipboard.
+- **Paste again**: Control + Option + V pastes your last dictation again, Shift + Control +
+  Option + V pastes the last smart read result. The menu bar menu lists every action with the
+  shortcut it is set to.
 - Press a read shortcut again to stop. Every shortcut can be changed in Settings.
 - **Clocks**: other time zones in the menu bar, each with its flag (🇩🇪 14:05  🇺🇸 08:05).
   Add them in Settings > Clocks by searching a city, country, abbreviation or time zone.
@@ -70,7 +73,8 @@ clipboard managers skip it), presses the app's Paste menu item (or Cmd-V), and r
 previous clipboard text 750 ms later unless something else was copied in between. Right
 before pasting it checks that the same app and the same text field still have focus and that
 no password field is active; otherwise the text is left on the clipboard instead, with a note
-in the menu.
+in the menu. Paste again pastes the same way, but when it cannot paste, or while a dictation
+is running or a read is copying the selection, it pastes nothing and leaves your clipboard alone.
 
 ## Microphone and speaker
 
