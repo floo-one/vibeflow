@@ -40,6 +40,8 @@ final class AppContainer {
     /// True after the record shortcut, false after a read: which session the menu's status
     /// line and icon describe.
     private(set) var showsDictation = false
+    /// The release's self-updater; nil in VibeFlow Dev, which never checks for updates.
+    @ObservationIgnored private(set) var updater: Updater?
 
     init() {
         LegacyMigration.runIfNeeded()
@@ -128,6 +130,10 @@ final class AppContainer {
         KeyboardShortcuts.onKeyDown(for: .recordToggle) { [weak self] in self?.toggleRecording() }
         KeyboardShortcuts.onKeyUp(for: .pasteLastDictation) { [weak self] in self?.pasteLastDictation() }
         KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in self?.pasteLastAnswer() }
+
+        #if !DEBUG
+        updater = Updater { [weak self] in self?.isRunning ?? false }
+        #endif
 
         warmConnections()
     }

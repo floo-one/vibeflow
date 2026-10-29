@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.2.0
+
+### Updates
+- VibeFlow keeps itself up to date. It checks for a new version every 6 hours, downloads it
+  in the background and installs it once VibeFlow is not reading or dictating and the Mac has
+  been left alone for 5 minutes; it restarts in a second or two. Quitting VibeFlow installs a
+  downloaded update too. The menu shows the version and has Check for Updates…. This starts
+  with 1.2.0, so install it by hand once.
+
+### Look
+- An app icon: white waveform bars on blue-violet. VibeFlow Dev gets an orange one with a DEV
+  band.
+
+### Distribution
+- `scripts/dev.sh` runs VibeFlow Dev from `~/Applications/VibeFlow Dev.app`, whichever
+  worktree built it, and only one copy of each app runs: a newly started copy quits the older
+  one. The Dev menu starts with the branch, commit and build time, and Quit names the app.
+  `--doctor` lists every VibeFlow on the Mac, `--clean` removes leftover builds with the
+  release bundle id.
+- Releases carry a signed Sparkle update feed (`appcast.xml`) next to the DMG, and
+  `scripts/release.sh` refuses to publish with a signing key or build number that installed
+  copies would reject.
+
 ## 1.1.0 (2026-10-29)
 
 ### Smart read

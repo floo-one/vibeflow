@@ -1,7 +1,7 @@
 # Dev and prod side by side
 
-Status: 2026-10-29. P2 built (scripts/dev.sh, one copy per app, cleanup) and P3 built (app
-icons, Dev build stamp, Quit names the app); P1 and P4 open.
+Status: 2026-10-29. P2 built (scripts/dev.sh, one copy per app, cleanup), P3 built (app
+icons, Dev build stamp, Quit names the app) and P1 built (Sparkle, ships with 1.2.0); P4 open.
 
 ## Goal
 
@@ -59,6 +59,27 @@ in place, so the bundle id and signature stay the same and the grants survive.
 
 Why not a hand-rolled GitHub API check: replacing a running, notarized app safely
 (quarantine, signature check, relaunch) is exactly what Sparkle already does well.
+
+As built (2026-10-29):
+
+- **Package:** Sparkle 2.10 via SPM, linked in both configurations. `Updater`
+  (`VibeFlow/Updater.swift`) is created only in Release (`AppContainer`, `#if !DEBUG`).
+- **When it installs** (decided with the user: silently, when idle): Sparkle downloads in the
+  background (`SUAutomaticallyUpdate`), and `Updater` takes over `willInstallUpdateOnQuit`.
+  It checks every minute and installs (relaunching VibeFlow) once nothing is reading or
+  dictating and the Mac has had no keyboard or mouse input for 5 minutes. That way a relaunch
+  never cuts off work or loses "paste last dictation" mid-task. A quit installs it too.
+- **Key:** created 2026-10-29 in the login keychain under the Sparkle account `vibeflow`, not
+  the default account, so another Sparkle app never shares it. Back it up with
+  `generate_keys --account vibeflow -x`.
+- **Feed:** `scripts/write-appcast.sh` writes a one-item feed (the CHANGELOG section as simple
+  HTML, the enclosure signed by `sign_update`). It was tested with a throwaway key: `xmllint`
+  passes and `sign_update --verify` accepts the signature.
+- **`release.sh` checks:** before building, that the keychain key matches `SUPublicEDKey`; on
+  `--publish`, that the build number beats the last tag's. It uploads `appcast.xml` next to
+  the DMG.
+- **Not verified yet:** a real update from one release to the next. The first chance is 1.2.0
+  to the release after it.
 
 ### P2. One fixed home for each app
 
@@ -158,6 +179,7 @@ menu that the keys are waiting for Keychain access.
    needed). Done 2026-10-29.
 2. P3 Dev icon + build stamp. Done 2026-10-29.
 3. P1 Sparkle + release.sh appcast, shipped as 1.2.0; install that DMG in /Applications once.
+   Built 2026-10-29; ships when 1.2.0 is published.
 4. P4 permissions row.
 
 ## Open questions

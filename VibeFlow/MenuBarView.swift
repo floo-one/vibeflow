@@ -6,7 +6,8 @@ import SwiftUI
 /// The menu (design: Menu bar status, D6 remedies): status line, Last error with up to two
 /// actions, Stop, Read anyway, every action (reads, dictation, paste last dictation or AI
 /// answer) with the shortcut it is currently set to, Grant Accessibility access, Settings, Quit.
-/// VibeFlow Dev starts with the branch and commit it was built from (BuildStamp).
+/// VibeFlow Dev starts with the branch and commit it was built from (BuildStamp); the release
+/// ends with its version and Check for Updates.
 struct MenuBarView: View {
     @Environment(AppContainer.self) private var container
     @Environment(\.openSettings) private var openSettings
@@ -115,6 +116,14 @@ struct MenuBarView: View {
         Button("Change shortcuts…") { SettingsWindow.present(openSettings, container: container, tab: .general) }
         Button("Settings…") { SettingsWindow.present(openSettings, container: container) }
             .keyboardShortcut(",")
+
+        #if !DEBUG
+        Divider()
+        // The release updates itself (Updater); this shows which version is running.
+        Text("VibeFlow \(appVersion)")
+        Button("Check for Updates…") { container.updater?.checkForUpdates() }
+        #endif
+
         Button("Quit \(appName)") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
     }
@@ -122,6 +131,10 @@ struct MenuBarView: View {
     /// "VibeFlow" or "VibeFlow Dev", so Quit says which of the two it closes.
     private var appName: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "VibeFlow"
+    }
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
     }
 
     #if DEBUG

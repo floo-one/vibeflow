@@ -98,6 +98,23 @@ It asks for the Apple Account email of the team and an app-specific password (cr
 account.apple.com > Sign-In and Security > App-Specific Passwords; the account password does
 not work). Both go into the login keychain, nothing into the repo.
 
+Installed copies update themselves with [Sparkle](https://sparkle-project.org): every
+release is signed with a private EdDSA key, and the app checks it against its public key,
+`SUPublicEDKey` in `project.yml`. The private key lives in the login keychain under the
+Sparkle account `vibeflow`. Sparkle's tools appear after the first build (or
+`xcodebuild -resolvePackageDependencies -project VibeFlow.xcodeproj -scheme VibeFlow -derivedDataPath build/DerivedData`):
+
+```bash
+SPARKLE=build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin
+$SPARKLE/generate_keys --account vibeflow -p                    # print the public key
+$SPARKLE/generate_keys --account vibeflow -x vibeflow-sparkle.key  # export a backup
+$SPARKLE/generate_keys --account vibeflow -f vibeflow-sparkle.key  # import it on a new Mac
+```
+
+Keep the exported backup in a password manager and delete the file. Without the key, no Mac
+can sign an update that installed copies accept. The first release asks for Keychain access
+for `sign_update`: allow it always.
+
 To build a release locally:
 
 ```bash
@@ -107,21 +124,27 @@ scripts/release.sh
 It archives the Release configuration (bundle id `one.floo.vibeflow`), exports it with
 Developer ID (`scripts/ExportOptions.plist`), notarizes and staples the app, packs it into a
 DMG with an Applications shortcut, notarizes and staples the DMG as well, and finishes with a
-Gatekeeper check (`spctl`). The result is `build/release/VibeFlow-<version>.dmg`. The
-exported app is deleted at the end, since the DMG is the release and a second copy of
-VibeFlow could answer to its bundle id; the archive stays for its dSYMs.
-`--no-notarize` stops after the signed export, which needs no credentials.
+Gatekeeper check (`spctl`). It then signs the DMG with the Sparkle key and writes the update
+feed, `build/release/appcast.xml` (`scripts/write-appcast.sh`), after checking before the
+build that the key in the keychain matches `SUPublicEDKey`. The result is
+`build/release/VibeFlow-<version>.dmg`. The exported app is deleted at the end, since the DMG
+is the release and a second copy of VibeFlow could answer to its bundle id; the archive stays
+for its dSYMs. `--no-notarize` stops after the signed export, which needs no credentials.
 
 To publish:
 
-1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`.
+1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`. The build number
+   must be higher than the last release's, or installed copies never see the update.
 2. Add a `## <version>` section to `CHANGELOG.md`.
 3. Merge to main, then on a clean, pushed main run `scripts/release.sh --publish`.
 
-It refuses to run anywhere else, tags `v<version>` and creates the GitHub release with the
-changelog section as notes and the DMG as `VibeFlow.dmg`, so the README download link always
-points at the newest version. Forks: change `teamID` in `scripts/ExportOptions.plist` and the
-team id in the commands above to yours.
+It refuses to run anywhere else or with a build number that is not higher than the last
+tag's. It tags `v<version>` and creates the GitHub release with the changelog section as
+notes, the DMG as `VibeFlow.dmg` and the feed as `appcast.xml`. So the README download link
+always points at the newest version, and installed copies (which read
+`.../releases/latest/download/appcast.xml`) find it within 6 hours. Forks: change `teamID` in
+`scripts/ExportOptions.plist`, the team id in the commands above, and `SUFeedURL` and
+`SUPublicEDKey` in `project.yml` to yours.
 
 ## Clocks data
 
