@@ -348,12 +348,24 @@ public enum SecretKey: String, Sendable, CaseIterable {
     case anthropic = "anthropic-api-key"
     /// Groq: dictation transcription and cleanup (VibeFlow 2).
     case groq = "groq-api-key"
+    /// Upcoming meetings: the Google refresh token from sign-in.
+    case googleRefreshToken = "google-refresh-token"
+
+    /// Read from the Keychain each time it is needed, never cached at launch, so a Keychain
+    /// that was locked at launch does not look like "signed out" for the whole session (R12).
+    public var readsOnDemand: Bool { self == .googleRefreshToken }
 }
 
 public protocol SecretsStore: Sendable {
     func read(_ key: SecretKey) -> String?
     func write(_ value: String, for key: SecretKey) throws
     func delete(_ key: SecretKey) throws
+    /// A fresh read that reports Keychain errors instead of treating them as "no value".
+    func readOnDemand(_ key: SecretKey) throws -> String?
+}
+
+public extension SecretsStore {
+    func readOnDemand(_ key: SecretKey) throws -> String? { read(key) }
 }
 
 // MARK: - 8. ClipboardSourcing (assistant voice for Shift + smart read)
