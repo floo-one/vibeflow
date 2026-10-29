@@ -283,7 +283,7 @@ private func meeting(_ id: String) -> String { String(format: meetingJSON, id) }
 
     @Test func firstSyncShowsSyncingThenSignedIn() {
         var state = MeetingsSyncState()
-        let generation = MeetingsSync.begin(&state, afterSignIn: true)
+        let generation = MeetingsSync.begin(&state, firstSync: true)
         #expect(state.status == .syncing)
         MeetingsSync.finish(&state, generation: generation, outcome: .fetched(fetch), at: t0)
         #expect(state.status == .signedIn(email: me, lastSynced: t0))

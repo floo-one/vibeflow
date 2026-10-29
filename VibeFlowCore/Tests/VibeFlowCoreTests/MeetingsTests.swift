@@ -60,11 +60,15 @@ private func event(_ id: String = "e1", summary: String = "Standup", start: Stri
         #expect(!kept(event(attendees: [.init(email: me), .init(email: "room-3@resource.calendar.google.com", resource: true)])))
     }
 
-    // Value: protects=invites with a hidden guest list (only you visible) still count when someone else organized them, and your own solo blocks still do not; fails_when=the organizer rule is dropped or applies to your own events; why_new=no fixture had a hidden guest list; seam=none; no_claim=Google's real attendee truncation (fixture)
-    @Test func hiddenGuestListCountsWhenSomeoneElseOrganized() {
+    // Value: protects=invites with a hidden guest list (only you visible) count when someone else invited you, while solo blocks on your own, a colleague's or a secondary calendar do not; fails_when=the organizer rule is dropped or counts events you are not invited to; why_new=no fixture had a hidden guest list; seam=none; no_claim=Google's real attendee truncation (fixture)
+    @Test func hiddenGuestListCountsWhenSomeoneElseInvitedYou() {
         #expect(kept(event(attendees: [.init(email: me)]) { $0.organizer = .init(email: "host@example.com") }))
-        #expect(kept(event { $0.attendees = nil; $0.organizer = .init(email: "host@example.com") }))
         #expect(!kept(event(attendees: [.init(email: me)]) { $0.organizer = .init(email: "Florian@Example.com") }))
+        // A colleague's own lunch on their calendar, and an event on a secondary calendar.
+        #expect(MeetingFilter.meeting(from: event { $0.attendees = nil; $0.organizer = .init(email: "colleague@example.com") },
+                                      calendarID: "colleague@example.com", me: me) == nil)
+        #expect(MeetingFilter.meeting(from: event { $0.attendees = nil; $0.organizer = .init(email: "abc123@group.calendar.google.com") },
+                                      calendarID: "abc123@group.calendar.google.com", me: me) == nil)
     }
 
     /// R9: on a colleague's calendar, `self` would be the colleague. Only your own email counts.

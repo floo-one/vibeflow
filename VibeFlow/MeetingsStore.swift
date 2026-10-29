@@ -45,7 +45,7 @@ final class MeetingsStore {
     /// First sync and the triggers. Call once at launch.
     func start() {
         guard config != nil else { return }
-        sync()
+        sync(firstSync: true)
         timerTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: Self.syncInterval)
@@ -77,13 +77,13 @@ final class MeetingsStore {
 
     /// Fetch now. A fetch still running is cancelled and its result dropped (R8); the new one
     /// waits for it to wind down, so token refreshes never overlap. With meetings switched off
-    /// only the sync right after a sign-in runs, so the tab still shows who is signed in.
-    func sync(afterSignIn: Bool = false) {
-        guard let client else { return }
+    /// only the first sync (launch, sign-in) runs, so the tab still shows who is signed in;
+    /// background triggers then leave a running fetch alone.
+    func sync(firstSync: Bool = false) {
+        guard let client, preferences.meetingsEnabled || firstSync else { return }
         let previous = fetchTask
         previous?.cancel()
-        let generation = MeetingsSync.begin(&state, afterSignIn: afterSignIn)
-        guard preferences.meetingsEnabled || afterSignIn else { return }
+        let generation = MeetingsSync.begin(&state, firstSync: firstSync)
         let selected = preferences.meetingsCalendars
         let window = MeetingSchedule.fetchWindow(at: Date())
         let secrets = secrets
@@ -116,7 +116,7 @@ final class MeetingsStore {
                     return
                 }
                 log.notice("Google sign-in finished")
-                sync(afterSignIn: true)
+                sync(firstSync: true)
             } catch {
                 if error != .cancelled, attempt == signInAttempt { signInMessage = error.message }
                 log.notice("Google sign-in ended: \(error.message, privacy: .public)")

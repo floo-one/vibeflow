@@ -399,11 +399,11 @@ public enum MeetingsFetchOutcome: Sendable {
 public enum MeetingsSync {
     /// A new fetch starts (timer, wake, network back, settings change, sign-in): any fetch
     /// still running becomes stale. Returns the generation the new fetch must report with.
-    /// Only the first sync after a sign-in says "Syncing…"; background syncs leave the status
-    /// alone, so "Signed out" or "Blocked" does not flicker every 5 minutes.
-    public static func begin(_ state: inout MeetingsSyncState, afterSignIn: Bool = false) -> Int {
+    /// Only the first sync (at launch or after a sign-in) says "Syncing…"; background syncs
+    /// leave the status alone, so "Signed out" or "Blocked" does not flicker every 5 minutes.
+    public static func begin(_ state: inout MeetingsSyncState, firstSync: Bool = false) -> Int {
         state.generation += 1
-        if afterSignIn { state.status = .syncing }
+        if firstSync { state.status = .syncing }
         return state.generation
     }
 

@@ -129,9 +129,11 @@ public enum MeetingFilter {
         let me = me.lowercased()
         let attendees = event.attendees ?? []
         if attendees.contains(where: { $0.email?.lowercased() == me && $0.responseStatus == "declined" }) { return nil }
-        // A hidden guest list shows only you; someone else organizing it still makes it a meeting.
-        let organizedByOther = event.organizer?.email.map { $0.lowercased() != me } ?? false
-        guard organizedByOther || attendees.contains(where: { $0.email?.lowercased() != me && $0.resource != true }) else { return nil }
+        // A hidden guest list shows only you; you being invited by someone else still makes it
+        // a meeting. A colleague's or a secondary calendar's own solo blocks list nobody.
+        let invitedByOther = attendees.contains(where: { $0.email?.lowercased() == me })
+            && (event.organizer?.email.map { $0.lowercased() != me } ?? false)
+        guard invitedByOther || attendees.contains(where: { $0.email?.lowercased() != me && $0.resource != true }) else { return nil }
 
         let end = event.end?.dateTime.flatMap(parseDate) ?? start
         let title = event.summary?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
