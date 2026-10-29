@@ -75,8 +75,9 @@ With no keys at all you still get reading with an Apple voice, plus dictation on
   Without Groq (no key, offline, rate limited) Apple's on-device recognizer is used on macOS
   26 and nothing is sent.
 - **Meetings**: VibeFlow reads your calendars from Google with read-only access. Events stay
-  in memory on this Mac; the Google sign-in is kept in your Keychain. Sign out in Settings >
-  Meetings, or remove VibeFlow at myaccount.google.com/permissions.
+  in memory on this Mac; the Google sign-in is kept in your Keychain. Sign Out in Settings >
+  Meetings forgets the sign-in on this Mac only; to remove VibeFlow's access entirely, remove
+  it at myaccount.google.com/permissions.
 - **Stays local**: History (`~/Library/Application Support/VibeFlow/history.json`, cleared in
   Settings > General), recordings (in memory only; the last failed one is kept until the next
   dictation so you can retry it) and API keys (Keychain).
@@ -96,7 +97,9 @@ With no keys at all you still get reading with an Apple voice, plus dictation on
 - **Google sign-in.** Google has not verified VibeFlow yet, so the consent screen warns that
   the app is unverified (Advanced > Go to VibeFlow), and while the app is in Google's testing
   phase only invited accounts can sign in. A Google Workspace admin can block third-party apps;
-  the Meetings tab then says "Blocked by your Google Workspace admin".
+  the Meetings tab then says "Blocked by your Google Workspace admin". If you untick calendar
+  access on the consent screen, sign-in stops with "Allow calendar access"; sign in again and
+  keep "See your calendars" ticked.
 
 ## Build it yourself
 

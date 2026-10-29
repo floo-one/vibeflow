@@ -29,7 +29,7 @@ show the next meeting there shortly before it starts, and give a one-click way i
 | M2 | Show from lead time until **5 min after start**, then hide | Short nudge; keeps the bar clean during the meeting. |
 | M3 | Click opens a **menu with Join** plus today's remaining meetings | One click from the nudge into the call. |
 | M4 | Settings: **on/off, calendar picker, lead time** (5/10/15) plus a sync status line | Your choice. Own **Meetings** tab, 8th tab (R6). Status line is the only failure signal (R1). |
-| M5 | Only real meetings: keep `eventType` default/fromGmail; drop cancelled, all-day, declined by you, "free", and events with nobody but you. "You" = the signed-in email, not `attendees[].self` | R5, R9. |
+| M5 | Only real meetings: keep `eventType` default/fromGmail; drop cancelled, all-day, declined by you, "free", and events with nobody but you. "You" = the signed-in email, not `attendees[].self`. Exception (review fix): an invite from someone else with a hidden guest list still counts | R5, R9. |
 | M6 | No database, no server. Fetched events live in memory; tokens in the Keychain; settings in UserDefaults | Matches the repo rule. |
 
 ## Architecture
@@ -511,7 +511,7 @@ Synthesized from this review's findings. Each task derives from a specific findi
   - Surfaced by: R3, R8, R12
   - Files: VibeFlow/GoogleSignIn.swift, VibeFlow/MeetingsStore.swift, VibeFlow/KeychainSecretsStore.swift, VibeFlowCore/Sources/VibeFlowCore/Ports.swift, VibeFlow/AppContainer.swift
   - Verify: xcodebuild build; sign in from the app
-  - Done 2026-10-29 (code; sign-in from the app waits for the T6 tab): GoogleSignIn (NWListener 127.0.0.1, one callback, 5 min timeout, new sign-in cancels the old), MeetingsStore (5 min timer, wake, network back, one fetch in flight that waits for the cancelled one, generation via MeetingsSync, invalid_grant deletes the token), SecretKey.googleRefreshToken read on demand, meetings preferences (enabled, lead minutes, calendars). Pulled forward from T5: Config/VibeFlow.xcconfig with `#include? "Google.xcconfig"`, project.yml maps GoogleClientID/GoogleClientSecret into Info.plist; a build without the file works with empty values. The Keychain service is shared with VibeFlow Dev, so the Google sign-in is shared too, like the API keys.
+  - Done 2026-10-29 (code; sign-in from the app waits for the T6 tab): GoogleSignIn (NWListener 127.0.0.1, one callback, 5 min timeout, new sign-in cancels the old), MeetingsStore (5 min timer, wake, network back, one fetch in flight that waits for the cancelled one, generation via MeetingsSync, invalid_grant deletes the token), SecretKey.googleRefreshToken read on demand, meetings preferences (enabled, lead minutes, calendars). Pulled forward from T5: Config/VibeFlow.xcconfig with `#include? "Google.xcconfig"`, project.yml maps GoogleClientID/GoogleClientSecret into Info.plist; a build without the file works with empty values. The Google sign-in first shared the Keychain service with VibeFlow Dev, like the API keys; the review fixes moved it to a per-app service (`<bundle id>.google`), so Dev and the release keep separate sign-ins while API keys stay shared.
 - [x] **T5 (P1, human: ~4h / CC: ~15min)** — App — menu bar item + menu, project.yml xcconfig wiring
   - Surfaced by: R2, R10
   - Files: VibeFlow/MeetingsViews.swift, VibeFlow/VibeFlowApp.swift, project.yml

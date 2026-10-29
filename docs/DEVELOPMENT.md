@@ -23,7 +23,7 @@
 The Debug build is **VibeFlow Dev**, a separate app from the release, so both can run at once:
 its own bundle id, settings and permissions, a DEV tag in the menu bar, and Control added to
 every default shortcut (Control + Option + . reads, and so on). API keys are shared with the
-release.
+release; the Google sign-in for Meetings is not, so each app signs in on its own.
 
 An ad-hoc build (`CODE_SIGN_IDENTITY=-`, as CI does) works too, but macOS forgets its
 Accessibility permission on every rebuild; remove the old entry and grant it again each time.
@@ -124,7 +124,8 @@ To use your own client:
 
 The author's client lives in the floo.one project `vibeflow-513107`. Release builds pick up
 `Config/Google.xcconfig` from the checkout that runs `scripts/release.sh`, so copy the file
-into that checkout; `--publish` refuses to run without it.
+into that checkout; `--publish` refuses to run unless it sets both `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` (a local build only warns).
 
 ## Clocks data
 

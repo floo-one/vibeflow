@@ -9,10 +9,13 @@
   overlap, the next one to start is shown.
 - Only real meetings count: focus time, out of office, working location, birthdays, all-day,
   cancelled, "free", declined and solo events are skipped, judged by your own email even on a
-  colleague's calendar. A meeting on two calendars you watch shows once.
+  colleague's calendar. Invites with a hidden guest list still count. A meeting on two
+  calendars you watch shows once, and a watched calendar that stops sharing is skipped
+  instead of stopping the sync.
 - Settings > Meetings: sign in with Google (read-only), a status line (signed in, offline,
   signed out, blocked by your Workspace admin), on/off, lead time 5, 10 or 15 minutes, and the
   calendars to watch. It syncs every 5 minutes, after wake and when the network comes back.
+  Sign out forgets the sign-in on this Mac only; VibeFlow Dev keeps its own sign-in.
 - Builds without a Google client (forks, CI) work as before; the tab says "Not configured in
   this build".
 

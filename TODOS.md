@@ -121,6 +121,18 @@
 **Effort:** S
 **Priority:** P2
 
+### Publish the Google app (In production)
+
+**What:** Move the VibeFlow app in Google Auth Platform (floo.one project `vibeflow-513107`) from Testing to In production.
+
+**Why:** In Testing, a Google sign-in expires after 7 days and only listed test users can sign in, so a release with Meetings is unusable for anyone else.
+
+**Context:** Deferred from plan: docs/designs/upcoming-meetings.md (T1). Google's "Publish app" button stays disabled until Branding has a privacy policy link on the authorized floo.one domain. After publishing, any account can sign in with the unverified-app warning, up to 100 users until verification.
+
+**Effort:** S
+**Priority:** P1
+**Depends on:** the privacy page from "Website on floo.one".
+
 ### Website on floo.one
 
 **What:** A small static site at floo.one/vibeflow: what VibeFlow does, download link, privacy policy.
