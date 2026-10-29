@@ -18,7 +18,9 @@ You bring your own API keys.
 2. Grant Accessibility when asked, and Microphone on your first dictation.
 3. Add your keys in Settings > Keys (see [Keys](#keys); all optional).
 
-To update, download the new DMG and replace the app.
+From 1.2.0 on, VibeFlow updates itself in the background (Check for Updates… in the menu
+looks right away). To get there from an older version, download the DMG once more and replace
+the app.
 
 ## What it does
 

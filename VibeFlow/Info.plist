@@ -36,5 +36,21 @@
 	<string>VibeFlow records your voice while you hold the record shortcut and turns it into text.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>VibeFlow can transcribe dictation on this Mac with Apple's on-device speech recognition.</string>
+	<key>SUAutomaticallyUpdate</key>
+	<true/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/floo-one/vibeflow/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>rf85YJNkBmW+elZ2A221ehTLacC6jKKGjqVgDyQve9s=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>21600</integer>
+	<key>VFBuildDate</key>
+	<string>$(VF_BUILD_DATE)</string>
+	<key>VFGitBranch</key>
+	<string>$(VF_GIT_BRANCH)</string>
+	<key>VFGitCommit</key>
+	<string>$(VF_GIT_COMMIT)</string>
 </dict>
 </plist>

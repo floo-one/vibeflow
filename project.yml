@@ -44,6 +44,10 @@ packages:
   KeychainAccess:
     url: https://github.com/kishikawakatsumi/KeychainAccess
     from: 4.2.2
+  # The release updates itself (Updater.swift); its tools sign every release in scripts/release.sh.
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.6.0
 
 targets:
   VibeFlow:
@@ -57,6 +61,7 @@ targets:
       - package: VibeFlowCore
       - package: KeyboardShortcuts
       - package: KeychainAccess
+      - package: Sparkle
     info:
       path: VibeFlow/Info.plist
       properties:
@@ -72,6 +77,19 @@ targets:
         # Upcoming meetings: the desktop OAuth client from Config/Google.xcconfig (gitignored).
         GoogleClientID: $(GOOGLE_CLIENT_ID)
         GoogleClientSecret: $(GOOGLE_CLIENT_SECRET)
+        # Sparkle: the release checks every 6 hours, downloads in the background and installs
+        # when VibeFlow is idle (Updater.swift). VibeFlow Dev never creates an updater.
+        # scripts/release.sh uploads appcast.xml with every release and refuses to sign with a
+        # key that does not match SUPublicEDKey (login keychain, Sparkle account "vibeflow").
+        SUFeedURL: https://github.com/floo-one/vibeflow/releases/latest/download/appcast.xml
+        SUPublicEDKey: "rf85YJNkBmW+elZ2A221ehTLacC6jKKGjqVgDyQve9s="
+        SUEnableAutomaticChecks: true
+        SUAutomaticallyUpdate: true
+        SUScheduledCheckInterval: 21600
+        # Branch, commit and build time of a VibeFlow Dev from scripts/dev.sh (BuildStamp).
+        VFGitBranch: $(VF_GIT_BRANCH)
+        VFGitCommit: $(VF_GIT_COMMIT)
+        VFBuildDate: $(VF_BUILD_DATE)
     configFiles:
       Debug: Config/VibeFlow.xcconfig
       Release: Config/VibeFlow.xcconfig
@@ -86,17 +104,25 @@ targets:
         PRODUCT_NAME: VibeFlow
         PRODUCT_MODULE_NAME: VibeFlow
         # Release version. Bump both before scripts/release.sh --publish; the build number
-        # must grow with every release.
-        MARKETING_VERSION: "1.1.0"
-        CURRENT_PROJECT_VERSION: "2"
+        # must grow with every release (Sparkle compares it, release.sh checks it).
+        MARKETING_VERSION: "1.2.0"
+        CURRENT_PROJECT_VERSION: "3"
         GENERATE_INFOPLIST_FILE: NO
+        # Drawn by scripts/make-icons.swift.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Set on the command line by scripts/dev.sh; empty in every other build.
+        VF_GIT_BRANCH: ""
+        VF_GIT_COMMIT: ""
+        VF_BUILD_DATE: ""
       configs:
         # Debug is a second app, "VibeFlow Dev", so it runs next to the installed release:
-        # its own bundle id (own settings, own Accessibility and Microphone grants), a DEV
-        # tag in the menu bar and Control added to every default shortcut. API keys are shared.
+        # its own bundle id (own settings, own Accessibility and Microphone grants), an orange
+        # DEV app icon, a DEV tag in the menu bar and Control added to every default shortcut.
+        # API keys are shared.
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: one.floo.vibeflow.dev
           PRODUCT_NAME: VibeFlow Dev
+          ASSETCATALOG_COMPILER_APPICON_NAME: AppIconDev
         # No App Sandbox: the Accessibility API cannot read other apps from inside the sandbox.
 
 schemes:

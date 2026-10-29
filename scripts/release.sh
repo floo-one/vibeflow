@@ -1,9 +1,11 @@
 #!/bin/zsh
-# Build a notarized VibeFlow release: Developer ID signed app, stapled, in a DMG, and with
-# --publish also tagged and uploaded to GitHub Releases.
+# Build a notarized VibeFlow release: Developer ID signed app, stapled, in a DMG with its
+# Sparkle update feed (appcast.xml), and with --publish also tagged and uploaded to GitHub
+# Releases, where installed copies of VibeFlow find it.
 #
 # One-time setup (see docs/DEVELOPMENT.md "Release"):
 #   xcrun notarytool store-credentials VibeFlowNotary --team-id X7UXDLS9F7
+#   the Sparkle signing key in the login keychain, account "vibeflow" (generate_keys)
 #
 # Usage:  scripts/release.sh                 build build/release/VibeFlow-<version>.dmg
 #         scripts/release.sh --publish       same, from a clean main that matches origin, then
@@ -39,6 +41,9 @@ fail() { print -u2 "error: $1"; exit 1; }
 VERSION="$(sed -nE 's/^ *MARKETING_VERSION: *"?([0-9.]+)"?.*/\1/p' project.yml | head -1)"
 [[ -n "$VERSION" ]] || fail "no MARKETING_VERSION in project.yml"
 TAG="v$VERSION"
+PROJECT_BUILD="$(sed -nE 's/^ *CURRENT_PROJECT_VERSION: *"?([0-9]+)"?.*/\1/p' project.yml | head -1)"
+UPDATE_KEY="$(sed -nE 's/^ *SUPublicEDKey: *"?([^" ]+)"?.*/\1/p' project.yml | head -1)"
+SPARKLE_BIN="build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin"
 
 # Changelog section "## <version>" up to the next "## " heading.
 release_notes() {
@@ -59,6 +64,12 @@ if [[ $PUBLISH -eq 1 ]]; then
   [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || fail "main does not match origin/main; pull or push first"
   ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || fail "tag $TAG already exists; bump MARKETING_VERSION in project.yml"
   [[ -n "$(release_notes | tr -d '[:space:]')" ]] || fail "CHANGELOG.md has no '## $VERSION' section"
+  # Sparkle offers an update only when its build number is higher than the installed one.
+  LAST_TAG="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
+  LAST_BUILD="$([[ -n "$LAST_TAG" ]] && git show "$LAST_TAG:project.yml" | sed -nE 's/^ *CURRENT_PROJECT_VERSION: *"?([0-9]+)"?.*/\1/p' | head -1 || true)"
+  if [[ -n "$LAST_BUILD" ]]; then
+    (( PROJECT_BUILD > LAST_BUILD )) || fail "CURRENT_PROJECT_VERSION $PROJECT_BUILD is not above $LAST_BUILD ($LAST_TAG); installed copies would not update"
+  fi
 fi
 
 # Meetings needs the Google client from the gitignored Config/Google.xcconfig (see
@@ -82,6 +93,15 @@ mkdir -p "$OUT"
 
 step "Generate the Xcode project"
 xcodegen generate >/dev/null
+
+if [[ $NOTARIZE -eq 1 ]]; then
+  # A release signed with another key would never install anywhere, so check before building.
+  step "Check the Sparkle signing key"
+  xcodebuild -resolvePackageDependencies -project VibeFlow.xcodeproj -scheme VibeFlow \
+    -derivedDataPath build/DerivedData -quiet
+  [[ "$("$SPARKLE_BIN/generate_keys" --account vibeflow -p 2>/dev/null)" == "$UPDATE_KEY" ]] \
+    || fail "the login keychain has no Sparkle key (account vibeflow) matching SUPublicEDKey in project.yml; see docs/DEVELOPMENT.md, Release"
+fi
 
 step "Archive (Release)"
 xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Release \
@@ -132,18 +152,30 @@ step "Gatekeeper check"
 spctl -a -vv -t exec "$APP" 2>&1
 spctl -a -vv -t open --context context:primary-signature "$DMG" 2>&1
 
+step "Sign the DMG for Sparkle and write the update feed"
+NOTES="$OUT/notes.md"
+release_notes > "$NOTES"
+APPCAST="$OUT/appcast.xml"
+scripts/write-appcast.sh "$DMG" "$VERSION" "$BUILD" "$NOTES" > "$APPCAST"
+xmllint --noout "$APPCAST"
+
 print
 print "Release ready: $DMG"
 
 if [[ $PUBLISH -eq 1 ]]; then
   step "Publish $TAG to GitHub"
-  NOTES="$OUT/notes.md"
-  release_notes > "$NOTES"
   git tag -a "$TAG" -m "VibeFlow $VERSION"
   git push origin "$TAG"
-  # Uploaded as VibeFlow.dmg so .../releases/latest/download/VibeFlow.dmg always works.
+  # Uploaded as VibeFlow.dmg and appcast.xml so .../releases/latest/download/<name> always
+  # serves the newest: the README links the DMG, installed copies read the feed (SUFeedURL).
   cp "$DMG" "$OUT/VibeFlow.dmg"
-  gh release create "$TAG" "$OUT/VibeFlow.dmg#VibeFlow $VERSION (DMG)" \
+  gh release create "$TAG" "$OUT/VibeFlow.dmg#VibeFlow $VERSION (DMG)" "$APPCAST#Update feed (Sparkle)" \
     --title "VibeFlow $VERSION" --notes-file "$NOTES" --verify-tag --latest
   print "Published: $(gh release view "$TAG" --json url -q .url)"
 fi
+
+# The DMG is the release. A launchable VibeFlow left in build/ could answer to
+# one.floo.vibeflow instead of /Applications/VibeFlow.app; the archive stays for its dSYMs.
+step "Drop the exported app"
+rm -rf "$APP"
+"$ROOT/scripts/dev.sh" --clean || print -u2 "warning: scripts/dev.sh --clean failed"

@@ -6,6 +6,8 @@ import SwiftUI
 /// The menu (design: Menu bar status, D6 remedies): status line, Last error with up to two
 /// actions, Stop, Read anyway, every action (reads, dictation, paste last dictation or AI
 /// answer) with the shortcut it is currently set to, Grant Accessibility access, Settings, Quit.
+/// VibeFlow Dev starts with the branch and commit it was built from (BuildStamp); the release
+/// ends with its version and Check for Updates.
 struct MenuBarView: View {
     @Environment(AppContainer.self) private var container
     @Environment(\.openSettings) private var openSettings
@@ -15,6 +17,11 @@ struct MenuBarView: View {
     private var dictation: DictationSession { container.dictation }
 
     var body: some View {
+        #if DEBUG
+        Text(devBuildTitle)
+        Divider()
+        #endif
+
         if container.showsDictation {
             Text(dictation.status)
             if let error = dictation.lastError {
@@ -41,9 +48,15 @@ struct MenuBarView: View {
             Button("Copy answer") { container.copyLastAnswer() }
         }
 
+        // Missing permissions, kept current by AppContainer.refreshPermissions.
         if !session.accessibilityTrusted {
             Button("Grant Accessibility access") {
                 NSWorkspace.shared.open(Accessibility.settingsURL)
+            }
+        }
+        if container.microphonePermission == .denied {
+            Button("Grant Microphone access") {
+                NSWorkspace.shared.open(Microphone.settingsURL)
             }
         }
 
@@ -109,9 +122,35 @@ struct MenuBarView: View {
         Button("Change shortcuts…") { SettingsWindow.present(openSettings, container: container, tab: .general) }
         Button("Settings…") { SettingsWindow.present(openSettings, container: container) }
             .keyboardShortcut(",")
-        Button("Quit VibeFlow") { NSApplication.shared.terminate(nil) }
+
+        #if !DEBUG
+        Divider()
+        // The release updates itself (Updater); this shows which version is running.
+        Text("VibeFlow \(appVersion)")
+        Button("Check for Updates…") { container.updater?.checkForUpdates() }
+        #endif
+
+        Button("Quit \(appName)") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
     }
+
+    /// "VibeFlow" or "VibeFlow Dev", so Quit says which of the two it closes.
+    private var appName: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "VibeFlow"
+    }
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
+
+    #if DEBUG
+    private var devBuildTitle: String {
+        guard let stamp = BuildStamp(info: Bundle.main.infoDictionary ?? [:]) else {
+            return "VibeFlow Dev · not built by scripts/dev.sh"
+        }
+        return "VibeFlow Dev · \(stamp.menuTitle())"
+    }
+    #endif
 
     /// A dictation or a read's Copy owns the clipboard, so pasting again would collide with it.
     private var clipboardBusy: Bool { dictation.state.isBusy || session.state == .capturing }
@@ -152,8 +191,7 @@ struct MenuBarView: View {
         case .discard: dictation.discard()
         case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .keys)
         case .openDictationSettings: SettingsWindow.present(openSettings, container: container, tab: .dictation)
-        case .openMicrophoneSettings:
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!)
+        case .openMicrophoneSettings: NSWorkspace.shared.open(Microphone.settingsURL)
         }
     }
 }

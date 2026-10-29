@@ -4,8 +4,13 @@ import SwiftUI
 @main
 struct VibeFlowApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var container = AppContainer()
+    @State private var container: AppContainer
     @State private var clock = MenuBarClock()
+
+    init() {
+        AppDelegate.quitOlderCopies()
+        _container = State(initialValue: AppContainer())
+    }
 
     var body: some Scene {
         MenuBarExtra {
