@@ -163,6 +163,21 @@ private func event(_ id: String = "e1", summary: String = "Standup", start: Stri
         #expect(meeting?.htmlLink == nil)
     }
 
+    // Value: protects=Zoom links inside HTML descriptions keep every query parameter (the passcode); fails_when=&amp; reaches URL parsing and pwd becomes amp;pwd; why_new=the HTML test link had no second parameter; seam=none; no_claim=every HTML entity Google may emit (only &amp; and &#38;)
+    @Test func htmlEscapedAmpersandsKeepThePasscode() throws {
+        let html = #"<a href="https://us06web.zoom.us/j/8812?omn=123&amp;pwd=abc">Join Zoom</a>"#
+        let link = try #require(JoinLink.find(in: event { $0.description = html }))
+        let items = URLComponents(url: link, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        #expect(items.first { $0.name == "pwd" }?.value == "abc")
+    }
+
+    // Value: protects=events with fractional-second timestamps still count; fails_when=the default ISO style rejects .123 and the meeting silently disappears; why_new=every fixture used whole seconds; seam=none; no_claim=how often Google sends fractions
+    @Test func fractionalSecondsParse() {
+        #expect(MeetingFilter.parseDate("2026-10-29T09:00:00.123Z") != nil)
+        #expect(MeetingFilter.parseDate("2026-10-29T16:30:00+07:00") == utc("2026-10-29T09:30:00Z"))
+        #expect(MeetingFilter.parseDate("not a date") == nil)
+    }
+
     @Test func otherLinksAndLookalikesAreNotJoinLinks() {
         #expect(JoinLink.find(in: event { $0.location = "Room 4, https://maps.google.com/x" }) == nil)
         #expect(JoinLink.find(in: event { $0.description = "https://notzoom.us/j/1 and http://zoom.us/j/2" }) == nil)

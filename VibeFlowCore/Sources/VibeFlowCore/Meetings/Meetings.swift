@@ -164,8 +164,10 @@ public enum MeetingFilter {
         return result.sorted { ($0.start, $0.title) < ($1.start, $1.title) }
     }
 
+    /// RFC 3339, with or without fractional seconds (macOS 15's default style rejects them).
     static func parseDate(_ text: String) -> Date? {
-        try? Date(text, strategy: .iso8601)
+        (try? Date(text, strategy: .iso8601))
+            ?? (try? Date(text, strategy: Date.ISO8601FormatStyle(includingFractionalSeconds: true)))
     }
 }
 
@@ -197,7 +199,11 @@ public enum JoinLink {
 
     static func firstCallLink(in text: String) -> URL? {
         for match in text.matches(of: #/https://[^\s"'<>]+/#) {
-            let candidate = String(match.output).trimmingCharacters(in: CharacterSet(charactersIn: ".,;:!?)]}"))
+            // Descriptions are often HTML: an href keeps "&amp;" between query parameters.
+            let candidate = String(match.output)
+                .replacingOccurrences(of: "&amp;", with: "&")
+                .replacingOccurrences(of: "&#38;", with: "&")
+                .trimmingCharacters(in: CharacterSet(charactersIn: ".,;:!?)]}"))
             guard let url = URL(string: candidate), let host = url.host()?.lowercased() else { continue }
             if callHosts.contains(where: { host == $0 || host.hasSuffix("." + $0) }) { return url }
         }

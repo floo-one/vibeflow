@@ -49,7 +49,8 @@ final class MeetingsStore {
         timerTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: Self.syncInterval)
-                self?.sync()
+                guard let self else { return }
+                sync()
             }
         }
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
@@ -107,7 +108,8 @@ final class MeetingsStore {
             defer { if attempt == signInAttempt { isSigningIn = false } }
             do throws(GoogleSignInError) {
                 let tokens = try await googleSignIn.signIn(config: config, client: client)
-                guard let refreshToken = tokens.refreshToken else { return }
+                // Cancel can land while the code exchange is in flight: never save that sign-in.
+                guard let refreshToken = tokens.refreshToken, attempt == signInAttempt, !Task.isCancelled else { return }
                 do {
                     try secrets.write(refreshToken, for: .googleRefreshToken)
                 } catch {
@@ -124,23 +126,31 @@ final class MeetingsStore {
         }
     }
 
+    /// Stops the whole attempt: the browser wait and a code exchange already in flight.
     func cancelSignIn() {
         googleSignIn.cancel()
+        signInTask?.cancel()
+        signInAttempt += 1
+        isSigningIn = false
     }
 
-    /// Forgets the token here and revokes it at Google (best effort).
+    /// Forgets the sign-in on this Mac only. Revoking at Google would end the whole grant, and
+    /// with it VibeFlow on your other Macs and the other build (Dev or release); remove the
+    /// grant at myaccount.google.com/permissions instead.
     func signOut() {
+        do {
+            try secrets.delete(.googleRefreshToken)
+        } catch {
+            signInMessage = "Could not remove the sign-in from the Keychain"
+            log.error("Google token delete failed: \(error.localizedDescription, privacy: .public)")
+            return
+        }
         fetchTask?.cancel()
-        googleSignIn.cancel()
+        cancelSignIn()
         MeetingsSync.signOut(&state)
         // The calendar choice belongs to this account; the next one starts from its own calendar.
         preferences.meetingsCalendars = nil
         signInMessage = nil
-        let token = try? secrets.readOnDemand(.googleRefreshToken)
-        try? secrets.delete(.googleRefreshToken)
-        if let token, let client {
-            Task.detached { await client.revoke(token: token) }
-        }
     }
 
     private func finish(generation: Int, outcome: MeetingsFetchOutcome) {
@@ -148,6 +158,12 @@ final class MeetingsStore {
         guard generation == state.generation else { return }
         switch outcome {
         case .fetched(let fetch):
+            // Saved calendars that no longer exist (another account, unshared): start over from
+            // yours, so the toggles show what is actually watched.
+            let ids = Set(fetch.calendars.map(\.id))
+            if let saved = preferences.meetingsCalendars, !saved.isEmpty, !saved.contains(where: ids.contains) {
+                preferences.meetingsCalendars = nil
+            }
             log.notice("Meetings synced: \(fetch.meetings.count, privacy: .public) meetings from \(fetch.events.count, privacy: .public) calendars")
         case .failed(.invalidGrant):
             // Google no longer accepts the token; keeping it would fail every 5 minutes.
@@ -176,7 +192,8 @@ final class MeetingsStore {
         } catch let error as GoogleCalendarError {
             return .failed(error)
         } catch is CancellationError {
-            return nil
+            // Our own cancel drops the result; a request cancelled under us reads as offline.
+            return Task.isCancelled ? nil : .failed(.offline)
         } catch {
             return .failed(.malformed)
         }

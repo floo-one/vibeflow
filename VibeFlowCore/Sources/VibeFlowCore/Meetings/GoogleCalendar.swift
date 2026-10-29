@@ -237,11 +237,12 @@ public final class GoogleCalendarClient: Sendable {
         _ = try? await http.send(GoogleOAuth.revokeRequest(token: token))
     }
 
-    /// Every page of the calendar list.
+    /// Every page of the calendar list, only calendars whose events you can read (a free/busy
+    /// calendar would fail events.list).
     public func calendars(accessToken: String) async throws -> [GoogleCalendarEntry] {
         struct Page: Decodable { let items: [GoogleCalendarEntry]?; let nextPageToken: String? }
-        let pages: [Page] = try await allPages("users/me/calendarList", [URLQueryItem(name: "maxResults", value: String(pageSize))],
-                                               bearer: accessToken, next: \.nextPageToken)
+        let query = [URLQueryItem(name: "maxResults", value: String(pageSize)), URLQueryItem(name: "minAccessRole", value: "reader")]
+        let pages: [Page] = try await allPages("users/me/calendarList", query, bearer: accessToken, next: \.nextPageToken)
         return pages.flatMap { $0.items ?? [] }
     }
 
@@ -262,7 +263,9 @@ public final class GoogleCalendarClient: Sendable {
     }
 
     /// One whole sync. All or nothing: a failed page fails the fetch, so the caller keeps its
-    /// last complete snapshot instead of half a day (R11). `selected` nil means your own calendar.
+    /// last complete snapshot instead of half a day (R11). The exception is a watched calendar
+    /// that refuses access (unshared, permissions changed): it is skipped, so it cannot stop
+    /// your own meetings from updating. `selected` nil means your own calendar.
     public func fetch(refreshToken: String, selected: [String]?, window: DateInterval) async throws -> MeetingsFetch {
         let accessToken = try await refresh(refreshToken: refreshToken).accessToken
         let calendars = try await calendars(accessToken: accessToken)
@@ -275,7 +278,11 @@ public final class GoogleCalendarClient: Sendable {
         ids.sort { ($0 == email ? 0 : 1) < ($1 == email ? 0 : 1) }
         var events: [MeetingsFetch.CalendarFetch] = []
         for id in ids {
-            events.append(.init(calendarID: id, events: try await self.events(calendarID: id, in: window, accessToken: accessToken)))
+            do {
+                events.append(.init(calendarID: id, events: try await self.events(calendarID: id, in: window, accessToken: accessToken)))
+            } catch GoogleCalendarError.http(let code) where id != email && (code == 403 || code == 404) {
+                continue
+            }
         }
         return MeetingsFetch(email: email, calendars: calendars, events: events)
     }
@@ -304,6 +311,8 @@ public final class GoogleCalendarClient: Sendable {
         repeat {
             var components = URLComponents(string: Self.apiBase.absoluteString + path)!
             components.queryItems = query + (pageToken.map { [URLQueryItem(name: "pageToken", value: $0)] } ?? [])
+            // URLComponents leaves "+" alone and Google reads it as a space (page tokens, offsets).
+            components.percentEncodedQuery = components.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
             var request = URLRequest(url: components.url!)
             request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
             let response = try await send(request)

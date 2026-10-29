@@ -84,6 +84,9 @@ private final class LoopbackListener: @unchecked Sendable {
     private var ready: CheckedContinuation<UInt16, Error>?
     private var waiter: CheckedContinuation<String, Error>?
     private var outcome: Result<String, GoogleSignInError>?
+    /// Open connections, closed when the sign-in ends; a few at once is plenty for a browser.
+    private var connections: [ObjectIdentifier: NWConnection] = [:]
+    private static let maxConnections = 8
 
     init(expectedState: String, timeout: Duration) throws {
         let parameters = NWParameters.tcp
@@ -102,8 +105,8 @@ private final class LoopbackListener: @unchecked Sendable {
                     case .ready:
                         ready?.resume(returning: listener.port?.rawValue ?? 0)
                         ready = nil
-                        queue.asyncAfter(deadline: .now() + .seconds(Int(timeout.components.seconds))) { [self] in
-                            finish(.failure(.timedOut))
+                        queue.asyncAfter(deadline: .now() + .seconds(Int(timeout.components.seconds))) { [weak self] in
+                            self?.finish(.failure(.timedOut))
                         }
                     case .failed(let error):
                         ready?.resume(throwing: error)
@@ -113,6 +116,18 @@ private final class LoopbackListener: @unchecked Sendable {
                     }
                 }
                 listener.newConnectionHandler = { [self] connection in
+                    guard outcome == nil, connections.count < Self.maxConnections else {
+                        connection.cancel()
+                        return
+                    }
+                    let id = ObjectIdentifier(connection)
+                    connections[id] = connection
+                    connection.stateUpdateHandler = { [weak self] state in
+                        switch state {
+                        case .cancelled, .failed: self?.connections[id] = nil
+                        default: break
+                        }
+                    }
                     connection.start(queue: queue)
                     read(connection, buffer: Data())
                 }
@@ -147,6 +162,9 @@ private final class LoopbackListener: @unchecked Sendable {
         guard outcome == nil else { return }
         outcome = result
         listener.cancel()
+        // A half-sent request from another program must not keep a socket open after we're done.
+        for connection in connections.values { connection.cancel() }
+        connections = [:]
         waiter?.resume(with: result.mapError { $0 as Error })
         waiter = nil
     }
@@ -193,6 +211,8 @@ private final class LoopbackListener: @unchecked Sendable {
     }
 
     private func respond(_ connection: NWConnection, status: String, page: String) {
+        // This one closes itself once the page is sent; finish() must not cut it off.
+        connections[ObjectIdentifier(connection)] = nil
         let escaped = page
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")

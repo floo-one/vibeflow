@@ -257,6 +257,46 @@ private func meeting(_ id: String) -> String { String(format: meetingJSON, id) }
         #expect(none.events.isEmpty)
     }
 
+    // Value: protects=a watched calendar that refuses access is skipped while your own calendar still syncs, and a refusal on your own calendar still fails; fails_when=one unshared colleague calendar stops all syncing, or your own 403 is swallowed; why_new=only a 503 failure was tested; seam=none; no_claim=Google's real 403 bodies (scripted HTTP)
+    @Test func aRefusedColleagueCalendarIsSkipped() async throws {
+        for code in [403, 404] {
+            let http = ScriptedHTTPClient { request in
+                let url = request.url!.absoluteString
+                if url.hasPrefix(GoogleOAuth.tokenEndpoint.absoluteString) { return json(#"{"access_token":"fresh"}"#) }
+                if url.contains("/users/me/calendarList") {
+                    #expect(query(request, "minAccessRole") == "reader")
+                    return json(#"{"items":[{"id":"florian@example.com","primary":true},{"id":"colleague@example.com"}]}"#)
+                }
+                if url.contains("/calendars/colleague@example.com/") { return json("{}", status: code) }
+                return json(#"{"items":[\#(meeting("mine"))]}"#)
+            }
+            let fetch = try await GoogleCalendarClient(http: http, config: config)
+                .fetch(refreshToken: "r", selected: [me, "colleague@example.com"], window: window)
+            #expect(fetch.events.map(\.calendarID) == [me])
+            #expect(fetch.meetings.map(\.id) == ["mine"])
+        }
+        let ownRefused = ScriptedHTTPClient { request in
+            let url = request.url!.absoluteString
+            if url.hasPrefix(GoogleOAuth.tokenEndpoint.absoluteString) { return json(#"{"access_token":"fresh"}"#) }
+            if url.contains("/users/me/calendarList") { return json(#"{"items":[{"id":"florian@example.com","primary":true}]}"#) }
+            return json("{}", status: 403)
+        }
+        await #expect(throws: GoogleCalendarError.http(403)) {
+            try await GoogleCalendarClient(http: ownRefused, config: config).fetch(refreshToken: "r", selected: nil, window: window)
+        }
+    }
+
+    // Value: protects=a page token containing "+" reaches Google intact; fails_when=URLComponents leaves "+" unescaped and Google reads a space; why_new=page tokens in tests had no reserved characters; seam=none; no_claim=Google's real token alphabet
+    @Test func plusInAPageTokenIsEscaped() async throws {
+        let http = ScriptedHTTPClient { request in
+            query(request, "pageToken") == nil ? json(#"{"items":[],"nextPageToken":"a+b/c="}"#) : json(#"{"items":[]}"#)
+        }
+        _ = try await GoogleCalendarClient(http: http, config: config).events(calendarID: me, in: window, accessToken: "tok")
+        let second = try #require(http.requests.last?.url?.absoluteString)
+        #expect(second.contains("pageToken=a%2Bb/c%3D"))
+        #expect(query(try #require(http.requests.last), "pageToken") == "a+b/c=")
+    }
+
     @Test func oneFailedCalendarFailsTheWholeFetch() async {
         let client = GoogleCalendarClient(http: syncServer(failEventsOn: "colleague@example.com"), config: config)
         await #expect(throws: GoogleCalendarError.http(503)) {
