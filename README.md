@@ -85,30 +85,74 @@ and the system input otherwise. Pick a specific microphone there to override it.
 Settings > Reading > Speaker sends the ElevenLabs voice to a specific output; the Apple
 fallback voice always uses the system output.
 
-## Build it yourself
+## Install
 
-There is no downloadable build yet, so VibeFlow is built from source.
+Download [VibeFlow.dmg](https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg)
+from the latest release, open it and drag VibeFlow to Applications. It is signed and notarized
+by Apple. Grant Accessibility when asked, and Microphone on the first dictation, then add your
+keys in Settings > Keys. To update, download the new DMG and replace the app.
+
+## Build it yourself
 
 1. Install [Xcode 26](https://apps.apple.com/app/xcode/id497799835) and XcodeGen:
    `brew install xcodegen`.
-2. Sign in to Xcode with an Apple ID (Settings > Accounts). A free personal team is enough.
-   It gives the app a stable signature, so the Accessibility and Microphone permissions
-   survive rebuilds. In `project.yml`, set `DEVELOPMENT_TEAM` to your team id and change
-   `PRODUCT_BUNDLE_IDENTIFIER` (for example to `com.yourname.vibeflow`), since
+2. Sign in to Xcode with an Apple ID (Settings > Accounts). A free personal team is enough
+   for Debug builds. It gives the app a stable signature, so the Accessibility and Microphone
+   permissions survive rebuilds. In `project.yml`, set `DEVELOPMENT_TEAM` to your team id and
+   change `PRODUCT_BUNDLE_IDENTIFIER` (for example to `com.yourname.vibeflow`), since
    `one.floo.vibeflow` belongs to the author's team.
 3. Generate and build:
 
    ```bash
    xcodegen generate
    xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug -derivedDataPath build/DerivedData build
-   open build/DerivedData/Build/Products/Debug/VibeFlow.app
+   open "build/DerivedData/Build/Products/Debug/VibeFlow Dev.app"
    ```
+
+   The Debug build is **VibeFlow Dev**, a separate app from the release, so both can run at
+   once: its own bundle id, settings and permissions, a DEV tag in the menu bar, and Control
+   added to every default shortcut (Control + Option + . reads, and so on). API keys are
+   shared with the release.
 
 4. Grant Accessibility when asked, and Microphone on the first dictation, then add your keys
    in Settings > Keys.
 
 An ad-hoc build (`CODE_SIGN_IDENTITY=-`, as CI does) works too, but macOS forgets its
 Accessibility permission on every rebuild; remove the old entry and grant it again each time.
+
+## Build a release
+
+Release builds are signed with Developer ID and notarized, so a downloaded copy opens on any
+Mac without the "unidentified developer" detour. This needs the paid Apple Developer Program
+and a "Developer ID Application" certificate in your login keychain (Xcode > Settings >
+Accounts > your team > Manage Certificates > + > Developer ID Application).
+
+One-time setup, so `notarytool` can talk to Apple:
+
+```bash
+xcrun notarytool store-credentials VibeFlowNotary --team-id X7UXDLS9F7
+```
+
+It asks for the Apple Account email of the team and an app-specific password (create one at
+account.apple.com > Sign-In and Security > App-Specific Passwords; the account password does
+not work). Both go into the login keychain, nothing into the repo. Then:
+
+```bash
+scripts/release.sh
+```
+
+archives the Release configuration (bundle id `one.floo.vibeflow`), exports it with Developer ID
+(`scripts/ExportOptions.plist`), notarizes and staples the app, packs it into a DMG with an
+Applications shortcut, notarizes and staples the DMG as well, and finishes with a Gatekeeper
+check (`spctl`). The result is `build/release/VibeFlow-<version>.dmg`. `--no-notarize` stops
+after the signed export, which needs no credentials.
+
+To publish, bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`, add a
+`## <version>` section to `CHANGELOG.md`, merge to main, then on a clean, pushed main run
+`scripts/release.sh --publish`. It refuses to run anywhere else, tags `v<version>` and creates
+the GitHub release with the changelog section as notes and the DMG as `VibeFlow.dmg`, so the
+download link above always points at the newest version. Forks: change `teamID` in
+`scripts/ExportOptions.plist` and the team id in the two commands above to yours.
 
 ## Development
 

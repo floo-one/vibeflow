@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0
 
 ### Smart read
 - Smart read now explains like a sharp friend talking to a curious 15-year-old: it leads with
@@ -31,6 +31,14 @@
 - A second menu bar item shows the time in other time zones, each with its flag. It starts
   with Berlin. Settings > Clocks adds clocks by city, country, abbreviation or IANA name
   (time zone data from vvo/tzdb), and removes or reorders them.
+
+### Distribution
+- VibeFlow is now a download: a notarized DMG on GitHub Releases that opens on any Mac
+  without the "unidentified developer" detour. `scripts/release.sh --publish` builds, notarizes
+  and uploads it from main.
+- Debug builds are a separate app, VibeFlow Dev, that runs next to the installed release: its
+  own settings and permissions, a DEV tag in the menu bar, and Control added to every default
+  shortcut (Control + Option + . and so on, Command added to the paste shortcuts). It uses the same API keys as the release.
 
 ## 1.0.0 (2026-10-06)
 
