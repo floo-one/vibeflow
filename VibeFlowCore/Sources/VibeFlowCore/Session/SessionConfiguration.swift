@@ -14,6 +14,8 @@ public struct SessionConfiguration: Sendable, Equatable {
     public var hotkeyConfirmWindow: Duration = .seconds(5)
     public var menuConfirmWindow: Duration = .seconds(10)
     public var smartReadModel: String = "claude-haiku-5-5"
+    /// Speed for briefs and follow-up answers (Settings > Smart Read), nil = the read speed.
+    public var smartReadSpeed: Double?
     public var briefMaxTokens: Int = 800
 
     public init() {}

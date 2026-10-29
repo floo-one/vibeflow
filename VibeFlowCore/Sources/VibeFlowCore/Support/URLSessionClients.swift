@@ -26,6 +26,41 @@ public struct URLSessionByteStreamClient: ByteStreamClient {
     }
 }
 
+/// Live WebSocketClient on URLSessionWebSocketTask.
+public struct URLSessionWebSocketClient: WebSocketClient {
+    private let session: URLSession
+    public init(session: URLSession = .shared) { self.session = session }
+
+    public func connect(_ request: URLRequest) -> any WebSocketConnection {
+        let task = session.webSocketTask(with: request)
+        task.resume()
+        return Connection(task: task)
+    }
+
+    private final class Connection: WebSocketConnection, @unchecked Sendable {
+        let task: URLSessionWebSocketTask
+        init(task: URLSessionWebSocketTask) { self.task = task }
+
+        func send(_ text: String) async throws { try await task.send(.string(text)) }
+
+        func receive() async throws -> String? {
+            do {
+                switch try await task.receive() {
+                case .string(let text): return text
+                case .data(let data): return String(decoding: data, as: UTF8.self)
+                @unknown default: return nil
+                }
+            } catch {
+                // A normal close from the server ends the stream; anything else is a failure.
+                if task.closeCode == .normalClosure { return nil }
+                throw error
+            }
+        }
+
+        func close() { task.cancel(with: .normalClosure, reason: nil) }
+    }
+}
+
 /// Live HTTPClient on URLSession.data.
 public struct URLSessionHTTPClient: HTTPClient {
     private let session: URLSession

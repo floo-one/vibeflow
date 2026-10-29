@@ -14,15 +14,18 @@ public final class ElevenLabsProvider: SpeechProvider {
     public static let speedRange = 0.7...1.2
 
     private let client: any ByteStreamClient
+    private let webSocket: any WebSocketClient
     private let player: any AudioPlayer
     private let secrets: any SecretsStore
     private let baseURL: URL
     /// The ElevenLabs model for the next read (Settings > Reading).
     public var model = ElevenLabsProvider.defaultModel
 
-    public init(client: any ByteStreamClient, player: any AudioPlayer, secrets: any SecretsStore,
+    public init(client: any ByteStreamClient, webSocket: any WebSocketClient = URLSessionWebSocketClient(),
+                player: any AudioPlayer, secrets: any SecretsStore,
                 baseURL: URL = URL(string: "https://api.elevenlabs.io")!) {
         self.client = client
+        self.webSocket = webSocket
         self.player = player
         self.secrets = secrets
         self.baseURL = baseURL
@@ -78,6 +81,195 @@ public enum ElevenLabsLanguage {
         guard let bcp47, let primary = bcp47.split(separator: "-").first else { return nil }
         let code = primary.lowercased()
         return flashV25Supported.contains(code) ? code : nil
+    }
+}
+
+// MARK: - Streaming text input (follow-up answers)
+
+extension ElevenLabsProvider: StreamingSpeechProvider {
+    /// Characters ElevenLabs waits for before generating each chunk: small first, so the
+    /// voice starts on the first sentence, larger later for steadier prosody.
+    public static let chunkSchedule = [50, 90, 120, 150]
+
+    public func beginStream(_ request: SpeechRequest) -> any StreamingSpeech {
+        let playback = ElevenLabsTextStream(player: player)
+        guard let key = secrets.read(.elevenLabs) else {
+            playback.fail(.unauthorized)
+            return playback
+        }
+        let remainder = request.speed > Self.speedRange.upperBound ? request.speed / Self.speedRange.upperBound : 1.0
+        playback.start(connection: webSocket.connect(Self.buildStreamRequest(request, apiKey: key, baseURL: baseURL, model: model)),
+                       initMessage: Self.streamInitMessage(request), playerRate: remainder)
+        return playback
+    }
+
+    static func buildStreamRequest(_ request: SpeechRequest, apiKey: String, baseURL: URL, model: String) -> URLRequest {
+        var components = URLComponents(url: baseURL.appendingPathComponent("/v1/text-to-speech/\(request.voiceID)/stream-input"), resolvingAgainstBaseURL: false)!
+        components.scheme = "wss"
+        components.queryItems = [URLQueryItem(name: "model_id", value: model), URLQueryItem(name: "output_format", value: outputFormat)]
+        var req = URLRequest(url: components.url!)
+        req.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
+        return req
+    }
+
+    static func streamInitMessage(_ request: SpeechRequest) -> String {
+        let speed = min(max(request.speed, speedRange.lowerBound), speedRange.upperBound)
+        return json([
+            "text": " ",
+            "voice_settings": ["speed": speed, "stability": 0.5, "similarity_boost": 0.75],
+            "generation_config": ["chunk_length_schedule": chunkSchedule],
+        ])
+    }
+
+    static func json(_ object: [String: Any]) -> String {
+        let data = (try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])) ?? Data("{}".utf8)
+        return String(decoding: data, as: UTF8.self)
+    }
+}
+
+@MainActor
+final class ElevenLabsTextStream: StreamingSpeech {
+    let events: AsyncThrowingStream<SpeechEvent, Error>
+    private let continuation: AsyncThrowingStream<SpeechEvent, Error>.Continuation
+    private let player: any AudioPlayer
+    /// Outgoing messages in order; the sender drains it.
+    private let outgoing: AsyncStream<String>
+    private let outgoingContinuation: AsyncStream<String>.Continuation
+    private var connection: (any WebSocketConnection)?
+    private var sender: Task<Void, Never>?
+    private var receiver: Task<Void, Never>?
+    private var cancelled = false
+    private var receivedAudio = false
+    /// Characters whose audio has arrived, from `alignment`, for resuming with Apple.
+    private var alignedCharacters = 0
+
+    init(player: any AudioPlayer) {
+        self.player = player
+        var c: AsyncThrowingStream<SpeechEvent, Error>.Continuation!
+        events = AsyncThrowingStream { c = $0 }
+        continuation = c
+        var o: AsyncStream<String>.Continuation!
+        outgoing = AsyncStream { o = $0 }
+        outgoingContinuation = o
+    }
+
+    func fail(_ failure: SpeechFailure) {
+        outgoingContinuation.finish()
+        continuation.finish(throwing: failure)
+    }
+
+    func start(connection: any WebSocketConnection, initMessage: String, playerRate: Double) {
+        self.connection = connection
+        do {
+            try player.prepare()
+            player.setRate(playerRate)
+        } catch {
+            fail(.other("audio output: \(error.localizedDescription)"))
+            return
+        }
+        outgoingContinuation.yield(initMessage)
+        let outgoing = outgoing
+        sender = Task { [weak self] in
+            for await message in outgoing {
+                do { try await connection.send(message) } catch {
+                    self?.failed(error)
+                    return
+                }
+            }
+        }
+        receiver = Task { [weak self] in
+            do {
+                while let message = try await connection.receive() {
+                    guard let self, !self.cancelled else { return }
+                    if try self.handle(message) { break }
+                }
+                guard let self, !self.cancelled else { return }
+                guard self.receivedAudio else { throw SpeechFailure.emptyResponse }
+                await self.player.waitUntilDone()
+                guard !self.cancelled else { return }
+                self.continuation.yield(.finished)
+                self.continuation.finish()
+                connection.close()
+            } catch {
+                self?.failed(error)
+            }
+        }
+    }
+
+    func append(_ text: String) {
+        guard !text.isEmpty else { return }
+        outgoingContinuation.yield(ElevenLabsProvider.json(["text": text]))
+    }
+
+    func finishText() {
+        // An empty text closes the input; ElevenLabs speaks what is buffered and ends with isFinal.
+        outgoingContinuation.yield(ElevenLabsProvider.json(["text": ""]))
+        outgoingContinuation.finish()
+    }
+
+    /// Returns true on the final message.
+    private func handle(_ message: String) throws -> Bool {
+        let parsed = try JSONDecoder().decode(Message.self, from: Data(message.utf8))
+        if let b64 = parsed.audio, let pcm = Data(base64Encoded: b64), !pcm.isEmpty {
+            player.schedule(pcm16: pcm)
+            if !receivedAudio {
+                receivedAudio = true
+                continuation.yield(.started)
+            }
+        }
+        if let chars = parsed.alignment?.chars {
+            alignedCharacters += chars.count
+            continuation.yield(.progress(characterOffset: alignedCharacters))
+        }
+        if parsed.isFinal == true { return true }
+        if !receivedAudio, let error = parsed.error ?? parsed.message {
+            let lowered = error.lowercased()
+            throw lowered.contains("api key") || lowered.contains("api_key") || lowered.contains("unauthorized")
+                ? SpeechFailure.unauthorized : SpeechFailure.other(error)
+        }
+        return false
+    }
+
+    private func failed(_ error: Error) {
+        guard !cancelled else { return }
+        cancelled = true
+        sender?.cancel()
+        receiver?.cancel()
+        connection?.close()
+        outgoingContinuation.finish()
+        let failure: SpeechFailure
+        if let speech = error as? SpeechFailure {
+            failure = speech
+        } else if receivedAudio {
+            failure = .connectionLost(lastPlayedOffset: alignedCharacters)
+        } else if let url = error as? URLError,
+                  [.notConnectedToInternet, .networkConnectionLost, .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed].contains(url.code) {
+            failure = .offline
+        } else {
+            failure = .other(error.localizedDescription)
+        }
+        player.stop()
+        continuation.finish(throwing: failure)
+    }
+
+    func cancel() {
+        guard !cancelled else { return }
+        cancelled = true
+        sender?.cancel()
+        receiver?.cancel()
+        connection?.close()
+        outgoingContinuation.finish()
+        player.stop()
+        continuation.finish()
+    }
+
+    private struct Message: Decodable {
+        struct Alignment: Decodable { let chars: [String]? }
+        let audio: String?
+        let isFinal: Bool?
+        let alignment: Alignment?
+        let error: String?
+        let message: String?
     }
 }
 

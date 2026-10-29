@@ -9,6 +9,7 @@ import SwiftUI
 struct MenuBarView: View {
     @Environment(AppContainer.self) private var container
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.openWindow) private var openWindow
 
     private var session: ReadSession { container.session }
     private var dictation: DictationSession { container.dictation }
@@ -31,6 +32,13 @@ struct MenuBarView: View {
                     Button(label(for: action)) { perform(action) }
                 }
             }
+        }
+
+        if let exchange = session.lastExchange {
+            Divider()
+            Text("You asked: \(exchange.question)").lineLimit(1)
+            Text(exchange.answer).lineLimit(3)
+            Button("Copy answer") { container.copyLastAnswer() }
         }
 
         if !session.accessibilityTrusted {
@@ -57,6 +65,25 @@ struct MenuBarView: View {
             .globalKeyboardShortcut(.readClipboard)
         Button("Smart read clipboard") { container.menuRead(.smartRead) }
             .globalKeyboardShortcut(.smartReadClipboard)
+
+        Menu("History") {
+            let recent = container.history.entries.prefix(10)
+            if recent.isEmpty {
+                Text("Nothing yet")
+            }
+            ForEach(recent) { entry in
+                Button(HistoryFormat.menuTitle(entry)) {
+                    // A read plays again; a question opens so the full answer can be seen.
+                    if entry.kind == .read {
+                        container.readAgain(entry)
+                    } else {
+                        HistoryWindow.present(openWindow, container: container, select: entry.id)
+                    }
+                }
+            }
+            Divider()
+            Button("Show All History…") { HistoryWindow.present(openWindow, container: container) }
+        }
 
         Divider()
 

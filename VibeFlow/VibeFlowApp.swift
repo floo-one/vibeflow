@@ -32,6 +32,12 @@ struct VibeFlowApp: App {
             SettingsView()
                 .environment(container)
         }
+        Window("History", id: HistoryWindow.id) {
+            HistoryView()
+                .environment(container)
+        }
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 640, height: 440)
     }
 
     /// Shown while there is at least one clock; the Clocks tab is the only way to change that.

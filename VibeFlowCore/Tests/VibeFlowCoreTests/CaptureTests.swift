@@ -79,7 +79,11 @@ struct CaptureTests {
         #expect(result.text == "late copy")
     }
 
-    @Test func copyTimeoutYieldsNoTextAndNoRestore() async {
+    // Chrome keeps Edit > Copy enabled with nothing selected and writes nothing; its web area has
+    // no selected-text attribute either, so the timeout is the only "nothing selected" signal
+    // there. A question in Chrome with nothing selected used to fail with "Couldn't read the
+    // selection" instead of continuing the context (2026-10-29).
+    @Test func copyTimeoutMeansNothingSelectedAndNoRestore() async {
         let h = CaptureHarness()
         h.accessibility.copyProduces = nil // the app never writes
         let result = await h.run()
@@ -103,7 +107,7 @@ struct CaptureTests {
             h.clock.advance(by: .milliseconds(20))
         }
         let result = await task.value
-        #expect(result == .none)
+        #expect(result == .failed)
         #expect(h.pasteboard.writes.isEmpty, "never restore over a clipboard someone else just wrote")
     }
 
@@ -112,7 +116,7 @@ struct CaptureTests {
         h.accessibility.copyProduces = "copied text"
         h.accessibility.frontmost = FrontmostApp(pid: 999, bundleID: "com.other.app")
         let result = await h.run()
-        #expect(result == .none)
+        #expect(result == .failed)
         #expect(h.pasteboard.writes.isEmpty)
     }
 
@@ -127,7 +131,7 @@ struct CaptureTests {
         let h = CaptureHarness()
         h.accessibility.copyError = .copyMenuItemNotFound
         let result = await h.run()
-        #expect(result == .none)
+        #expect(result == .failed)
         #expect(h.pasteboard.writes.isEmpty)
     }
 
@@ -170,15 +174,25 @@ struct CaptureTests {
         try? await Task.sleep(for: .milliseconds(5))
         task.cancel()
         let result = await task.value
-        #expect(result == .none)
+        #expect(result == .failed)
         #expect(h.pasteboard.writes.isEmpty)
+    }
+
+    @Test func accessibilityEmptyPlusFailedCopyMeansNothingSelected() async {
+        let h = CaptureHarness()
+        h.accessibility.selectedText = "  "
+        let result = await h.run()
+        #expect(result == .none, "Copy is disabled with nothing selected; that is not a failure")
+        h.accessibility.selectedText = nil
+        h.accessibility.copyError = .copyMenuItemNotFound
+        #expect(await h.run() == .failed, "without Accessibility's word, a failed Copy stays a failure")
     }
 
     @Test func noFrontmostAppMeansNoFallback() async {
         let h = CaptureHarness()
         h.accessibility.copyProduces = "copied text"
         let result = await h.capture.capture(from: nil)
-        #expect(result == .none)
+        #expect(result == .failed)
         #expect(h.accessibility.copyPresses.isEmpty)
     }
 }
@@ -194,7 +208,7 @@ struct ClipboardDeadlineTests {
         h.accessibility.copyProduces = "copied text"
         let start = ContinuousClock.now
         let result = await h.run()
-        #expect(result == .none)
+        #expect(result == .failed)
         #expect(pb.writes.isEmpty, "no restore over an unreadable clipboard")
         #expect(ContinuousClock.now - start < .seconds(2), "capture waited for a stalled read")
     }

@@ -146,6 +146,22 @@ public protocol SpeechProvider: AnyObject {
     func speak(_ request: SpeechRequest) -> any SpeechPlayback
 }
 
+/// A playback fed text while it is still being written: follow-up answers stream from Claude
+/// straight into the voice (docs/designs/smart-read-follow-up.md, latency follow-up).
+@MainActor
+public protocol StreamingSpeech: SpeechPlayback {
+    /// More text to speak, in order. Pieces are joined as they are, without added spaces.
+    func append(_ text: String)
+    /// No more text is coming: speak what is buffered, then finish.
+    func finishText()
+}
+
+@MainActor
+public protocol StreamingSpeechProvider: AnyObject {
+    /// Opens the voice stream. `request.text` and `startOffset` are ignored; text comes through `append`.
+    func beginStream(_ request: SpeechRequest) -> any StreamingSpeech
+}
+
 // MARK: - 4. AudioPlayer (PCMStreamPlayer, used by the ElevenLabs provider)
 
 @MainActor
@@ -175,6 +191,19 @@ public struct ByteStreamResponse: Sendable {
         self.status = status
         self.lines = lines
     }
+}
+
+/// One open WebSocket. Text frames only.
+public protocol WebSocketConnection: Sendable {
+    func send(_ text: String) async throws
+    /// The next message, or nil once the server closed the socket.
+    func receive() async throws -> String?
+    func close()
+}
+
+/// URLSessionWebSocketTask behind a protocol so the streaming voice is tested without a network.
+public protocol WebSocketClient: Sendable {
+    func connect(_ request: URLRequest) -> any WebSocketConnection
 }
 
 /// URLSession.bytes behind a protocol so providers are tested without a network.
@@ -264,8 +293,52 @@ public enum SmartReadFailure: Error, Equatable, Sendable {
     case other(String)
 }
 
+/// One spoken follow-up question and the answer VibeFlow gave.
+public struct ConversationTurn: Sendable, Equatable {
+    public var question: String
+    public var answer: String
+    public init(question: String, answer: String) {
+        self.question = question
+        self.answer = answer
+    }
+}
+
+/// A follow-up question about a document that was just read (docs/designs/smart-read-follow-up.md).
+public struct AskRequest: Sendable, Equatable {
+    public var document: String
+    /// The smart read brief, nil when the document was read plainly or not read at all.
+    public var brief: String?
+    public var turns: [ConversationTurn]
+    public var question: String
+    /// BCP-47 language the answer must be in, nil = same as the document.
+    public var language: String?
+    public var model: String
+    public var maxTokens: Int
+    public var instructions: String?
+
+    public init(document: String, brief: String? = nil, turns: [ConversationTurn] = [], question: String,
+                language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil) {
+        self.document = document
+        self.brief = brief
+        self.turns = turns
+        self.question = question
+        self.language = language
+        self.model = model
+        self.maxTokens = maxTokens
+        self.instructions = instructions
+    }
+}
+
+/// One piece of a streamed answer: text as it is written, then why it stopped.
+public enum AnswerChunk: Sendable, Equatable {
+    case text(String)
+    case done(StopReason)
+}
+
 public protocol SmartReadClient: Sendable {
     func transform(_ request: SmartReadRequest) async throws -> SmartReadResponse
+    /// Streams the answer so speech can start before Claude finishes. Throws SmartReadFailure.
+    func ask(_ request: AskRequest) -> AsyncThrowingStream<AnswerChunk, Error>
 }
 
 // MARK: - 7. SecretsStore (D5 keys in Keychain, cached in memory by the app)
@@ -316,7 +389,9 @@ public protocol AudioRecorder: AnyObject {
     /// Shows the system prompt when undetermined; returns whether access is granted.
     func requestPermission() async -> Bool
     /// Starts recording from the given input device UID, nil = system default input.
-    func start(deviceUID: String?) throws
+    /// `onReady` runs on the main actor once the first audio arrives, so the start cue only
+    /// plays when the microphone is really live (eng review D13).
+    func start(deviceUID: String?, onReady: @escaping @MainActor @Sendable () -> Void) throws
     /// Stops and returns everything recorded since start. Empty audio if not recording.
     func stop() -> RecordedAudio
     /// Stops and discards the recording.

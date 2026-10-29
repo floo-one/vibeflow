@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+import OSLog
+
+private let log = Logger(subsystem: "one.floo.vibeflow", category: "reading")
 
 // MARK: - Public surface
 
@@ -13,6 +16,8 @@ public enum ReadOrigin: Sendable, Equatable {
     case menu
     /// Shift + the read shortcut: reads the clipboard; pressing it again confirms a long text.
     case clipboardHotkey
+    /// A spoken follow-up question (hold the smart read shortcut).
+    case question
 }
 
 /// The working states. Error and warning are display states over `idle` (see `iconState`).
@@ -50,6 +55,40 @@ public struct LastError: Sendable, Equatable {
     }
 }
 
+// MARK: - Conversation
+
+/// The last text read, with its frozen preset, the brief and the follow-up turns. Created at
+/// capture time so "Read original instead" works after a failed smart read (eng review O3);
+/// follow-up questions are about this text (docs/designs/smart-read-follow-up.md).
+public struct Conversation: Sendable, Equatable {
+    public static let maxTurns = 10
+    /// With nothing selected, a question continues the conversation only within this window.
+    public static let staleAfter: TimeInterval = 30 * 60
+
+    public var document: String
+    public var preset: AppPreset
+    public var brief: String?
+    public private(set) var turns: [ConversationTurn] = []
+    public var createdAt: Date
+
+    public init(document: String, preset: AppPreset, brief: String? = nil, createdAt: Date) {
+        self.document = document
+        self.preset = preset
+        self.brief = brief
+        self.createdAt = createdAt
+    }
+
+    /// Keeps the last `maxTurns`; the document and the brief always stay.
+    public mutating func append(_ turn: ConversationTurn) {
+        turns.append(turn)
+        if turns.count > Self.maxTurns { turns.removeFirst(turns.count - Self.maxTurns) }
+    }
+
+    public func isStale(now: Date) -> Bool {
+        now.timeIntervalSince(createdAt) > Self.staleAfter
+    }
+}
+
 // MARK: - ReadSession
 
 /// One read from hotkey press to idle, with every rule from the design's Hotkey x state
@@ -83,8 +122,13 @@ public final class ReadSession {
     }
 
     /// The last captured text and its frozen preset, kept so "Read original instead" can
-    /// replay it after a failed smart read without re-capturing (R2-10).
-    public private(set) var storedOriginal: (text: String, preset: AppPreset)?
+    /// replay it after a failed smart read without re-capturing (R2-10), and so follow-up
+    /// questions have something to be about.
+    public private(set) var conversation: Conversation?
+    /// Time source for the conversation's age; replaced in tests.
+    public var now: () -> Date = Date.init
+    /// A spoken error line (Apple voice), silenced by the next action (eng review D14).
+    private var errorPlayback: (any SpeechPlayback)?
 
     // Dependencies
     private let accessibility: any AccessibilityBridge
@@ -93,6 +137,8 @@ public final class ReadSession {
     private let presets: any PresetResolving
     private let elevenLabs: any SpeechProvider
     private let apple: any SpeechProvider
+    /// ElevenLabs fed while Claude writes, for follow-up answers; nil = speak the finished answer.
+    private let answerVoice: (any StreamingSpeechProvider)?
     private let smartRead: any SmartReadClient
     private let secrets: any SecretsStore
     private let clock: any SessionClock
@@ -108,8 +154,10 @@ public final class ReadSession {
         smartRead: any SmartReadClient,
         secrets: any SecretsStore,
         clock: any SessionClock,
-        configuration: SessionConfiguration = SessionConfiguration()
+        configuration: SessionConfiguration = SessionConfiguration(),
+        answerVoice: (any StreamingSpeechProvider)? = nil
     ) {
+        self.answerVoice = answerVoice
         self.accessibility = accessibility
         self.clipboardSource = clipboardSource
         self.capture = capture
@@ -136,7 +184,7 @@ public final class ReadSession {
         let kind: ReadKind
         let origin: ReadOrigin
         let app: FrontmostApp?
-        let preset: AppPreset
+        var preset: AppPreset
         /// The hotkey fired in an AI assistant app, so smart read speaks as that assistant.
         var aiReply = false
         var text: String?
@@ -146,6 +194,22 @@ public final class ReadSession {
         var playback: (any SpeechPlayback)?
         var watchdog: Task<Void, Never>?
         var confirmExpiry: Task<Void, Never>?
+        /// Follow-up question: the capture result and the transcript, whichever comes first.
+        var questionCapture: CaptureResult?
+        var question: String?
+        /// A brief or an answer: spoken at the smart read speed.
+        var smartSpeed = false
+        /// False for replays from History, so reading an entry again adds no new one.
+        var recordsHistory = true
+        /// The streamed answer: Claude's request, the text so far, how much of it went to the
+        /// voice (whole sentences only), and the live voice stream while it lasts.
+        var answerTask: Task<Void, Never>?
+        var answer = ""
+        var forwarded = 0
+        var answerDone = false
+        var streaming: (any StreamingSpeech)?
+        /// The voice stream failed while Claude was still writing: Apple starts here once done.
+        var appleResume: Int?
 
         init(kind: ReadKind, origin: ReadOrigin, app: FrontmostApp?, preset: AppPreset) {
             self.kind = kind
@@ -158,6 +222,14 @@ public final class ReadSession {
     }
 
     private var current: Current?
+
+    /// The last question and its answer, for Copy answer and the paste shortcut.
+    public private(set) var lastExchange: ConversationTurn?
+    /// Called for every read that starts and every answered question (the app keeps History).
+    public var onRecord: (@MainActor (HistoryEntry) -> Void)?
+
+    /// True from the release of a question hold until its answer ends.
+    public var isAnsweringQuestion: Bool { current?.origin == .question }
 
     private func isCurrent(_ token: Token) -> Bool {
         current?.token == token
@@ -200,7 +272,14 @@ public final class ReadSession {
         startClipboardRead(kind, text: text, origin: .menu)
     }
 
-    private func startClipboardRead(_ kind: ReadKind, text: String, origin: ReadOrigin) {
+    /// History: read an entry's text aloud again with the default preset. Not recorded again.
+    public func readAgain(_ text: String) {
+        guard state == .idle else { cancel(status: "Stopped"); return }
+        startClipboardRead(.read, text: text, origin: .menu, recordsHistory: false)
+    }
+
+    private func startClipboardRead(_ kind: ReadKind, text: String, origin: ReadOrigin, recordsHistory: Bool = true) {
+        silenceSpokenError()
         accessibilityTrusted = accessibility.isTrusted
         lastError = nil
         stickyStatus = false
@@ -212,6 +291,7 @@ public final class ReadSession {
            source == accessibility.frontmostApp()?.bundleID {
             session.aiReply = SmartReadPrompts.isAIAssistant(bundleID: source)
         }
+        session.recordsHistory = recordsHistory
         current = session
         proceedAfterCapture(session, text: text, note: nil)
     }
@@ -224,24 +304,27 @@ public final class ReadSession {
 
     /// Menu item "Stop".
     public func stop() {
+        silenceSpokenError()
         guard state != .idle else { return }
         cancel(status: "Stopped")
     }
 
     /// Menu action "Read original instead": plain read of the stored text with its frozen preset.
     public func readOriginal() {
-        guard state == .idle, let stored = storedOriginal else { return }
+        guard state == .idle, let stored = conversation else { return }
+        silenceSpokenError()
         lastError = nil
         stickyStatus = false
         let session = Current(kind: .read, origin: .menu, app: nil, preset: stored.preset)
         current = session
-        session.text = stored.text
-        speak(stored.text, session: session)
+        session.text = stored.document
+        speak(stored.document, session: session)
     }
 
     // MARK: Start and capture
 
     private func start(kind: ReadKind, origin: ReadOrigin) {
+        silenceSpokenError()
         lastError = nil
         stickyStatus = false
         guard accessibilityTrusted else {
@@ -271,7 +354,7 @@ public final class ReadSession {
             return
         }
         session.text = text
-        storedOriginal = (text, session.preset)
+        conversation = Conversation(document: text, preset: session.preset, createdAt: now())
         if let note { status = note }
 
         let count = text.count
@@ -312,6 +395,9 @@ public final class ReadSession {
 
     private func proceed(_ session: Current) {
         guard let text = session.text else { return }
+        if session.recordsHistory {
+            onRecord?(.read(text, smart: session.kind == .smartRead, from: session.app?.bundleID, at: now()))
+        }
         switch session.kind {
         case .read:
             speak(text, session: session)
@@ -369,6 +455,8 @@ public final class ReadSession {
             return
         }
         lastAnswer = text
+        if conversation?.document == session.text { conversation?.brief = text }
+        session.smartSpeed = true
         speak(text, session: session)
     }
 
@@ -389,6 +477,237 @@ public final class ReadSession {
         }
     }
 
+    // MARK: Follow-up questions (docs/designs/smart-read-follow-up.md)
+
+    /// The smart read shortcut was released after a hold: capture the selection while the
+    /// question is transcribed. Returns the question's id; `ask` and `questionFailed` only act
+    /// while it is still current, so Stop, a new read or a new hold cancels it (eng review D12).
+    @discardableResult
+    public func beginQuestion() -> SessionID? {
+        silenceSpokenError()
+        tearDown()
+        lastError = nil
+        stickyStatus = false
+        accessibilityTrusted = accessibility.isTrusted
+        guard accessibilityTrusted else {
+            state = .idle
+            status = "Grant Accessibility access to read selections"
+            return nil
+        }
+        let app = accessibility.frontmostApp()
+        let session = Current(kind: .smartRead, origin: .question, app: app, preset: presets.preset(for: app?.bundleID))
+        current = session
+        state = .capturing
+        status = "Transcribing"
+        let token = session.token
+        session.task = Task { [weak self, capture] in
+            let result = await capture.capture(from: app)
+            guard let self, self.isCurrent(token) else { return }
+            session.questionCapture = result
+            self.continueQuestion(session)
+        }
+        return session.id
+    }
+
+    /// The transcript of the question that `beginQuestion` returned `id` for.
+    public func ask(_ transcript: String, for id: SessionID) {
+        guard let session = current, session.id == id, session.origin == .question else { return }
+        session.question = transcript
+        continueQuestion(session)
+    }
+
+    /// The question could not be transcribed. Holding again is the retry (eng review D8).
+    public func questionFailed(_ message: String, spoken: String, for id: SessionID) {
+        guard let session = current, session.id == id, session.origin == .question else { return }
+        failQuestion(message, spoken: spoken)
+    }
+
+    /// Runs once both the capture and the transcript are in.
+    private func continueQuestion(_ session: Current) {
+        guard let capture = session.questionCapture, let question = session.question else { return }
+        let selected = capture.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if capture.failed {
+            failQuestion("Couldn't read the selection. Select the text again", spoken: "Couldn't read the selection.")
+            return
+        }
+        if !selected.isEmpty && selected != conversation?.document {
+            if selected.count > SessionConfiguration.hardMax {
+                failQuestion("Selection too long (\(formatted(selected.count)) characters, limit \(formatted(SessionConfiguration.hardMax)))", spoken: "That selection is too long.")
+                return
+            }
+            conversation = Conversation(document: selected, preset: session.preset, createdAt: now())
+        } else if selected.isEmpty, conversation?.isStale(now: now()) ?? true {
+            failQuestion("Select text to ask about", spoken: "Select some text first.")
+            return
+        }
+        guard let context = conversation else { return }
+        session.preset = context.preset
+        session.text = context.document
+
+        guard secrets.read(.anthropic) != nil else {
+            failQuestion("No Anthropic key. Add one in Settings > Keys", spoken: "Questions need an Anthropic key.", actions: [.openKeys])
+            return
+        }
+        state = .transforming
+        status = "Thinking"
+        let request = AskRequest(
+            document: context.document,
+            brief: context.brief,
+            turns: context.turns,
+            question: question,
+            language: context.preset.languageOverride,
+            model: configuration.smartReadModel,
+            maxTokens: SmartReadPrompts.answerMaxTokens,
+            instructions: context.preset.smartReadInstructions
+        )
+        session.smartSpeed = true
+        if !useApple(session), let answerVoice {
+            // Latency follow-up: open the voice now, feed it each sentence as Claude writes it.
+            let speechRequest = speechRequest(text: "", session: session)
+            let stream = answerVoice.beginStream(speechRequest)
+            session.streaming = stream
+            session.playback = stream
+            observe(stream, request: speechRequest, session: session)
+        }
+        let stream = smartRead.ask(request)
+        session.answerTask = Task { [weak self] in
+            do {
+                for try await chunk in stream {
+                    guard let self, self.current === session else { return }
+                    switch chunk {
+                    case .text(let text): self.answerReceived(text, session: session)
+                    case .done(let reason): self.answerFinished(reason, question: question, session: session)
+                    }
+                }
+            } catch {
+                guard let self, self.current === session else { return }
+                self.handleAnswerFailure(error)
+            }
+        }
+    }
+
+    /// Passes on every sentence that is now complete; the unfinished tail waits for more text.
+    private func answerReceived(_ text: String, session: Current) {
+        session.answer += text
+        guard let stream = session.streaming else { return }
+        let complete = Sentences.completeLength(session.answer)
+        guard complete > session.forwarded else { return }
+        let piece = String(session.answer.dropFirst(session.forwarded).prefix(complete - session.forwarded))
+        let first = session.forwarded == 0
+        session.forwarded = complete
+        stream.append(piece)
+        if first { startStreamWatchdog(stream, session: session) }
+    }
+
+    private func answerFinished(_ reason: StopReason, question: String, session: Current) {
+        switch reason {
+        case .endTurn:
+            break
+        case .maxTokens:
+            // Eng review D7: speak what fits, up to the last full sentence.
+            session.answer = Sentences.complete(session.answer)
+            status = "Answer cut short"
+            stickyStatus = true
+        case .other(let reason):
+            failQuestion("Answer failed: \(reason)", spoken: "Something went wrong with the answer.")
+            return
+        }
+        let answer = session.answer.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !answer.isEmpty else {
+            failQuestion("Answer failed: empty response", spoken: "Something went wrong with the answer.")
+            return
+        }
+        session.answerDone = true
+        let turn = ConversationTurn(question: question, answer: answer)
+        conversation?.append(turn)
+        lastExchange = turn
+        lastAnswer = turn.answer
+        onRecord?(.question(question, answer: answer, about: session.text ?? "", from: session.app?.bundleID, at: now()))
+
+        if let stream = session.streaming {
+            if session.answer.count > session.forwarded {
+                let rest = String(session.answer.dropFirst(session.forwarded))
+                session.forwarded = session.answer.count
+                stream.append(rest)
+                if session.forwarded == rest.count { startStreamWatchdog(stream, session: session) }
+            }
+            stream.finishText()
+        } else if let resume = session.appleResume {
+            fallbackToApple(session: session, text: session.answer, from: resume)
+        } else {
+            speak(answer, session: session)
+        }
+    }
+
+    /// No audio within the first-chunk timeout after the first sentence went out: Apple takes over.
+    private func startStreamWatchdog(_ stream: any StreamingSpeech, session: Current) {
+        session.watchdog?.cancel()
+        session.watchdog = Task { [weak self, clock] in
+            do { try await clock.sleep(for: self?.configuration.firstChunkTimeout ?? .seconds(5)) } catch { return }
+            guard let self, self.current === session, session.streaming === stream, self.state != .speaking else { return }
+            self.streamFailed(.noFirstChunk, session: session)
+        }
+    }
+
+    /// The live voice failed during an answer. Apple speaks it, from the sentence that was
+    /// playing, once Claude has finished writing.
+    private func streamFailed(_ failure: SpeechFailure, session: Current) {
+        session.watchdog?.cancel()
+        session.streaming?.cancel()
+        session.streaming = nil
+        if failure == .unauthorized {
+            fail("ElevenLabs key rejected", actions: [.openKeys])
+            return
+        }
+        var resume = 0
+        if case .connectionLost(let lastPlayed) = failure {
+            resume = Sentences.startOffset(containing: lastPlayed, in: session.answer)
+            status = "Continued with Apple voice: connection lost"
+        } else {
+            status = "Using Apple voice: ElevenLabs unavailable (\(failure.reason))"
+        }
+        stickyStatus = true
+        session.usingApple = true
+        if session.answerDone {
+            fallbackToApple(session: session, text: session.answer, from: resume)
+        } else {
+            session.appleResume = resume
+            state = .transforming
+        }
+    }
+
+    private func handleAnswerFailure(_ error: Error) {
+        if error is CancellationError { return }
+        if error is TimeoutError {
+            failQuestion("Answer failed: timed out", spoken: "The answer took too long.")
+            return
+        }
+        switch error as? SmartReadFailure {
+        case .unauthorized: failQuestion("Anthropic key rejected", spoken: "The Anthropic key was rejected.", actions: [.openKeys])
+        case .rateLimited: failQuestion("Answer failed: rate limited", spoken: "Too many requests. Try again in a moment.")
+        case .overloaded: failQuestion("Answer failed: service overloaded", spoken: "Claude is overloaded. Try again in a moment.")
+        case .offline: failQuestion("Questions need a connection", spoken: "No connection.")
+        case .timeout: failQuestion("Answer failed: timed out", spoken: "The answer took too long.")
+        case .other(let reason): failQuestion("Answer failed: \(reason)", spoken: "Something went wrong with the answer.")
+        case nil: failQuestion("Answer failed: \(error)", spoken: "Something went wrong with the answer.")
+        }
+    }
+
+    /// A failed question shows in the menu and is said in a few words (eng review D14), since
+    /// the listener is listening, not looking.
+    private func failQuestion(_ message: String, spoken: String, actions: [ErrorAction] = []) {
+        let preset = current?.preset ?? presets.preset(for: nil)
+        fail(message, actions: actions)
+        errorPlayback = apple.speak(SpeechRequest(text: spoken, voiceID: "", speed: preset.speed,
+                                                  appleVoiceByLanguage: preset.appleVoiceByLanguage))
+    }
+
+    private func silenceSpokenError() {
+        errorPlayback?.cancel()
+        errorPlayback = nil
+    }
+
     // MARK: Speaking
 
     private func speak(_ original: String, session: Current, from offset: Int = 0) {
@@ -397,23 +716,29 @@ public final class ReadSession {
         let speakable = SpeakableText.make(original)
         let text = speakable.isEmpty ? original : speakable
         session.spokenText = text
+        session.usingApple = useApple(session)
+        startPlayback(speechRequest(text: text, session: session, from: offset), session: session)
+    }
+
+    /// Apple for apps set to it, or when there is no ElevenLabs key (with a note).
+    private func useApple(_ session: Current) -> Bool {
+        if session.preset.provider == .apple { return true }
+        guard secrets.read(.elevenLabs) == nil else { return false }
+        status = "Using Apple voice: no ElevenLabs key"
+        stickyStatus = true
+        return true
+    }
+
+    private func speechRequest(text: String, session: Current, from offset: Int = 0) -> SpeechRequest {
         let preset = session.preset
-        var useApple = preset.provider == .apple
-        if !useApple && secrets.read(.elevenLabs) == nil {
-            useApple = true
-            status = "Using Apple voice: no ElevenLabs key"
-            stickyStatus = true
-        }
-        session.usingApple = useApple
-        let request = SpeechRequest(
+        return SpeechRequest(
             text: text,
             voiceID: preset.elevenLabsVoiceID,
-            speed: preset.speed,
-            language: preset.languageOverride ?? LanguageDetector.detect(text),
+            speed: session.smartSpeed ? (configuration.smartReadSpeed ?? preset.speed) : preset.speed,
+            language: preset.languageOverride ?? (text.isEmpty ? nil : LanguageDetector.detect(text)),
             appleVoiceByLanguage: preset.appleVoiceByLanguage,
             startOffset: offset
         )
-        startPlayback(request, session: session)
     }
 
     private func startPlayback(_ request: SpeechRequest, session: Current) {
@@ -429,7 +754,11 @@ public final class ReadSession {
             guard let self, self.isCurrent(token), self.state == .buffering else { return }
             self.handleSpeechFailure(.noFirstChunk, request: request, session: session)
         }
+        observe(playback, request: request, session: session)
+    }
 
+    private func observe(_ playback: any SpeechPlayback, request: SpeechRequest, session: Current) {
+        let token = session.token
         session.task = Task { [weak self] in
             do {
                 for try await event in playback.events {
@@ -440,7 +769,11 @@ public final class ReadSession {
                 if self.state != .idle { self.finishIdle(status: "Done") }
             } catch {
                 guard let self, self.isCurrent(token) else { return }
-                self.handleSpeechFailure(error as? SpeechFailure ?? .other("\(error)"), request: request, session: session)
+                if session.streaming === playback {
+                    self.streamFailed(error as? SpeechFailure ?? .other("\(error)"), session: session)
+                } else {
+                    self.handleSpeechFailure(error as? SpeechFailure ?? .other("\(error)"), request: request, session: session)
+                }
             }
         }
     }
@@ -491,15 +824,7 @@ public final class ReadSession {
         session.task?.cancel()
         session.attempt += 1
         session.usingApple = true
-        let request = SpeechRequest(
-            text: text,
-            voiceID: session.preset.elevenLabsVoiceID,
-            speed: session.preset.speed,
-            language: session.preset.languageOverride ?? LanguageDetector.detect(text),
-            appleVoiceByLanguage: session.preset.appleVoiceByLanguage,
-            startOffset: offset
-        )
-        startPlayback(request, session: session)
+        startPlayback(speechRequest(text: text, session: session, from: offset), session: session)
     }
 
     // MARK: Ending
@@ -517,6 +842,7 @@ public final class ReadSession {
     }
 
     private func fail(_ message: String, actions: [ErrorAction] = []) {
+        log.notice("Read failed: \(message, privacy: .public)")
         tearDown()
         state = .idle
         lastError = LastError(message: message, actions: actions)
@@ -528,6 +854,7 @@ public final class ReadSession {
         session.confirmExpiry?.cancel()
         session.watchdog?.cancel()
         session.task?.cancel()
+        session.answerTask?.cancel()
         session.playback?.cancel()
         current = nil
     }
