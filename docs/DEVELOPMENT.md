@@ -56,6 +56,8 @@ way with `GROQ_API_KEY` set and `--filter CleanupEvals`.
 `Spike/elevenlabs-spike.swift` measures ElevenLabs first-audio and stop latency and
 `Spike/dictation-spike.swift` measures Groq transcription and cleanup on your machine; run
 them with `swift Spike/<name>.swift` and keys in a local `.env`.
+`Spike/google-calendar-spike.swift` signs in to Google Calendar the way the app will and
+lists today's meetings with the keep/drop verdict; it reads `Config/Google.xcconfig`.
 
 ## Release
 
@@ -97,6 +99,33 @@ changelog section as notes and the DMG as `VibeFlow.dmg`, so the README download
 points at the newest version. Forks: change `teamID` in `scripts/ExportOptions.plist` and the
 team id in the commands above to yours.
 
+## Google Calendar (Meetings)
+
+Upcoming meetings sign in to Google with a "Desktop app" OAuth client. Its ID and secret are
+built into the app (Google treats a desktop client's secret as public) but never committed:
+they live in the gitignored `Config/Google.xcconfig`, which `Config/VibeFlow.xcconfig`
+includes when it exists. Without it the app builds as usual and Settings > Meetings says
+"Not configured in this build" (CI builds this way).
+
+To use your own client:
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a project and
+   enable the Google Calendar API.
+2. Google Auth Platform: audience External; add the scope
+   `https://www.googleapis.com/auth/calendar.readonly`; under Clients create a "Desktop app"
+   client. While the app is in Testing, add each account that should sign in as a test user
+   (their sign-in expires after 7 days). "Publish app" needs a homepage and a privacy policy
+   link on an authorized domain; after that any account can sign in (with the unverified-app
+   warning, up to 100 users until Google verifies the app).
+3. `cp Config/Google.xcconfig.example Config/Google.xcconfig` and fill in
+   `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Google shows the secret only once.
+4. Check it before building: `swift Spike/google-calendar-spike.swift --login you@example.com`
+   signs in the same way the app does and lists today's meetings with the keep/drop reason.
+
+The author's client lives in the floo.one project `vibeflow-513107`. Release builds pick up
+`Config/Google.xcconfig` from the checkout that runs `scripts/release.sh`, so copy the file
+into that checkout; `--publish` refuses to run without it.
+
 ## Clocks data
 
 The time zone list comes from [vvo/tzdb](https://github.com/vvo/tzdb) (MIT, Copyright
@@ -111,3 +140,4 @@ Every design, review decision and task list is in `docs/designs/`:
 - `vibeflow-2-dictation-conversation.md`: dictation and conversation mode
 - `smart-read-follow-up.md`: ask back
 - `vibeflow-github-v1.md`: this repository and its releases
+- `upcoming-meetings.md`: meetings in the menu bar (Google Calendar)

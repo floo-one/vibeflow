@@ -8,8 +8,8 @@ A tiny Mac menu bar app for both directions of voice. Select text anywhere and p
 shortcut to hear it in a natural voice. Hold another shortcut, talk, and your words are typed
 where your cursor is.
 
-Native Swift and SwiftUI, macOS 15 or later. No accounts, no server, no telemetry. You bring
-your own API keys.
+Native Swift and SwiftUI, macOS 15 or later. No VibeFlow account, no server, no telemetry.
+You bring your own API keys.
 
 ## Install
 
@@ -48,6 +48,10 @@ bar menu lists every action with its current shortcut.
   words) and pasted in about 0.8 s.
 - **History** keeps every read and every question with its answer, on this Mac only.
 - **Clocks** show other time zones in the menu bar with their flags (🇩🇪 14:05 🇺🇸 08:05).
+- **Meetings** shows your next Google Calendar meeting in the menu bar 10 minutes before it
+  starts (📅 Standup in 8m), with a Join button for Meet, Zoom, Teams and Webex links. Sign in
+  with Google in Settings > Meetings; pick the calendars to watch and the lead time (5, 10 or
+  15 minutes). Focus time, out of office, all-day, declined and solo events are skipped.
 
 ## Keys
 
@@ -70,6 +74,9 @@ With no keys at all you still get reading with an Apple voice, plus dictation on
 - **Dictation**: your recording goes to Groq, then the transcript goes to Groq for cleanup.
   Without Groq (no key, offline, rate limited) Apple's on-device recognizer is used on macOS
   26 and nothing is sent.
+- **Meetings**: VibeFlow reads your calendars from Google with read-only access. Events stay
+  in memory on this Mac; the Google sign-in is kept in your Keychain. Sign out in Settings >
+  Meetings, or remove VibeFlow at myaccount.google.com/permissions.
 - **Stays local**: History (`~/Library/Application Support/VibeFlow/history.json`, cleared in
   Settings > General), recordings (in memory only; the last failed one is kept until the next
   dictation so you can retry it) and API keys (Keychain).
@@ -86,6 +93,10 @@ With no keys at all you still get reading with an Apple voice, plus dictation on
   headphones (a headset microphone drops them to call quality) or when the system input is a
   virtual device. Pick a specific microphone in Settings > Dictation.
 - **Speaker.** Settings > Reading > Speaker sends the ElevenLabs voice to a specific output.
+- **Google sign-in.** Google has not verified VibeFlow yet, so the consent screen warns that
+  the app is unverified (Advanced > Go to VibeFlow), and while the app is in Google's testing
+  phase only invited accounts can sign in. A Google Workspace admin can block third-party apps;
+  the Meetings tab then says "Blocked by your Google Workspace admin".
 
 ## Build it yourself
 

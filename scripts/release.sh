@@ -61,6 +61,13 @@ if [[ $PUBLISH -eq 1 ]]; then
   [[ -n "$(release_notes | tr -d '[:space:]')" ]] || fail "CHANGELOG.md has no '## $VERSION' section"
 fi
 
+# Meetings needs the Google client from the gitignored Config/Google.xcconfig (see
+# docs/DEVELOPMENT.md "Google Calendar"); without it the release builds but cannot sign in.
+if ! grep -qE '^GOOGLE_CLIENT_ID *= *[^ ]+' Config/Google.xcconfig 2>/dev/null; then
+  [[ $PUBLISH -eq 1 ]] && fail "Config/Google.xcconfig is missing or empty; Meetings would say 'Not configured in this build'"
+  print -u2 "warning: no Google client in Config/Google.xcconfig; this build's Meetings tab will say 'Not configured in this build'"
+fi
+
 if [[ $NOTARIZE -eq 1 ]] && ! xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1; then
   print -u2 "No notarytool keychain profile '$PROFILE'. Create it once with:"
   print -u2 "  xcrun notarytool store-credentials $PROFILE --team-id X7UXDLS9F7"
