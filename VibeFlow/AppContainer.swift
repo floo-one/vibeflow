@@ -35,6 +35,7 @@ final class AppContainer {
     @ObservationIgnored private var pendingQuestion: SessionID?
     private let elevenLabs: ElevenLabsProvider
     let catalogs: RemoteCatalogs
+    let meetings: MeetingsStore
     /// Which settings tab is showing; "Add key" buttons jump to Keys.
     var settingsTab: SettingsTab = .general
     /// True after the record shortcut, false after a read: which session the menu's status
@@ -57,6 +58,8 @@ final class AppContainer {
         let clock = ContinuousSessionClock()
         let pasteboard = LivePasteboard()
         let http = URLSessionHTTPClient()
+        meetings = MeetingsStore(config: GoogleOAuthConfig(infoDictionary: Bundle.main.infoDictionary),
+                                 secrets: secrets, preferences: preferences, http: http)
         let elevenLabs = ElevenLabsProvider(client: URLSessionByteStreamClient(), player: player, secrets: secrets)
         self.elevenLabs = elevenLabs
         let session = ReadSession(
@@ -130,6 +133,7 @@ final class AppContainer {
         KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in self?.pasteLastAnswer() }
 
         warmConnections()
+        meetings.start()
     }
 
     private func recordKeyDown() {

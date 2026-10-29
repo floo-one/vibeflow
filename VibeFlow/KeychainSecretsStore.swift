@@ -10,7 +10,7 @@ final class KeychainSecretsStore: SecretsStore, @unchecked Sendable {
     private var cache: [SecretKey: String] = [:]
 
     init() {
-        for key in SecretKey.allCases {
+        for key in SecretKey.allCases where !key.readsOnDemand {
             if let value = try? keychain.get(key.rawValue), !value.isEmpty {
                 cache[key] = value
             }
@@ -19,6 +19,11 @@ final class KeychainSecretsStore: SecretsStore, @unchecked Sendable {
 
     func read(_ key: SecretKey) -> String? {
         lock.withLock { cache[key] }
+    }
+
+    func readOnDemand(_ key: SecretKey) throws -> String? {
+        let value = try keychain.get(key.rawValue)
+        return value?.isEmpty == false ? value : nil
     }
 
     func write(_ value: String, for key: SecretKey) throws {
