@@ -76,12 +76,14 @@ final class MeetingsStore {
     }
 
     /// Fetch now. A fetch still running is cancelled and its result dropped (R8); the new one
-    /// waits for it to wind down, so token refreshes never overlap.
-    func sync() {
-        guard let client, preferences.meetingsEnabled else { return }
+    /// waits for it to wind down, so token refreshes never overlap. With meetings switched off
+    /// only the sync right after a sign-in runs, so the tab still shows who is signed in.
+    func sync(afterSignIn: Bool = false) {
+        guard let client else { return }
         let previous = fetchTask
         previous?.cancel()
-        let generation = MeetingsSync.begin(&state)
+        let generation = MeetingsSync.begin(&state, afterSignIn: afterSignIn)
+        guard preferences.meetingsEnabled || afterSignIn else { return }
         let selected = preferences.meetingsCalendars
         let window = MeetingSchedule.fetchWindow(at: Date())
         let secrets = secrets
@@ -114,7 +116,7 @@ final class MeetingsStore {
                     return
                 }
                 log.notice("Google sign-in finished")
-                sync()
+                sync(afterSignIn: true)
             } catch {
                 if error != .cancelled, attempt == signInAttempt { signInMessage = error.message }
                 log.notice("Google sign-in ended: \(error.message, privacy: .public)")
@@ -131,6 +133,8 @@ final class MeetingsStore {
         fetchTask?.cancel()
         googleSignIn.cancel()
         MeetingsSync.signOut(&state)
+        // The calendar choice belongs to this account; the next one starts from its own calendar.
+        preferences.meetingsCalendars = nil
         signInMessage = nil
         let token = try? secrets.readOnDemand(.googleRefreshToken)
         try? secrets.delete(.googleRefreshToken)

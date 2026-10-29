@@ -63,8 +63,9 @@ fi
 
 # Meetings needs the Google client from the gitignored Config/Google.xcconfig (see
 # docs/DEVELOPMENT.md "Google Calendar"); without it the release builds but cannot sign in.
-if ! grep -qE '^GOOGLE_CLIENT_ID *= *[^ ]+' Config/Google.xcconfig 2>/dev/null; then
-  [[ $PUBLISH -eq 1 ]] && fail "Config/Google.xcconfig is missing or empty; Meetings would say 'Not configured in this build'"
+if ! grep -qE '^GOOGLE_CLIENT_ID *= *[^ ]+' Config/Google.xcconfig 2>/dev/null \
+   || ! grep -qE '^GOOGLE_CLIENT_SECRET *= *[^ ]+' Config/Google.xcconfig 2>/dev/null; then
+  [[ $PUBLISH -eq 1 ]] && fail "Config/Google.xcconfig lacks the client ID or secret; Meetings would say 'Not configured in this build'"
   print -u2 "warning: no Google client in Config/Google.xcconfig; this build's Meetings tab will say 'Not configured in this build'"
 fi
 

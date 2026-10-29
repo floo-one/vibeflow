@@ -152,6 +152,8 @@ public enum GoogleCalendarError: Error, Equatable, Sendable {
     case malformed
     /// The exchange returned no refresh token, so the sign-in cannot last.
     case noRefreshToken
+    /// You unticked calendar access on Google's consent screen.
+    case calendarAccessNotGranted
 }
 
 public struct GoogleCalendarEntry: Decodable, Equatable, Hashable, Sendable, Identifiable {
@@ -198,7 +200,8 @@ public struct MeetingsFetch: Equatable, Sendable {
 public struct GoogleTokens: Equatable, Sendable {
     public var accessToken: String
     public var refreshToken: String?
-    public var expiresIn: Int
+    /// The scopes Google granted, space separated; the consent screen lets you untick some.
+    public var scope: String?
 }
 
 public final class GoogleCalendarClient: Sendable {
@@ -219,6 +222,9 @@ public final class GoogleCalendarClient: Sendable {
     public func exchange(code: String, verifier: String, redirectURI: String) async throws -> GoogleTokens {
         let tokens = try await token(GoogleOAuth.codeExchangeRequest(config: config, code: code, verifier: verifier, redirectURI: redirectURI))
         guard tokens.refreshToken != nil else { throw GoogleCalendarError.noRefreshToken }
+        if let scope = tokens.scope, !scope.split(separator: " ").contains(Substring(GoogleOAuth.scope)) {
+            throw GoogleCalendarError.calendarAccessNotGranted
+        }
         return tokens
     }
 
@@ -262,8 +268,11 @@ public final class GoogleCalendarClient: Sendable {
         let calendars = try await calendars(accessToken: accessToken)
         guard let email = calendars.first(where: { $0.primary == true })?.id else { throw GoogleCalendarError.malformed }
         let known = Set(calendars.map(\.id))
+        var ids = (selected ?? [email]).filter(known.contains)
+        // Saved ids that all belong to another account (signed in as someone else): use yours.
+        if ids.isEmpty, selected?.isEmpty == false { ids = [email] }
         // Your own calendar first, so a meeting on two calendars keeps your copy.
-        let ids = (selected ?? [email]).filter(known.contains).sorted { ($0 == email ? 0 : 1) < ($1 == email ? 0 : 1) }
+        ids.sort { ($0 == email ? 0 : 1) < ($1 == email ? 0 : 1) }
         var events: [MeetingsFetch.CalendarFetch] = []
         for id in ids {
             events.append(.init(calendarID: id, events: try await self.events(calendarID: id, in: window, accessToken: accessToken)))
@@ -274,7 +283,7 @@ public final class GoogleCalendarClient: Sendable {
     // MARK: Plumbing
 
     private func token(_ request: URLRequest) async throws -> GoogleTokens {
-        struct TokenResponse: Decodable { let access_token: String; let refresh_token: String?; let expires_in: Int? }
+        struct TokenResponse: Decodable { let access_token: String; let refresh_token: String?; let scope: String? }
         struct ErrorResponse: Decodable { let error: String? }
         let response = try await send(request)
         guard response.status == 200 else {
@@ -285,7 +294,7 @@ public final class GoogleCalendarClient: Sendable {
             }
         }
         guard let body = try? JSONDecoder().decode(TokenResponse.self, from: response.body) else { throw GoogleCalendarError.malformed }
-        return GoogleTokens(accessToken: body.access_token, refreshToken: body.refresh_token, expiresIn: body.expires_in ?? 3600)
+        return GoogleTokens(accessToken: body.access_token, refreshToken: body.refresh_token, scope: body.scope)
     }
 
     private func allPages<Page: Decodable>(_ path: String, _ query: [URLQueryItem], bearer: String,
@@ -390,9 +399,11 @@ public enum MeetingsFetchOutcome: Sendable {
 public enum MeetingsSync {
     /// A new fetch starts (timer, wake, network back, settings change, sign-in): any fetch
     /// still running becomes stale. Returns the generation the new fetch must report with.
-    public static func begin(_ state: inout MeetingsSyncState) -> Int {
+    /// Only the first sync after a sign-in says "Syncing…"; background syncs leave the status
+    /// alone, so "Signed out" or "Blocked" does not flicker every 5 minutes.
+    public static func begin(_ state: inout MeetingsSyncState, afterSignIn: Bool = false) -> Int {
         state.generation += 1
-        if state.email == nil { state.status = .syncing }
+        if afterSignIn { state.status = .syncing }
         return state.generation
     }
 
@@ -406,7 +417,8 @@ public enum MeetingsSync {
             state.lastSynced = now
             state.status = .signedIn(email: fetch.email, lastSynced: now)
         case .noToken:
-            clear(&state, status: .signedOut)
+            // An expired sign-in deletes its token; keep saying why until you sign in again.
+            clear(&state, status: state.status == .signInExpired ? .signInExpired : .signedOut)
         case .keychainUnavailable:
             state.status = .keychainUnavailable
         case .failed(.invalidGrant), .failed(.noRefreshToken):
@@ -439,6 +451,7 @@ public enum MeetingsSync {
         case .unauthorized: "access refused"
         case .http(let code): "HTTP \(code)"
         case .malformed: "unexpected answer from Google"
+        case .calendarAccessNotGranted: "calendar access not allowed"
         default: "\(error)"
         }
     }

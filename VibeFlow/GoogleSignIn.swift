@@ -23,6 +23,7 @@ enum GoogleSignInError: Error, Equatable {
         case .callback(.stateMismatch): "Sign-in failed: the browser answer did not match. Try again."
         case .callback(.missingCode), .callback(.other): "Sign-in failed. Try again."
         case .exchange(.adminPolicyEnforced): "Blocked by your Google Workspace admin"
+        case .exchange(.calendarAccessNotGranted): "Allow calendar access to use Meetings. Sign in again and keep \"See your calendars\" ticked."
         case .exchange(.offline): "Sign-in failed: offline"
         case .exchange: "Sign-in failed at Google. Try again."
         case .listener(let reason): "Sign-in could not start (\(reason))"
@@ -173,6 +174,10 @@ private final class LoopbackListener: @unchecked Sendable {
             return
         }
         switch callback {
+        case .failure(.stateMismatch):
+            // Not our browser's answer (another tab, another program): ignore it and keep
+            // waiting, so a stray request cannot end the sign-in.
+            respond(connection, status: "400 Bad Request", page: "This request does not belong to the VibeFlow sign-in.")
         case .success(let code):
             respond(connection, status: "200 OK", page: "VibeFlow is signed in to Google Calendar. You can close this tab.")
             finish(.success(code))

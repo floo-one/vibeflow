@@ -103,7 +103,7 @@ struct MeetingsTab: View {
 
             Section {
                 Toggle("Show upcoming meetings in the menu bar", isOn: $prefs.meetingsEnabled)
-                    .onChange(of: prefs.meetingsEnabled) { if prefs.meetingsEnabled { store.sync() } }
+                    .onChange(of: prefs.meetingsEnabled) { store.sync() }
                 Picker("Appear", selection: $prefs.meetingsLeadMinutes) {
                     ForEach(MeetingSchedule.leadTimes, id: \.self) { Text("\($0) minutes before").tag($0) }
                 }

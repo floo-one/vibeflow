@@ -60,17 +60,24 @@ private func event(_ id: String = "e1", summary: String = "Standup", start: Stri
         #expect(!kept(event(attendees: [.init(email: me), .init(email: "room-3@resource.calendar.google.com", resource: true)])))
     }
 
+    // Value: protects=invites with a hidden guest list (only you visible) still count when someone else organized them, and your own solo blocks still do not; fails_when=the organizer rule is dropped or applies to your own events; why_new=no fixture had a hidden guest list; seam=none; no_claim=Google's real attendee truncation (fixture)
+    @Test func hiddenGuestListCountsWhenSomeoneElseOrganized() {
+        #expect(kept(event(attendees: [.init(email: me)]) { $0.organizer = .init(email: "host@example.com") }))
+        #expect(kept(event { $0.attendees = nil; $0.organizer = .init(email: "host@example.com") }))
+        #expect(!kept(event(attendees: [.init(email: me)]) { $0.organizer = .init(email: "Florian@Example.com") }))
+    }
+
     /// R9: on a colleague's calendar, `self` would be the colleague. Only your own email counts.
     @Test func sharedCalendarJudgesYouNotTheOwner() {
         let colleagueDeclined: [CalendarEvent.Attendee] = [
-            .init(email: "darshan@example.com", responseStatus: "declined"),
+            .init(email: "colleague@example.com", responseStatus: "declined"),
             .init(email: me, responseStatus: "accepted"),
             .init(email: "alex@example.com"),
         ]
-        #expect(MeetingFilter.meeting(from: event(attendees: colleagueDeclined), calendarID: "darshan@example.com", me: me) != nil)
+        #expect(MeetingFilter.meeting(from: event(attendees: colleagueDeclined), calendarID: "colleague@example.com", me: me) != nil)
 
-        let colleagueAlone: [CalendarEvent.Attendee] = [.init(email: "darshan@example.com"), .init(email: "alex@example.com")]
-        #expect(MeetingFilter.meeting(from: event(attendees: colleagueAlone), calendarID: "darshan@example.com", me: me) != nil)
+        let colleagueAlone: [CalendarEvent.Attendee] = [.init(email: "colleague@example.com"), .init(email: "alex@example.com")]
+        #expect(MeetingFilter.meeting(from: event(attendees: colleagueAlone), calendarID: "colleague@example.com", me: me) != nil)
     }
 
     @Test func blankTitleAndMissingEnd() throws {
@@ -82,7 +89,7 @@ private func event(_ id: String = "e1", summary: String = "Standup", start: Stri
     @Test func sameEventOnTwoCalendarsIsKeptOnceSortedByStart() {
         let early = event("early", summary: "Early", start: "2026-10-29T08:00:00Z", end: "2026-10-29T08:30:00Z")
         let shared = event("shared")
-        let meetings = MeetingFilter.meetings(from: [("primary", [shared]), ("darshan@example.com", [shared, early])], me: me)
+        let meetings = MeetingFilter.meetings(from: [("primary", [shared]), ("colleague@example.com", [shared, early])], me: me)
         #expect(meetings.map(\.id) == ["early", "shared"])
         #expect(meetings.last?.calendarID == "primary")
     }
@@ -139,6 +146,17 @@ private func event(_ id: String = "e1", summary: String = "Standup", start: Stri
         #expect(JoinLink.find(in: event { $0.description = teams })?.host() == "teams.microsoft.com")
         #expect(JoinLink.find(in: event { $0.description = "(https://acme.webex.com/meet/florian)" })?.absoluteString
                 == "https://acme.webex.com/meet/florian")
+    }
+
+    // Value: protects=Join and the calendar link only ever open web URLs; fails_when=a file:, smb: or custom-scheme conference link becomes clickable; why_new=only https Meet/Zoom links were tested; seam=none; no_claim=what Google actually lets into conferenceData (fixture)
+    @Test func onlyWebLinksAreOpened() {
+        #expect(JoinLink.find(in: event { $0.hangoutLink = "file:///Applications/Calculator.app" }) == nil)
+        #expect(JoinLink.find(in: event {
+            $0.conferenceData = .init(entryPoints: [.init(entryPointType: "video", uri: "smb://share.example.com/x")])
+        }) == nil)
+        #expect(JoinLink.find(in: event { $0.hangoutLink = "https://meet.google.com/abc-defg-hij" })?.host() == "meet.google.com")
+        let meeting = MeetingFilter.meeting(from: event { $0.htmlLink = "vibeflow-evil://x" }, calendarID: "primary", me: me)
+        #expect(meeting?.htmlLink == nil)
     }
 
     @Test func otherLinksAndLookalikesAreNotJoinLinks() {
@@ -236,11 +254,11 @@ private func event(_ id: String = "e1", summary: String = "Standup", start: Stri
 
         fresh.meetingsEnabled = false
         fresh.meetingsLeadMinutes = 15
-        fresh.meetingsCalendars = ["florian@example.com", "darshan@example.com"]
+        fresh.meetingsCalendars = ["florian@example.com", "colleague@example.com"]
         let reloaded = Preferences(defaults: defaults)
         #expect(!reloaded.meetingsEnabled)
         #expect(reloaded.meetingsLeadMinutes == 15)
-        #expect(reloaded.meetingsCalendars == ["florian@example.com", "darshan@example.com"])
+        #expect(reloaded.meetingsCalendars == ["florian@example.com", "colleague@example.com"])
 
         reloaded.meetingsCalendars = nil
         defaults.set(7, forKey: "meetings.leadMinutes")

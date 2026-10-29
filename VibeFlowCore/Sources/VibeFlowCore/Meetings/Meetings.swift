@@ -129,7 +129,9 @@ public enum MeetingFilter {
         let me = me.lowercased()
         let attendees = event.attendees ?? []
         if attendees.contains(where: { $0.email?.lowercased() == me && $0.responseStatus == "declined" }) { return nil }
-        guard attendees.contains(where: { $0.email?.lowercased() != me && $0.resource != true }) else { return nil }
+        // A hidden guest list shows only you; someone else organizing it still makes it a meeting.
+        let organizedByOther = event.organizer?.email.map { $0.lowercased() != me } ?? false
+        guard organizedByOther || attendees.contains(where: { $0.email?.lowercased() != me && $0.resource != true }) else { return nil }
 
         let end = event.end?.dateTime.flatMap(parseDate) ?? start
         let title = event.summary?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -141,7 +143,7 @@ public enum MeetingFilter {
             calendarID: calendarID,
             joinURL: JoinLink.find(in: event),
             organizer: event.organizer.flatMap { $0.displayName ?? $0.email },
-            htmlLink: event.htmlLink.flatMap(URL.init(string:))
+            htmlLink: event.htmlLink.flatMap(JoinLink.webURL)
         )
     }
 
@@ -174,13 +176,21 @@ public enum JoinLink {
     /// Google's own conference data first (exact), then the first call link in the location
     /// or description (Zoom, Teams and Webex invites put it there).
     public static func find(in event: CalendarEvent) -> URL? {
-        if let link = event.hangoutLink.flatMap(URL.init(string:)) { return link }
+        if let link = event.hangoutLink.flatMap(webURL) { return link }
         if let uri = event.conferenceData?.entryPoints?.first(where: { $0.entryPointType == "video" })?.uri,
-           let link = URL(string: uri) { return link }
+           let link = webURL(uri) { return link }
         for text in [event.location, event.description].compactMap({ $0 }) {
             if let link = firstCallLink(in: text) { return link }
         }
         return nil
+    }
+
+    /// Only web links: a calendar event can carry any URL, and a click must never launch
+    /// a file:, smb: or custom-scheme handler.
+    static func webURL(_ text: String) -> URL? {
+        guard let url = URL(string: text), let scheme = url.scheme?.lowercased(),
+              scheme == "https" || scheme == "http", url.host() != nil else { return nil }
+        return url
     }
 
     static func firstCallLink(in text: String) -> URL? {
