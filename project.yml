@@ -69,6 +69,10 @@ targets:
         NSHumanReadableCopyright: "MIT License"
         NSMicrophoneUsageDescription: "VibeFlow records your voice while you hold the record shortcut and turns it into text."
         NSSpeechRecognitionUsageDescription: "VibeFlow can transcribe dictation on this Mac with Apple's on-device speech recognition."
+        # Branch, commit and build time of a VibeFlow Dev from scripts/dev.sh (BuildStamp).
+        VFGitBranch: $(VF_GIT_BRANCH)
+        VFGitCommit: $(VF_GIT_COMMIT)
+        VFBuildDate: $(VF_BUILD_DATE)
     entitlements:
       path: VibeFlow/VibeFlow.entitlements
       properties:
@@ -84,13 +88,21 @@ targets:
         MARKETING_VERSION: "1.1.0"
         CURRENT_PROJECT_VERSION: "2"
         GENERATE_INFOPLIST_FILE: NO
+        # Drawn by scripts/make-icons.swift.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Set on the command line by scripts/dev.sh; empty in every other build.
+        VF_GIT_BRANCH: ""
+        VF_GIT_COMMIT: ""
+        VF_BUILD_DATE: ""
       configs:
         # Debug is a second app, "VibeFlow Dev", so it runs next to the installed release:
-        # its own bundle id (own settings, own Accessibility and Microphone grants), a DEV
-        # tag in the menu bar and Control added to every default shortcut. API keys are shared.
+        # its own bundle id (own settings, own Accessibility and Microphone grants), an orange
+        # DEV app icon, a DEV tag in the menu bar and Control added to every default shortcut.
+        # API keys are shared.
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: one.floo.vibeflow.dev
           PRODUCT_NAME: VibeFlow Dev
+          ASSETCATALOG_COMPILER_APPICON_NAME: AppIconDev
         # No App Sandbox: the Accessibility API cannot read other apps from inside the sandbox.
 
 schemes:

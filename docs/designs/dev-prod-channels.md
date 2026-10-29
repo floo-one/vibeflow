@@ -1,6 +1,7 @@
 # Dev and prod side by side
 
-Status: 2026-10-29. P2 built (scripts/dev.sh, one copy per app, cleanup); P1, P3, P4 open.
+Status: 2026-10-29. P2 built (scripts/dev.sh, one copy per app, cleanup) and P3 built (app
+icons, Dev build stamp, Quit names the app); P1 and P4 open.
 
 ## Goal
 
@@ -107,6 +108,20 @@ As built (2026-10-29):
   current.
 - **Quit item** names the app: "Quit VibeFlow Dev" / "Quit VibeFlow".
 
+As built (2026-10-29):
+
+- There was no app icon at all, so `scripts/make-icons.swift` draws both: AppIcon (blue-violet,
+  white waveform bars) and AppIconDev (orange, same bars, dark DEV band). The bars are drawn,
+  not SF Symbols, which Apple's license keeps out of app icons. A Release build compiles only
+  AppIcon; Debug sets `ASSETCATALOG_COMPILER_APPICON_NAME: AppIconDev`.
+- The stamp uses build settings instead of a build phase: `dev.sh` passes `VF_GIT_BRANCH`,
+  `VF_GIT_COMMIT` (with `*` for uncommitted changes) and `VF_BUILD_DATE` on the xcodebuild
+  command line, and Info.plist substitutes them. `BuildStamp` in Core reads and formats them; a
+  build from an earlier day shows its date. A build from Xcode says "not built by
+  scripts/dev.sh". The changing date does not force a rebuild (incremental `dev.sh` about 5 s).
+- The menu bar tint is skipped: the label stays a template image, and DEV next to it is enough.
+- The prod footer waits for Sparkle (P1).
+
 ### P4. Permissions you can see
 
 Both apps need Accessibility and Microphone, granted once each (separate bundle ids by
@@ -141,7 +156,7 @@ menu that the keys are waiting for Keychain access.
 
 1. P2 cleanup + `scripts/dev.sh` + single instance (fixes the confusion today, no release
    needed). Done 2026-10-29.
-2. P3 Dev icon + build stamp.
+2. P3 Dev icon + build stamp. Done 2026-10-29.
 3. P1 Sparkle + release.sh appcast, shipped as 1.2.0; install that DMG in /Applications once.
 4. P4 permissions row.
 

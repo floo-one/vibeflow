@@ -113,14 +113,19 @@ home_line() {  # name path bundle-id
 run() {
   local branch=${$(git branch --show-current):-detached}
   local commit=$(git rev-parse --short HEAD)
+  # "*": built with uncommitted changes.
+  if [[ -n "$(git status --porcelain)" ]]; then commit="$commit*"; fi
   local built="$ROOT/build/DerivedData/Build/Products/Debug/VibeFlow Dev.app"
   local buildlog="$ROOT/build/dev-build.log"
 
   step "Build VibeFlow Dev from $branch ($commit)"
   xcodegen generate >/dev/null
   mkdir -p "${buildlog:h}"
+  # The VF_* settings end up in Info.plist; the Dev menu shows them (BuildStamp).
   if ! xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug \
-      -derivedDataPath build/DerivedData build -quiet >"$buildlog" 2>&1; then
+      -derivedDataPath build/DerivedData build -quiet \
+      VF_GIT_BRANCH="$branch" VF_GIT_COMMIT="$commit" VF_BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+      >"$buildlog" 2>&1; then
     grep -E "error:" "$buildlog" | sort -u >&2 || true
     fail "build failed, full log in build/dev-build.log. errSecInternalComponent at CodeSign means a locked keychain: security unlock-keychain ~/Library/Keychains/login.keychain-db"
   fi

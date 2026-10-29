@@ -30,9 +30,12 @@
    Allow: VibeFlow Dev waits for that answer before its menu bar icon appears.
 
 The Debug build is **VibeFlow Dev**, a separate app from the release, so both can run at once:
-its own bundle id, settings and permissions, a DEV tag in the menu bar, and Control added to
-every default shortcut (Control + Option + . reads, and so on). API keys are shared with the
-release.
+its own bundle id, settings and permissions, an orange app icon with a DEV band, a DEV tag in
+the menu bar, and Control added to every default shortcut (Control + Option + . reads, and so
+on). API keys are shared with the release. Its menu starts with the branch, commit and build
+time it came from, which `scripts/dev.sh` stamps into Info.plist; a `*` after the commit
+means it was built with uncommitted changes. Both app icons are drawn by
+`swift scripts/make-icons.swift`.
 
 Each app runs once: a VibeFlow that starts quits any older copy of itself, from any path
 (another worktree, Xcode), so two menu bar icons never answer the same shortcut. VibeFlow and
