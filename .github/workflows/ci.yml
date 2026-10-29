@@ -33,7 +33,7 @@ jobs:
           xcodegen generate
 
       # Ad-hoc signed: fine for checking the build. A build you run day to day needs a
-      # personal team so the Accessibility grant survives rebuilds (see README).
+      # personal team so the Accessibility grant survives rebuilds (see docs/DEVELOPMENT.md).
       - name: Build the app
         run: |
           xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug \

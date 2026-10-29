@@ -2,7 +2,7 @@
 # Build a notarized VibeFlow release: Developer ID signed app, stapled, in a DMG, and with
 # --publish also tagged and uploaded to GitHub Releases.
 #
-# One-time setup (see README "Build a release"):
+# One-time setup (see docs/DEVELOPMENT.md "Release"):
 #   xcrun notarytool store-credentials VibeFlowNotary --team-id X7UXDLS9F7
 #
 # Usage:  scripts/release.sh                 build build/release/VibeFlow-<version>.dmg
