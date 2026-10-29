@@ -9,21 +9,42 @@
    permissions survive rebuilds. In `project.yml`, set `DEVELOPMENT_TEAM` to your team id and
    change `PRODUCT_BUNDLE_IDENTIFIER` (for example to `com.yourname.vibeflow`), since
    `one.floo.vibeflow` belongs to the author's team.
-3. Generate and build:
+3. Build and run:
+
+   ```bash
+   scripts/dev.sh
+   ```
+
+   It generates the project, builds Debug, quits the VibeFlow Dev that is running (from
+   whichever worktree), installs the new build to `~/Applications/VibeFlow Dev.app` and opens
+   it. One place for every build means one VibeFlow Dev to open, quit and grant permissions
+   to. To only check that it compiles:
 
    ```bash
    xcodegen generate
    xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug -derivedDataPath build/DerivedData build
-   open "build/DerivedData/Build/Products/Debug/VibeFlow Dev.app"
    ```
 
 4. Grant Accessibility when asked, and Microphone on the first dictation, then add your keys
-   in Settings > Keys.
+   in Settings > Keys. If a Keychain dialog asks for the keys the release saved, click Always
+   Allow: VibeFlow Dev waits for that answer before its menu bar icon appears.
 
 The Debug build is **VibeFlow Dev**, a separate app from the release, so both can run at once:
 its own bundle id, settings and permissions, a DEV tag in the menu bar, and Control added to
 every default shortcut (Control + Option + . reads, and so on). API keys are shared with the
 release.
+
+Each app runs once: a VibeFlow that starts quits any older copy of itself, from any path
+(another worktree, Xcode), so two menu bar icons never answer the same shortcut. VibeFlow and
+VibeFlow Dev never quit each other.
+
+`scripts/dev.sh --doctor` lists every VibeFlow on the Mac: the two homes
+(`/Applications/VibeFlow.app` and `~/Applications/VibeFlow Dev.app`), what is running, other
+copies and dead Launch Services entries. A copy with the release bundle id outside
+/Applications can take over its Accessibility entry, so `scripts/dev.sh --clean` deletes the
+leftover ones in this repo's build folders and makes Launch Services forget dead entries.
+Worktrees on a branch from before VibeFlow Dev still build their Debug app with the release
+bundle id; `--clean` leaves those alone and the doctor names them (merge main there).
 
 An ad-hoc build (`CODE_SIGN_IDENTITY=-`, as CI does) works too, but macOS forgets its
 Accessibility permission on every rebuild; remove the old entry and grant it again each time.
@@ -83,7 +104,9 @@ scripts/release.sh
 It archives the Release configuration (bundle id `one.floo.vibeflow`), exports it with
 Developer ID (`scripts/ExportOptions.plist`), notarizes and staples the app, packs it into a
 DMG with an Applications shortcut, notarizes and staples the DMG as well, and finishes with a
-Gatekeeper check (`spctl`). The result is `build/release/VibeFlow-<version>.dmg`.
+Gatekeeper check (`spctl`). The result is `build/release/VibeFlow-<version>.dmg`. The
+exported app is deleted at the end, since the DMG is the release and a second copy of
+VibeFlow could answer to its bundle id; the archive stays for its dSYMs.
 `--no-notarize` stops after the signed export, which needs no credentials.
 
 To publish:
@@ -111,3 +134,4 @@ Every design, review decision and task list is in `docs/designs/`:
 - `vibeflow-2-dictation-conversation.md`: dictation and conversation mode
 - `smart-read-follow-up.md`: ask back
 - `vibeflow-github-v1.md`: this repository and its releases
+- `dev-prod-channels.md`: VibeFlow and VibeFlow Dev side by side, and updates

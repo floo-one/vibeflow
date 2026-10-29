@@ -139,3 +139,9 @@ if [[ $PUBLISH -eq 1 ]]; then
     --title "VibeFlow $VERSION" --notes-file "$NOTES" --verify-tag --latest
   print "Published: $(gh release view "$TAG" --json url -q .url)"
 fi
+
+# The DMG is the release. A launchable VibeFlow left in build/ could answer to
+# one.floo.vibeflow instead of /Applications/VibeFlow.app; the archive stays for its dSYMs.
+step "Drop the exported app"
+rm -rf "$APP"
+"$ROOT/scripts/dev.sh" --clean || print -u2 "warning: scripts/dev.sh --clean failed"
