@@ -54,6 +54,18 @@
 **Priority:** P3
 **Depends on:** VibeFlow 2 milestones 1 and 2.
 
+### Meeting heads-up in the notch
+
+**What:** One minute before a meeting, show its title in the notch indicator for a few seconds, with a click to join.
+
+**Why:** The menu bar nudge can be pushed off a full menu bar on notched Macs (eng review D11); the notch cannot. A second, harder-to-miss signal.
+
+**Context:** Out of scope for the first meetings version (docs/designs/upcoming-meetings.md, Q4; eng review D14). NotchIndicator.swift already animates in and out for reading and dictation; reuse it. Decide after a week of using the menu bar nudge.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** upcoming meetings shipped.
+
 ## Clipboard
 
 ### One clipboard owner across reads, dictation and paste again
@@ -108,6 +120,18 @@
 
 **Effort:** S
 **Priority:** P2
+
+### Website on floo.one
+
+**What:** A small static site at floo.one/vibeflow: what VibeFlow does, download link, privacy policy.
+
+**Why:** Going public needs a home page, and Google's verification of the Calendar scope (upcoming meetings) requires a homepage and privacy policy on the verified floo.one domain.
+
+**Context:** Requirements listed in docs/designs/upcoming-meetings.md ("Verification prerequisites"). Static pages, no CMS. The privacy policy must cover calendar data (read-only, stays on the Mac, in memory) and Google's Limited Use terms.
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** deciding to go public; pairs with the downloadable build.
 
 ### Downloadable build: notarized DMG and Homebrew cask
 
