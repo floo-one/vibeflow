@@ -6,6 +6,11 @@ import VibeFlowCore
 
 private let log = Logger(subsystem: "one.floo.vibeflow", category: "audio-in")
 
+enum Microphone {
+    /// Deep link to System Settings > Privacy & Security > Microphone.
+    static let settingsURL = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!
+}
+
 // MARK: - AudioRecorder on AVCaptureSession
 
 /// Records one input device into 16 kHz mono 16-bit PCM in memory (perf note P1).

@@ -40,6 +40,12 @@ final class AppContainer {
     /// True after the record shortcut, false after a read: which session the menu's status
     /// line and icon describe.
     private(set) var showsDictation = false
+    /// The release's self-updater; nil in VibeFlow Dev, which never checks for updates.
+    @ObservationIgnored private(set) var updater: Updater?
+    /// Microphone access as last checked (refreshPermissions); the menu links to System
+    /// Settings while it is denied.
+    private(set) var microphonePermission: MicrophonePermission = .undetermined
+    @ObservationIgnored private var permissionWatch: Task<Void, Never>?
 
     init() {
         LegacyMigration.runIfNeeded()
@@ -128,6 +134,16 @@ final class AppContainer {
         KeyboardShortcuts.onKeyDown(for: .recordToggle) { [weak self] in self?.toggleRecording() }
         KeyboardShortcuts.onKeyUp(for: .pasteLastDictation) { [weak self] in self?.pasteLastDictation() }
         KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in self?.pasteLastAnswer() }
+
+        refreshPermissions()
+        // Every menu that opens re-checks, so a grant taken away later shows up as well.
+        _ = NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshPermissions() }
+        }
+
+        #if !DEBUG
+        updater = Updater { [weak self] in self?.isRunning ?? false }
+        #endif
 
         warmConnections()
     }
@@ -278,6 +294,30 @@ final class AppContainer {
                 _ = try? await URLSession.shared.data(for: request)
             }
         }
+    }
+
+    // MARK: Permissions (docs/designs/dev-prod-channels.md, P4)
+
+    /// Re-reads Accessibility and Microphone access, at launch and whenever a menu opens.
+    /// While one is missing in a way only System Settings can fix, it also checks every 2 s, so
+    /// the menu and the icon catch up right after it is granted there. An undetermined
+    /// microphone is not missing: the first dictation asks for it.
+    func refreshPermissions() {
+        session.refreshAccessibility()
+        microphonePermission = recorder.permission
+        guard permissionWatch == nil, needsSystemSettings else { return }
+        permissionWatch = Task { [weak self] in
+            while let self, self.needsSystemSettings {
+                try? await Task.sleep(for: .seconds(2))
+                self.session.refreshAccessibility()
+                self.microphonePermission = self.recorder.permission
+            }
+            self?.permissionWatch = nil
+        }
+    }
+
+    private var needsSystemSettings: Bool {
+        !session.accessibilityTrusted || microphonePermission == .denied
     }
 
     func applyLaunchAtLogin() {
