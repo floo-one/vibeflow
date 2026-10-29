@@ -286,6 +286,28 @@ private func meeting(_ id: String) -> String { String(format: meetingJSON, id) }
         }
     }
 
+    // Value: protects=a throttled colleague calendar fails the whole fetch (last snapshot kept) instead of being skipped as refused; fails_when=a usage-limit 403 or a 429 reads as "access refused" and its meetings vanish; why_new=the skip test only used a bare 403; seam=none; no_claim=Google's exact rate-limit bodies (shape from the API docs)
+    @Test func aRateLimitedCalendarIsNotSkipped() async {
+        let throttled = #"{"error":{"errors":[{"domain":"usageLimits","reason":"rateLimitExceeded","message":"Rate Limit Exceeded"}],"code":403}}"#
+        for response in [json(throttled, status: 403), json("{}", status: 429)] {
+            let http = ScriptedHTTPClient { request in
+                let url = request.url!.absoluteString
+                if url.hasPrefix(GoogleOAuth.tokenEndpoint.absoluteString) { return json(#"{"access_token":"fresh"}"#) }
+                if url.contains("/users/me/calendarList") {
+                    return json(#"{"items":[{"id":"florian@example.com","primary":true},{"id":"colleague@example.com"}]}"#)
+                }
+                if url.contains("/calendars/colleague@example.com/") { return response }
+                return json(#"{"items":[\#(meeting("mine"))]}"#)
+            }
+            await #expect(throws: GoogleCalendarError.rateLimited) {
+                try await GoogleCalendarClient(http: http, config: config)
+                    .fetch(refreshToken: "r", selected: [me, "colleague@example.com"], window: window)
+            }
+        }
+        #expect(!GoogleCalendarClient.isRateLimit(Data(#"{"error":{"errors":[{"domain":"global","reason":"forbidden"}],"code":403}}"#.utf8)))
+        #expect(GoogleCalendarClient.isRateLimit(Data(#"{"error":{"errors":[{"domain":"global","reason":"userRateLimitExceeded"}]}}"#.utf8)))
+    }
+
     // Value: protects=a page token containing "+" reaches Google intact; fails_when=URLComponents leaves "+" unescaped and Google reads a space; why_new=page tokens in tests had no reserved characters; seam=none; no_claim=Google's real token alphabet
     @Test func plusInAPageTokenIsEscaped() async throws {
         let http = ScriptedHTTPClient { request in
@@ -446,7 +468,7 @@ private func meeting(_ id: String) -> String { String(format: meetingJSON, id) }
     // Value: protects=readable failure reasons and the failed line format in the Meetings tab; fails_when=unauthorized/malformed/calendar-access fall back to a raw enum dump or the line format changes; why_new=only HTTP 503 was asserted; seam=none; no_claim=none beyond protects
     @Test func failureReasonsAreReadable() {
         for (error, reason) in [(GoogleCalendarError.unauthorized, "access refused"), (.malformed, "unexpected answer from Google"),
-                                (.calendarAccessNotGranted, "calendar access not allowed")] {
+                                (.calendarAccessNotGranted, "calendar access not allowed"), (.rateLimited, "Google rate limit")] {
             var state = signedIn()
             let generation = MeetingsSync.begin(&state)
             MeetingsSync.finish(&state, generation: generation, outcome: .failed(error), at: t1)

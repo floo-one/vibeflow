@@ -154,6 +154,8 @@ public enum GoogleCalendarError: Error, Equatable, Sendable {
     case noRefreshToken
     /// You unticked calendar access on Google's consent screen.
     case calendarAccessNotGranted
+    /// Google is throttling the requests (a 403 or 429 with a usage-limit reason).
+    case rateLimited
 }
 
 public struct GoogleCalendarEntry: Decodable, Equatable, Hashable, Sendable, Identifiable {
@@ -265,7 +267,8 @@ public final class GoogleCalendarClient: Sendable {
     /// One whole sync. All or nothing: a failed page fails the fetch, so the caller keeps its
     /// last complete snapshot instead of half a day (R11). The exception is a watched calendar
     /// that refuses access (unshared, permissions changed): it is skipped, so it cannot stop
-    /// your own meetings from updating. `selected` nil means your own calendar.
+    /// your own meetings from updating. A rate limit is not a refusal: it fails the fetch and the
+    /// last snapshot stays. `selected` nil means your own calendar.
     public func fetch(refreshToken: String, selected: [String]?, window: DateInterval) async throws -> MeetingsFetch {
         let accessToken = try await refresh(refreshToken: refreshToken).accessToken
         let calendars = try await calendars(accessToken: accessToken)
@@ -319,6 +322,7 @@ public final class GoogleCalendarClient: Sendable {
             switch response.status {
             case 200: break
             case 401: throw GoogleCalendarError.unauthorized
+            case 403 where Self.isRateLimit(response.body), 429: throw GoogleCalendarError.rateLimited
             default: throw GoogleCalendarError.http(response.status)
             }
             guard let page = try? JSONDecoder().decode(Page.self, from: response.body) else { throw GoogleCalendarError.malformed }
@@ -340,6 +344,17 @@ public final class GoogleCalendarClient: Sendable {
             default: throw GoogleCalendarError.http(error.errorCode)
             }
         }
+    }
+
+    /// Google answers throttling with 403 too; only its reason tells it apart from a calendar
+    /// that refuses access ({"error":{"errors":[{"domain":"usageLimits","reason":"rateLimitExceeded"}]}}).
+    static func isRateLimit(_ body: Data) -> Bool {
+        struct Body: Decodable {
+            struct Inner: Decodable { struct Item: Decodable { let domain: String?; let reason: String? }; let errors: [Item]? }
+            let error: Inner?
+        }
+        let items = (try? JSONDecoder().decode(Body.self, from: body))?.error?.errors ?? []
+        return items.contains { $0.domain == "usageLimits" || ($0.reason?.lowercased().contains("ratelimit") ?? false) || $0.reason == "quotaExceeded" }
     }
 
     /// Calendar ids hold "@" and "#" ("en.th#holiday@group.v.calendar.google.com"); "#" and "/"
@@ -461,6 +476,7 @@ public enum MeetingsSync {
         case .http(let code): "HTTP \(code)"
         case .malformed: "unexpected answer from Google"
         case .calendarAccessNotGranted: "calendar access not allowed"
+        case .rateLimited: "Google rate limit"
         default: "\(error)"
         }
     }
