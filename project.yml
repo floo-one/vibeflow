@@ -15,14 +15,25 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     MACOSX_DEPLOYMENT_TARGET: "15.0"
-    # Stable signing keeps the Accessibility (TCC) grant across rebuilds.
-    # Free personal team from the Apple ID signed in to Xcode (Settings > Accounts).
-    # Forking? Put your own team id here and change PRODUCT_BUNDLE_IDENTIFIER below;
+    # Stable signing keeps the Accessibility (TCC) grant across rebuilds. One team for
+    # every configuration, so a Debug build and a shipped Release build share the grant.
+    # Forking? Put your own team id here (a free personal team from the Apple ID signed in
+    # to Xcode is enough for Debug) and change PRODUCT_BUNDLE_IDENTIFIER below;
     # one.floo.vibeflow belongs to the author's team.
-    CODE_SIGN_STYLE: Automatic
-    DEVELOPMENT_TEAM: Y798SH49X3
+    DEVELOPMENT_TEAM: X7UXDLS9F7
     ENABLE_HARDENED_RUNTIME: YES
     SWIFT_EMIT_LOC_STRINGS: NO
+  configs:
+    Debug:
+      # Xcode manages the Apple Development certificate.
+      CODE_SIGN_STYLE: Automatic
+    Release:
+      # Shipped builds: Developer ID (needs the paid Apple Developer Program), then
+      # notarized by scripts/release.sh. Manual, so xcodebuild never asks Xcode for help.
+      CODE_SIGN_STYLE: Manual
+      CODE_SIGN_IDENTITY: "Developer ID Application"
+      # Timestamp the signature so it stays valid after the certificate expires.
+      OTHER_CODE_SIGN_FLAGS: "--timestamp"
 
 packages:
   VibeFlowCore:
@@ -49,10 +60,11 @@ targets:
     info:
       path: VibeFlow/Info.plist
       properties:
-        CFBundleDisplayName: VibeFlow
-        CFBundleShortVersionString: "1.1.0"
-        CFBundleVersion: "2"
+        CFBundleDisplayName: $(PRODUCT_NAME)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true            # agent app: no Dock icon, no focus steal
+        LSApplicationCategoryType: public.app-category.productivity
         LSMinimumSystemVersion: "15.0"
         NSHumanReadableCopyright: "MIT License"
         NSMicrophoneUsageDescription: "VibeFlow records your voice while you hold the record shortcut and turns it into text."
@@ -66,7 +78,19 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: one.floo.vibeflow
         PRODUCT_NAME: VibeFlow
+        PRODUCT_MODULE_NAME: VibeFlow
+        # Release version. Bump both before scripts/release.sh --publish; the build number
+        # must grow with every release.
+        MARKETING_VERSION: "1.1.0"
+        CURRENT_PROJECT_VERSION: "2"
         GENERATE_INFOPLIST_FILE: NO
+      configs:
+        # Debug is a second app, "VibeFlow Dev", so it runs next to the installed release:
+        # its own bundle id (own settings, own Accessibility and Microphone grants), a DEV
+        # tag in the menu bar and Control added to every default shortcut. API keys are shared.
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: one.floo.vibeflow.dev
+          PRODUCT_NAME: VibeFlow Dev
         # No App Sandbox: the Accessibility API cannot read other apps from inside the sandbox.
 
 schemes:

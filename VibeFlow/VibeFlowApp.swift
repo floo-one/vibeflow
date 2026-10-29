@@ -12,7 +12,14 @@ struct VibeFlowApp: App {
             MenuBarView()
                 .environment(container)
         } label: {
+            #if DEBUG
+            HStack(spacing: 2) {
+                Image(systemName: container.iconSymbol)
+                Text("DEV")
+            }
+            #else
             Image(systemName: container.iconSymbol)
+            #endif
         }
         MenuBarExtra(isInserted: clocksInserted) {
             ClocksMenuView(now: clock.now)

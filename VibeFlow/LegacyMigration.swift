@@ -12,6 +12,8 @@ enum LegacyMigration {
     private static let log = Logger(subsystem: "one.floo.vibeflow", category: "migration")
 
     static func runIfNeeded(defaults: UserDefaults = .standard) {
+        // Only the release identity inherits from OutFlow; VibeFlow Dev starts clean.
+        guard Bundle.main.bundleIdentifier == "one.floo.vibeflow" else { return }
         guard !defaults.bool(forKey: markerKey) else { return }
         let copiedDefaults = migrateDefaults(into: defaults)
         let copiedKeys = migrateKeychain()
