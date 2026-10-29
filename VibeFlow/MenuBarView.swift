@@ -48,9 +48,15 @@ struct MenuBarView: View {
             Button("Copy answer") { container.copyLastAnswer() }
         }
 
+        // Missing permissions, kept current by AppContainer.refreshPermissions.
         if !session.accessibilityTrusted {
             Button("Grant Accessibility access") {
                 NSWorkspace.shared.open(Accessibility.settingsURL)
+            }
+        }
+        if container.microphonePermission == .denied {
+            Button("Grant Microphone access") {
+                NSWorkspace.shared.open(Microphone.settingsURL)
             }
         }
 
@@ -185,8 +191,7 @@ struct MenuBarView: View {
         case .discard: dictation.discard()
         case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .keys)
         case .openDictationSettings: SettingsWindow.present(openSettings, container: container, tab: .dictation)
-        case .openMicrophoneSettings:
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!)
+        case .openMicrophoneSettings: NSWorkspace.shared.open(Microphone.settingsURL)
         }
     }
 }

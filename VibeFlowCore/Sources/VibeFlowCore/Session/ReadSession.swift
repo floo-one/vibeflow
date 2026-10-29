@@ -237,6 +237,17 @@ public final class ReadSession {
 
     // MARK: Inputs
 
+    private static let grantAccessibilityStatus = "Grant Accessibility access to read selections"
+
+    /// Re-reads the Accessibility grant, so the menu and its icon catch up when it changes in
+    /// System Settings without a shortcut press (docs/designs/dev-prod-channels.md, P4).
+    public func refreshAccessibility() {
+        let trusted = accessibility.isTrusted
+        guard trusted != accessibilityTrusted else { return }
+        accessibilityTrusted = trusted
+        if trusted, state == .idle, status == Self.grantAccessibilityStatus { status = "Ready" }
+    }
+
     /// The global shortcut for `kind` was pressed. Implements the Hotkey x state table.
     public func hotkey(_ kind: ReadKind) {
         accessibilityTrusted = accessibility.isTrusted
@@ -328,7 +339,7 @@ public final class ReadSession {
         lastError = nil
         stickyStatus = false
         guard accessibilityTrusted else {
-            status = "Grant Accessibility access to read selections"
+            status = Self.grantAccessibilityStatus
             return
         }
         // D8: freeze the source app and its preset before any wait.
@@ -491,7 +502,7 @@ public final class ReadSession {
         accessibilityTrusted = accessibility.isTrusted
         guard accessibilityTrusted else {
             state = .idle
-            status = "Grant Accessibility access to read selections"
+            status = Self.grantAccessibilityStatus
             return nil
         }
         let app = accessibility.frontmostApp()

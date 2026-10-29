@@ -78,6 +78,24 @@ struct ReadFlowTests {
         #expect(h.capture.calls.isEmpty)
     }
 
+    /// The menu re-checks permissions as it opens (docs/designs/dev-prod-channels.md, P4).
+    @Test func grantingAccessibilityInSettingsClearsTheWarningWithoutAShortcut() async throws {
+        let h = SessionHarness { $0.accessibility.isTrusted = false }
+        h.session.hotkey(.read)
+        await h.settle()
+        #expect(h.session.iconState == .warning)
+
+        h.accessibility.isTrusted = true
+        h.session.refreshAccessibility()
+        #expect(h.session.accessibilityTrusted)
+        #expect(h.session.iconState == .idle)
+        #expect(h.session.status == "Ready")
+
+        h.accessibility.isTrusted = false
+        h.session.refreshAccessibility()
+        #expect(h.session.iconState == .warning, "a grant taken away shows again too")
+    }
+
     @Test func whitespaceOnlySelectionIsNoText() async throws {
         let h = SessionHarness { $0.capture.result = CaptureResult(text: "  \n\t ") }
         h.session.hotkey(.read)

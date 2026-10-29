@@ -1,7 +1,10 @@
 # Dev and prod side by side
 
-Status: 2026-10-29. P2 built (scripts/dev.sh, one copy per app, cleanup), P3 built (app
-icons, Dev build stamp, Quit names the app) and P1 built (Sparkle, ships with 1.2.0); P4 open.
+Status: 2026-10-29. All four parts are built and ship with 1.2.0:
+- P1: Sparkle updates
+- P2: scripts/dev.sh, one copy per app, cleanup
+- P3: app icons, Dev build stamp, Quit names the app
+- P4: missing permissions in the menu
 
 ## Goal
 
@@ -155,7 +158,20 @@ Found while building P2: `AppContainer` reads the API keys from the shared Keych
 (the first VibeFlow Dev, or prod after Dev saved the keys) gets a Keychain dialog, and until it
 is answered the app has no menu bar icon, no logs and no delegate callbacks. Load the keys
 after launch, off the main thread (the in-memory cache is already there), and say in the
-menu that the keys are waiting for Keychain access.
+menu that the keys are waiting for Keychain access. That fix is on branch
+`frosty-elbakyan-96b587`.
+
+As built (2026-10-29):
+
+- **Only what is missing.** The menu shows "Grant Accessibility access" while VibeFlow is not
+  trusted and "Grant Microphone access" while the microphone is denied; each opens its System
+  Settings pane. There are no ✓ rows, to keep the menu short. An undetermined microphone shows
+  nothing, because the first dictation asks for it.
+- **Kept current:** `AppContainer.refreshPermissions` runs at launch and whenever a menu opens
+  (`NSMenu.didBeginTrackingNotification`). It also runs every 2 s while Accessibility is
+  missing or the microphone is denied, and stops once both are fine.
+- **No shortcut needed:** `ReadSession.refreshAccessibility` (tested) clears the warning icon
+  and the "Grant Accessibility access to read selections" status without a shortcut press.
 
 ### What stays the same
 
@@ -180,7 +196,7 @@ menu that the keys are waiting for Keychain access.
 2. P3 Dev icon + build stamp. Done 2026-10-29.
 3. P1 Sparkle + release.sh appcast, shipped as 1.2.0; install that DMG in /Applications once.
    Built 2026-10-29; ships when 1.2.0 is published.
-4. P4 permissions row.
+4. P4 permissions row. Done 2026-10-29.
 
 ## Open questions
 

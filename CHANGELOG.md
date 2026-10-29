@@ -13,6 +13,12 @@
 - An app icon: white waveform bars on blue-violet. VibeFlow Dev gets an orange one with a DEV
   band.
 
+### Menu
+- A missing permission shows in the menu with a button to System Settings: Accessibility, and
+  Microphone once it was turned off. The menu checks again each time it opens, and every two
+  seconds while something is missing, so the entry and the warning icon go away as soon as you
+  grant it, without pressing a shortcut first.
+
 ### Distribution
 - `scripts/dev.sh` runs VibeFlow Dev from `~/Applications/VibeFlow Dev.app`, whichever
   worktree built it, and only one copy of each app runs: a newly started copy quits the older
