@@ -9,10 +9,15 @@ struct DictationPane: View {
     var body: some View {
         @Bindable var prefs = container.preferences
         Form {
-            Section("Shortcuts") {
+            Section {
                 ShortcutRecorder("Dictate", hint: "Hold to talk, release to paste", name: .record)
                 ShortcutRecorder("Hands-free", hint: "Press to start, press again to stop", name: .recordToggle)
                 ShortcutRecorder("Paste last dictation", name: .pasteLastDictation)
+            } header: {
+                Text("Shortcuts")
+            } footer: {
+                Text("Smart read, read and dictate sit on the three keys right above Option: , . - on a German keyboard, , . / on a US one.")
+                    .foregroundStyle(.secondary)
             }
             Section {
                 ModelPicker(title: "Transcription model", options: ModelOptions.transcription, selection: $prefs.transcriptionModel)
