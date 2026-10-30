@@ -32,7 +32,8 @@
 The Debug build is **VibeFlow Dev**, a separate app from the release, so both can run at once:
 its own bundle id, settings and permissions, an orange app icon with a DEV band, a DEV tag in
 the menu bar, and Control added to every default shortcut (Control + Option + . reads, and so
-on). API keys are shared with the release. Its menu starts with the branch, commit and build
+on). API keys are shared with the release; the Google sign-in for Meetings is not, so each
+app signs in on its own. Its menu starts with the branch, commit and build
 time it came from, which `scripts/dev.sh` stamps into Info.plist; a `*` after the commit
 means it was built with uncommitted changes. Both app icons are drawn by
 `swift scripts/make-icons.swift`.
@@ -80,6 +81,8 @@ way with `GROQ_API_KEY` set and `--filter CleanupEvals`.
 `Spike/elevenlabs-spike.swift` measures ElevenLabs first-audio and stop latency and
 `Spike/dictation-spike.swift` measures Groq transcription and cleanup on your machine; run
 them with `swift Spike/<name>.swift` and keys in a local `.env`.
+`Spike/google-calendar-spike.swift` signs in to Google Calendar the way the app will and
+lists today's meetings with the keep/drop verdict; it reads `Config/Google.xcconfig`.
 
 ## Release
 
@@ -171,6 +174,36 @@ scripts/nightly.sh --uninstall
 ```
 
 Re-run `--install` after changing `scripts/nightly.sh`: the LaunchAgent runs an installed copy.
+Each run copies the gitignored `Config/Google.xcconfig` from your checkout into its worktree,
+since `--publish` refuses to build without the Google client.
+
+## Google Calendar (Meetings)
+
+Upcoming meetings sign in to Google with a "Desktop app" OAuth client. Its ID and secret are
+built into the app (Google treats a desktop client's secret as public) but never committed:
+they live in the gitignored `Config/Google.xcconfig`, which `Config/VibeFlow.xcconfig`
+includes when it exists. Without it the app builds as usual and Settings > Meetings says
+"Not configured in this build" (CI builds this way).
+
+To use your own client:
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a project and
+   enable the Google Calendar API.
+2. Google Auth Platform: audience External; add the scope
+   `https://www.googleapis.com/auth/calendar.readonly`; under Clients create a "Desktop app"
+   client. While the app is in Testing, add each account that should sign in as a test user
+   (their sign-in expires after 7 days). "Publish app" needs a homepage and a privacy policy
+   link on an authorized domain; after that any account can sign in (with the unverified-app
+   warning, up to 100 users until Google verifies the app).
+3. `cp Config/Google.xcconfig.example Config/Google.xcconfig` and fill in
+   `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Google shows the secret only once.
+4. Check it before building: `swift Spike/google-calendar-spike.swift --login you@example.com`
+   signs in the same way the app does and lists today's meetings with the keep/drop reason.
+
+The author's client lives in the floo.one project `vibeflow-513107`. Release builds pick up
+`Config/Google.xcconfig` from the checkout that runs `scripts/release.sh`, so copy the file
+into that checkout; `--publish` refuses to run unless it sets both `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` (a local build only warns).
 
 ## Clocks data
 
@@ -187,3 +220,4 @@ Every design, review decision and task list is in `docs/designs/`:
 - `smart-read-follow-up.md`: ask back
 - `vibeflow-github-v1.md`: this repository and its releases
 - `dev-prod-channels.md`: VibeFlow and VibeFlow Dev side by side, and updates
+- `upcoming-meetings.md`: meetings in the menu bar (Google Calendar)

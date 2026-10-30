@@ -113,6 +113,11 @@ run() {
     git -C "$REPO" worktree add --quiet --detach "$SRC" "$sha"
   fi
 
+  # Gitignored, so the worktree never has it; release.sh --publish needs it for Meetings.
+  mkdir -p "$SRC/Config"
+  cp "$REPO/Config/Google.xcconfig" "$SRC/Config/Google.xcconfig" 2>/dev/null \
+    || say "${sha:0:7}: no $REPO/Config/Google.xcconfig; release.sh will refuse to publish"
+
   say "${sha:0:7}: building the nightly"
   if ! "$SRC/scripts/release.sh" --nightly --publish; then
     print "$sha" > "$FAILED"
