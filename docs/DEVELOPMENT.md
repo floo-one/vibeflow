@@ -26,7 +26,7 @@
    ```
 
 4. Grant Accessibility when asked, and Microphone on the first dictation, then add your keys
-   in Settings > Keys. If a Keychain dialog asks for the keys the release saved, click Always
+   in Settings > Advanced. If a Keychain dialog asks for the keys the release saved, click Always
    Allow: VibeFlow Dev waits for that answer before its menu bar icon appears.
 
 The Debug build is **VibeFlow Dev**, a separate app from the release, so both can run at once:
@@ -151,7 +151,7 @@ always points at the newest version, and installed copies (which read
 
 ### Nightly: follow main
 
-With Settings > General > "Update to the newest main", the installed VibeFlow updates to
+With Settings > Advanced > "Update to the newest main", the installed VibeFlow updates to
 every new main instead of waiting for a release. Those builds come from this Mac:
 
 ```bash

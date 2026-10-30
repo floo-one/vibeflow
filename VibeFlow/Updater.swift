@@ -2,13 +2,14 @@ import AppKit
 import CoreGraphics
 import OSLog
 import Sparkle
+import VibeFlowCore
 
 /// The release keeps itself current (docs/designs/dev-prod-channels.md, P1). Sparkle reads the
 /// feed in Info.plist (SUFeedURL) every 6 hours and downloads a new version in the background;
 /// this installs it once VibeFlow is not reading or dictating and the Mac has had no keyboard
 /// or mouse input for a few minutes, so the relaunch never cuts off a read or loses the last
 /// dictation while you work. Quitting VibeFlow installs a downloaded update as well.
-/// With Settings > General > "Update to the newest main" it reads the nightly feed instead,
+/// With Settings > Advanced > "Update to the newest main" it reads the nightly feed instead,
 /// which scripts/nightly.sh refreshes on this Mac after every new main that passed CI.
 /// VibeFlow Dev never creates one.
 @MainActor
@@ -32,7 +33,18 @@ final class Updater: NSObject, SPUUpdaterDelegate {
         controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: nil)
     }
 
-    /// Menu "Check for Updates…": Sparkle's window, in front, since VibeFlow has no Dock icon.
+    /// "1.2.0", or "1.2.0 · main 87d0257" for a nightly build of main (BuildStamp), in the menu
+    /// and Settings > Advanced.
+    static var installedVersion: String {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let version = info["CFBundleShortVersionString"] as? String ?? ""
+        guard let stamp = BuildStamp(info: info) else { return version }
+        return "\(version) · \(stamp.branch) \(stamp.commit)"
+    }
+
+    var lastCheck: Date? { controller?.updater.lastUpdateCheckDate }
+
+    /// Menu and Settings "Check for Updates…": Sparkle's window, in front, since VibeFlow has no Dock icon.
     func checkForUpdates() {
         NSApp.activate()
         controller?.checkForUpdates(nil)

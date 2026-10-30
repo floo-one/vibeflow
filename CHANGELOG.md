@@ -3,9 +3,14 @@
 ## Unreleased
 
 ### Updates
-- Settings > General > "Update to the newest main": VibeFlow updates to a build of every new
+- Settings > Advanced > "Update to the newest main": VibeFlow updates to a build of every new
   main that passed CI, not only to releases. The menu then shows the commit next to the
   version. Turning it off keeps that build until a release is newer.
+
+### Settings
+- Keys is now Advanced: the API keys, and an Updates section with the version, "Update to the
+  newest main", when VibeFlow last checked and Check for Updates…. Error messages that sent you
+  to Settings > Keys now say Settings > Advanced.
 
 ### Meetings
 - Your next Google Calendar meeting shows in the menu bar from 10 minutes before it starts

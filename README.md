@@ -16,7 +16,7 @@ You bring your own API keys.
 1. Download [VibeFlow.dmg](https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg)
    (signed and notarized by Apple), open it and drag VibeFlow to Applications.
 2. Grant Accessibility when asked, and Microphone on your first dictation.
-3. Add your keys in Settings > Keys (see [Keys](#keys); all optional).
+3. Add your keys in Settings > Advanced (see [Keys](#keys); all optional).
 
 From 1.2.0 on, VibeFlow updates itself in the background (Check for Updates… in the menu
 looks right away). To get there from an older version, download the DMG once more and replace
@@ -57,7 +57,7 @@ bar menu lists every action with its current shortcut.
 
 ## Keys
 
-Each key is optional. Add them in Settings > Keys; they are stored in your login Keychain.
+Each key is optional. Add them in Settings > Advanced; they are stored in your login Keychain.
 
 | Key | Enables | Without it |
 |---|---|---|

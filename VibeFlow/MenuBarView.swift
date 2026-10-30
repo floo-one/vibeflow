@@ -126,7 +126,7 @@ struct MenuBarView: View {
         #if !DEBUG
         Divider()
         // The release updates itself (Updater); this shows which version is running.
-        Text(releaseTitle)
+        Text("VibeFlow \(Updater.installedVersion)")
         Button("Check for Updates…") { container.updater?.checkForUpdates() }
         #endif
 
@@ -137,16 +137,6 @@ struct MenuBarView: View {
     /// "VibeFlow" or "VibeFlow Dev", so Quit says which of the two it closes.
     private var appName: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "VibeFlow"
-    }
-
-    private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-    }
-
-    /// "VibeFlow 1.2.0", or "VibeFlow 1.2.0 · main 87d0257" for a nightly build of main.
-    private var releaseTitle: String {
-        guard let stamp = BuildStamp(info: Bundle.main.infoDictionary ?? [:]) else { return "VibeFlow \(appVersion)" }
-        return "VibeFlow \(appVersion) · \(stamp.branch) \(stamp.commit)"
     }
 
     #if DEBUG
@@ -165,7 +155,7 @@ struct MenuBarView: View {
 
     private func label(for action: ErrorAction) -> String {
         switch action {
-        case .openKeys: return "Open Settings > Keys"
+        case .openKeys: return "Open Settings > Advanced"
         case .readOriginal: return "Read original instead"
         case .grantAccessibility: return "Grant Accessibility access"
         }
@@ -173,7 +163,7 @@ struct MenuBarView: View {
 
     private func perform(_ action: ErrorAction) {
         switch action {
-        case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .keys)
+        case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .advanced)
         case .readOriginal: session.readOriginal()
         case .grantAccessibility: NSWorkspace.shared.open(Accessibility.settingsURL)
         }
@@ -184,7 +174,7 @@ struct MenuBarView: View {
         case .retry: return "Retry dictation"
         case .copyText: return "Copy dictated text"
         case .discard: return "Discard recording"
-        case .openKeys: return "Open Settings > Keys"
+        case .openKeys: return "Open Settings > Advanced"
         case .openDictationSettings: return "Open Settings > Dictation"
         case .openMicrophoneSettings: return "Open Microphone settings"
         }
@@ -195,7 +185,7 @@ struct MenuBarView: View {
         case .retry: dictation.retry()
         case .copyText: Task { await dictation.copyText() }
         case .discard: dictation.discard()
-        case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .keys)
+        case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .advanced)
         case .openDictationSettings: SettingsWindow.present(openSettings, container: container, tab: .dictation)
         case .openMicrophoneSettings: NSWorkspace.shared.open(Microphone.settingsURL)
         }

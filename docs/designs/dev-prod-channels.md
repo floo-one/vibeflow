@@ -175,7 +175,7 @@ As built (2026-10-29):
 
 ### P5. Follow main (nightly channel)
 
-Settings > General > "Update to the newest main" (release only) switches Sparkle to a second
+Settings > Advanced > "Update to the newest main" (release only) switches Sparkle to a second
 feed, `releases/download/nightly/appcast.xml`, through `feedURLString(for:)` in
 `Updater.swift`; switching checks right away. That feed belongs to one rolling GitHub
 pre-release, `nightly`, never `--latest`, so the release feed and the README link are
