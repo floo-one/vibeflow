@@ -16,7 +16,7 @@ You bring your own API keys.
 1. Download [VibeFlow.dmg](https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg)
    (signed and notarized by Apple), open it and drag VibeFlow to Applications.
 2. Grant Accessibility when asked, and Microphone on your first dictation.
-3. Add your keys in Settings > Advanced (see [Keys](#keys); all optional).
+3. Add your keys in Settings > Accounts (see [Keys](#keys); all optional).
 
 From 1.2.0 on, VibeFlow updates itself in the background (Check for Updates… in the menu
 looks right away). To get there from an older version, download the DMG once more and replace
@@ -57,7 +57,7 @@ bar menu lists every action with its current shortcut.
 
 ## Keys
 
-Each key is optional. Add them in Settings > Advanced; they are stored in your login Keychain.
+Each key is optional. Add them in Settings > Accounts; they are stored in your login Keychain.
 
 | Key | Enables | Without it |
 |---|---|---|
@@ -95,7 +95,7 @@ With no keys at all you still get reading with an Apple voice, plus dictation on
 - **Microphone.** Automatic uses the built-in microphone while you listen on Bluetooth
   headphones (a headset microphone drops them to call quality) or when the system input is a
   virtual device. Pick a specific microphone in Settings > Dictation.
-- **Speaker.** Settings > Reading > Speaker sends the ElevenLabs voice to a specific output.
+- **Speaker.** Settings > Read > Speaker sends the ElevenLabs voice to a specific output.
 - **Google sign-in.** Google has not verified VibeFlow yet, so the consent screen warns that
   the app is unverified (Advanced > Go to VibeFlow), and while the app is in Google's testing
   phase only invited accounts can sign in. A Google Workspace admin can block third-party apps;

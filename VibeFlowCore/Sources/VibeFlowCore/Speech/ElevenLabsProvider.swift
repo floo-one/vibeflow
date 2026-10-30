@@ -18,7 +18,7 @@ public final class ElevenLabsProvider: SpeechProvider {
     private let player: any AudioPlayer
     private let secrets: any SecretsStore
     private let baseURL: URL
-    /// The ElevenLabs model for the next read (Settings > Reading).
+    /// The ElevenLabs model for the next read (Settings > Read).
     public var model = ElevenLabsProvider.defaultModel
 
     public init(client: any ByteStreamClient, webSocket: any WebSocketClient = URLSessionWebSocketClient(),

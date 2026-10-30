@@ -428,7 +428,7 @@ public final class ReadSession {
             return
         }
         guard secrets.read(.anthropic) != nil else {
-            fail("No Anthropic key. Add one in Settings > Advanced", actions: [.openKeys, .readOriginal])
+            fail("No Anthropic key. Add one in Settings > Accounts", actions: [.openKeys, .readOriginal])
             return
         }
 
@@ -557,7 +557,7 @@ public final class ReadSession {
         session.text = context.document
 
         guard secrets.read(.anthropic) != nil else {
-            failQuestion("No Anthropic key. Add one in Settings > Advanced", spoken: "Questions need an Anthropic key.", actions: [.openKeys])
+            failQuestion("No Anthropic key. Add one in Settings > Accounts", spoken: "Questions need an Anthropic key.", actions: [.openKeys])
             return
         }
         state = .transforming

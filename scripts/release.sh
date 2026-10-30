@@ -12,8 +12,8 @@
 #                                            tag v<version> and create the GitHub release
 #         scripts/release.sh --no-notarize   stop after the signed export (no credentials)
 #         scripts/release.sh --nightly [--publish]
-#                                            a build of origin/main for the "Update to the
-#                                            newest main" channel, uploaded to the rolling
+#                                            a build of origin/main for the Nightly update
+#                                            channel, uploaded to the rolling
 #                                            "nightly" pre-release (scripts/nightly.sh runs it)
 #
 # Before --publish: bump MARKETING_VERSION and CURRENT_PROJECT_VERSION in project.yml and

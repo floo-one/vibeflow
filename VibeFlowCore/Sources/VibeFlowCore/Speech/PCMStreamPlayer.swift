@@ -29,7 +29,7 @@ public final class PCMStreamPlayer: AudioPlayer {
     /// Bumped by `stop()` so completions from a stopped generation are ignored.
     private var generation = 0
 
-    /// Output device for the next read (Settings > Reading > Speaker), nil = system output.
+    /// Output device for the next read (Settings > Read > Speaker), nil = system output.
     /// Applied when the engine starts; a change while idle restarts it on the next read.
     public var outputDeviceUID: String? {
         didSet {
