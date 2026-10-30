@@ -24,17 +24,19 @@ LOG="$HOME/Library/Logs/VibeFlow Nightly.log"
 PUBLISHED="$STATE/published"
 FAILED="$STATE/failed"
 GH_REPO="floo-one/vibeflow"
+# This script, absolute. Inside a zsh function $0 is the function name, so read it here.
+SELF="${0:A}"
 
 # The repo it builds from: set by --install in the LaunchAgent, else the repo of this script.
 # Its main checkout, also from a worktree, since the build worktree hangs off that one.
-REPO="${VIBEFLOW_REPO:-$(cd "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)/.." && pwd)}"
+REPO="${VIBEFLOW_REPO:-$(cd "$(git -C "${SELF:h}" rev-parse --path-format=absolute --git-common-dir)/.." && pwd)}"
 
 say() { print "$(date '+%F %T') $1"; }
 
 install() {
   mkdir -p "$STATE" "${PLIST:h}" "${LOG:h}"
   # A copy, so checking out a new main in $SRC never rewrites the script while it runs.
-  cp "$0" "$STATE/nightly.sh"
+  cp "$SELF" "$STATE/nightly.sh"
   cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
