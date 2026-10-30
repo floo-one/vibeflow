@@ -43,12 +43,17 @@ private struct UpdateSettings: View {
         @Bindable var prefs = container.preferences
         Section {
             LabeledContent("Version", value: Updater.installedVersion)
+            Picker("Channel", selection: $prefs.updateToNewestMain) {
+                Text("Stable").tag(false)
+                Text("Nightly").tag(true)
+            }
+            .pickerStyle(.segmented)
             #if DEBUG
-            Text("VibeFlow Dev does not update itself; scripts/dev.sh builds a new one.")
-                .foregroundStyle(.secondary)
+            .disabled(true)
             #else
-            Toggle("Update to the newest main", isOn: $prefs.updateToNewestMain)
-                .onChange(of: prefs.updateToNewestMain) { container.updater?.channelChanged() }
+            .onChange(of: prefs.updateToNewestMain) { container.updater?.channelChanged() }
+            #endif
+            #if !DEBUG
             LabeledContent {
                 Button("Check for Updates…") { container.updater?.checkForUpdates() }
             } label: {
@@ -67,18 +72,20 @@ private struct UpdateSettings: View {
         } header: {
             Text("Updates")
         } footer: {
-            #if !DEBUG
             Group {
+                #if DEBUG
+                Text("VibeFlow Dev does not update itself; scripts/dev.sh builds a new one. The installed VibeFlow uses this choice.")
+                #else
                 if Updater.isNightly {
-                    Text("Go Back to the Release turns this off and downloads the release; drag it to Applications to replace this build. Turning this off alone keeps this build until a release is newer.")
+                    Text("Go Back to the Release switches to Stable and downloads the release; drag it to Applications to replace this build. Stable alone keeps this build until a release is newer.")
                 } else if prefs.updateToNewestMain {
-                    Text("Installs a build of every new main that passed CI.")
+                    Text("Nightly installs a build of every new main that passed CI, between releases.")
                 } else {
-                    Text("Installs new releases. Checks every 6 hours and installs while you are away from the Mac.")
+                    Text("Stable installs releases only. Checks every 6 hours and installs while you are away from the Mac.")
                 }
+                #endif
             }
             .foregroundStyle(.secondary)
-            #endif
         }
     }
 

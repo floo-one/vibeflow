@@ -151,7 +151,7 @@ always points at the newest version, and installed copies (which read
 
 ### Nightly: follow main
 
-With Settings > General > "Update to the newest main", the installed VibeFlow updates to
+With Settings > General > Updates, Channel "Nightly", the installed VibeFlow updates to
 every new main instead of waiting for a release. Those builds come from this Mac:
 
 ```bash

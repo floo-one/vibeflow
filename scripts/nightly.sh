@@ -1,6 +1,6 @@
 #!/bin/zsh
 # Keep the "nightly" pre-release at the newest main, built, signed and notarized on this Mac,
-# so a VibeFlow with Settings > General > "Update to the newest main" installs every new main.
+# so a VibeFlow with Settings > General > Updates, Channel "Nightly", installs every new main.
 # A LaunchAgent runs it every 30 minutes; it builds only when origin/main moved and CI passed
 # on that commit, in its own worktree (main checkout and other worktrees stay as they are),
 # with scripts/release.sh --nightly --publish. Keys stay in the login keychain: the Mac has

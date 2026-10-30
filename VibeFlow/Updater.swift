@@ -9,7 +9,7 @@ import VibeFlowCore
 /// this installs it once VibeFlow is not reading or dictating and the Mac has had no keyboard
 /// or mouse input for a few minutes, so the relaunch never cuts off a read or loses the last
 /// dictation while you work. Quitting VibeFlow installs a downloaded update as well.
-/// With Settings > General > "Update to the newest main" it reads the nightly feed instead,
+/// With Settings > General > Updates, Channel "Nightly", it reads the nightly feed instead,
 /// which scripts/nightly.sh refreshes on this Mac after every new main that passed CI.
 /// VibeFlow Dev never creates one.
 @MainActor
