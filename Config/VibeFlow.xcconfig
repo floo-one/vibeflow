@@ -1,0 +1,7 @@
+// Build settings for the VibeFlow app target (project.yml configFiles).
+// The Google OAuth client for upcoming meetings comes from the gitignored Google.xcconfig
+// (copy Google.xcconfig.example). Without it the values stay empty, the build still works,
+// and the Meetings tab says "Not configured in this build".
+GOOGLE_CLIENT_ID =
+GOOGLE_CLIENT_SECRET =
+#include? "Google.xcconfig"

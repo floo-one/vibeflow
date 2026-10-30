@@ -74,6 +74,9 @@ targets:
         NSHumanReadableCopyright: "MIT License"
         NSMicrophoneUsageDescription: "VibeFlow records your voice while you hold the record shortcut and turns it into text."
         NSSpeechRecognitionUsageDescription: "VibeFlow can transcribe dictation on this Mac with Apple's on-device speech recognition."
+        # Upcoming meetings: the desktop OAuth client from Config/Google.xcconfig (gitignored).
+        GoogleClientID: $(GOOGLE_CLIENT_ID)
+        GoogleClientSecret: $(GOOGLE_CLIENT_SECRET)
         # Sparkle: the release checks every 6 hours, downloads in the background and installs
         # when VibeFlow is idle (Updater.swift). VibeFlow Dev never creates an updater.
         # scripts/release.sh uploads appcast.xml with every release and refuses to sign with a
@@ -87,6 +90,9 @@ targets:
         VFGitBranch: $(VF_GIT_BRANCH)
         VFGitCommit: $(VF_GIT_COMMIT)
         VFBuildDate: $(VF_BUILD_DATE)
+    configFiles:
+      Debug: Config/VibeFlow.xcconfig
+      Release: Config/VibeFlow.xcconfig
     entitlements:
       path: VibeFlow/VibeFlow.entitlements
       properties:

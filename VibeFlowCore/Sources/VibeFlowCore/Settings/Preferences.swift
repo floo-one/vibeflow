@@ -41,6 +41,9 @@ public final class Preferences {
         static let dictationSounds = "feel.dictationSounds"
         static let notchIndicator = "feel.notchIndicator"
         static let listeningStyle = "feel.listeningStyle"
+        static let meetingsEnabled = "meetings.enabled"
+        static let meetingsLeadMinutes = "meetings.leadMinutes"
+        static let meetingsCalendars = "meetings.calendars"
     }
 
     public var launchAtLogin: Bool {
@@ -97,6 +100,18 @@ public final class Preferences {
     public var listeningStyle: ListeningStyle {
         didSet { defaults.set(listeningStyle.rawValue, forKey: Key.listeningStyle) }
     }
+    /// Upcoming meetings in the menu bar (works only once signed in to Google).
+    public var meetingsEnabled: Bool {
+        didSet { defaults.set(meetingsEnabled, forKey: Key.meetingsEnabled) }
+    }
+    /// Minutes before a meeting the item appears: 5, 10 or 15.
+    public var meetingsLeadMinutes: Int {
+        didSet { defaults.set(meetingsLeadMinutes, forKey: Key.meetingsLeadMinutes) }
+    }
+    /// Google calendar ids to watch; nil = your own calendar.
+    public var meetingsCalendars: [String]? {
+        didSet { defaults.set(meetingsCalendars, forKey: Key.meetingsCalendars) }
+    }
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -115,6 +130,10 @@ public final class Preferences {
         dictationSounds = defaults.object(forKey: Key.dictationSounds) as? Bool ?? true
         notchIndicator = defaults.object(forKey: Key.notchIndicator) as? Bool ?? true
         listeningStyle = defaults.string(forKey: Key.listeningStyle).flatMap(ListeningStyle.init(rawValue:)) ?? .dot
+        meetingsEnabled = defaults.object(forKey: Key.meetingsEnabled) as? Bool ?? true
+        meetingsLeadMinutes = (defaults.object(forKey: Key.meetingsLeadMinutes) as? Int)
+            .flatMap { MeetingSchedule.leadTimes.contains($0) ? $0 : nil } ?? MeetingSchedule.defaultLeadMinutes
+        meetingsCalendars = defaults.stringArray(forKey: Key.meetingsCalendars)
     }
 
     public var vocabularyTerms: [String] { Self.parseVocabulary(vocabulary) }

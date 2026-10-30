@@ -1,0 +1,5 @@
+// Google Calendar OAuth client for the Meetings feature (desktop app client, floo.one project).
+// Copy to Config/Google.xcconfig (gitignored) and fill in. Empty values build fine; the
+// Meetings tab then says "Not configured in this build".
+GOOGLE_CLIENT_ID =
+GOOGLE_CLIENT_SECRET =
