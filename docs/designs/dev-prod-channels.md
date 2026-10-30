@@ -223,8 +223,9 @@ branch, and a second one would mean merging every change twice.
 3. P1 Sparkle + release.sh appcast, shipped as 1.2.0; install that DMG in /Applications once.
    Built 2026-10-29; ships when 1.2.0 is published.
 4. P4 permissions row. Done 2026-10-29.
-5. P5 nightly channel. Built 2026-10-29; needs 1.2.0 installed (the first Sparkle release)
-   and `scripts/nightly.sh --install` once this is on main.
+5. P5 nightly channel. Built 2026-10-29, ships in 1.3.0 (the first release with the switch);
+   then `scripts/nightly.sh --install`. A nightly has Go Back to the Release (Settings >
+   Advanced): Sparkle never downgrades, so it turns the switch off and opens the release DMG.
 
 ## Open questions
 

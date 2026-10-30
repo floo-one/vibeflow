@@ -173,6 +173,10 @@ scripts/nightly.sh --retry       # again, after a failed build of the same main
 scripts/nightly.sh --uninstall
 ```
 
+If a nightly breaks, Settings > Advanced > Go Back to the Release turns the switch off and
+downloads the newest release's DMG; drag it to Applications. Sparkle never installs an older
+build by itself.
+
 Re-run `--install` after changing `scripts/nightly.sh`: the LaunchAgent runs an installed copy.
 Each run copies the gitignored `Config/Google.xcconfig` from your checkout into its worktree,
 since `--publish` refuses to build without the Google client.

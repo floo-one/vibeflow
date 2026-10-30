@@ -249,15 +249,30 @@ private struct UpdateSettings: View {
             } label: {
                 Text(lastChecked)
             }
+            if Updater.isNightly {
+                // Off first, or the release would update straight back to this nightly.
+                LabeledContent("Something broke?") {
+                    Button("Go Back to the Release…") {
+                        prefs.updateToNewestMain = false
+                        NSWorkspace.shared.open(Updater.releaseDMG)
+                    }
+                }
+            }
             #endif
         } header: {
             Text("Updates")
         } footer: {
             #if !DEBUG
-            Text(prefs.updateToNewestMain
-                 ? "Installs a build of every new main that passed CI. Turning this off keeps it until a release is newer."
-                 : "Installs new releases. Checks every 6 hours and installs while you are away from the Mac.")
-                .foregroundStyle(.secondary)
+            Group {
+                if Updater.isNightly {
+                    Text("Go Back to the Release turns this off and downloads the release; drag it to Applications to replace this build. Turning this off alone keeps this build until a release is newer.")
+                } else if prefs.updateToNewestMain {
+                    Text("Installs a build of every new main that passed CI.")
+                } else {
+                    Text("Installs new releases. Checks every 6 hours and installs while you are away from the Mac.")
+                }
+            }
+            .foregroundStyle(.secondary)
             #endif
         }
     }
