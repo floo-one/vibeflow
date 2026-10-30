@@ -35,7 +35,8 @@ the app.
 | Control + Option + V | **Paste last dictation** again |
 | Shift + Control + Option + V | **Paste last smart read** |
 
-Press a read shortcut again to stop. Every shortcut can be changed in Settings, and the menu
+The voice shortcuts are the three keys right above Option: `,` `.` `-` on a German keyboard,
+`,` `.` `/` on a US one (the table shows the German keys). Press a read shortcut again to stop. Every shortcut can be changed in Settings, and the menu
 bar menu lists every action with its current shortcut.
 
 - **Read** rewrites tables, links and Markdown for listening: a table row becomes "Campaign:
