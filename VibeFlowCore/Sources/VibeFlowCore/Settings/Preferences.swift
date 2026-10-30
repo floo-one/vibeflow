@@ -20,7 +20,7 @@ public enum ListeningStyle: String, CaseIterable, Sendable {
 }
 
 /// The few settings that are not per-app presets, backed by UserDefaults: a model per job,
-/// the audio devices, the dictation cues and launch at login. Shortcuts live in KeyboardShortcuts' own storage;
+/// the audio devices, the dictation cues, launch at login and the update channel. Shortcuts live in KeyboardShortcuts' own storage;
 /// keys live in the Keychain.
 @MainActor
 @Observable
@@ -28,6 +28,7 @@ public final class Preferences {
     private let defaults: UserDefaults
     private enum Key {
         static let launchAtLogin = "launchAtLogin"
+        static let updateToNewestMain = "update.newestMain"
         static let voiceModel = "voiceModel"
         static let smartReadModel = "smartReadModel"
         static let smartReadSpeed = "smartRead.speed"
@@ -48,6 +49,10 @@ public final class Preferences {
 
     public var launchAtLogin: Bool {
         didSet { defaults.set(launchAtLogin, forKey: Key.launchAtLogin) }
+    }
+    /// The release follows the nightly feed (a build of every new main) instead of releases.
+    public var updateToNewestMain: Bool {
+        didSet { defaults.set(updateToNewestMain, forKey: Key.updateToNewestMain) }
     }
     /// ElevenLabs model for reads.
     public var voiceModel: String {
@@ -116,6 +121,7 @@ public final class Preferences {
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         launchAtLogin = defaults.bool(forKey: Key.launchAtLogin)
+        updateToNewestMain = defaults.bool(forKey: Key.updateToNewestMain)
         voiceModel = defaults.string(forKey: Key.voiceModel) ?? ModelOptions.voice[0].id
         smartReadModel = defaults.string(forKey: Key.smartReadModel) ?? ModelOptions.smartRead[0].id
         smartReadSpeed = defaults.object(forKey: Key.smartReadSpeed) as? Double ?? 1.0

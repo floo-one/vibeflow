@@ -26,7 +26,7 @@
    ```
 
 4. Grant Accessibility when asked, and Microphone on the first dictation, then add your keys
-   in Settings > Keys. If a Keychain dialog asks for the keys the release saved, click Always
+   in Settings > Advanced. If a Keychain dialog asks for the keys the release saved, click Always
    Allow: VibeFlow Dev waits for that answer before its menu bar icon appears.
 
 The Debug build is **VibeFlow Dev**, a separate app from the release, so both can run at once:
@@ -148,6 +148,38 @@ always points at the newest version, and installed copies (which read
 `.../releases/latest/download/appcast.xml`) find it within 6 hours. Forks: change `teamID` in
 `scripts/ExportOptions.plist`, the team id in the commands above, and `SUFeedURL` and
 `SUPublicEDKey` in `project.yml` to yours.
+
+### Nightly: follow main
+
+With Settings > Advanced > "Update to the newest main", the installed VibeFlow updates to
+every new main instead of waiting for a release. Those builds come from this Mac:
+
+```bash
+scripts/nightly.sh --install
+```
+
+That adds a LaunchAgent (`~/Library/LaunchAgents/one.floo.vibeflow.nightly.plist`) that
+looks at origin/main every 30 minutes. When main moved and CI passed on it, it checks the
+commit out in its own worktree (`~/Library/Caches/one.floo.vibeflow.nightly/src`) and runs
+`scripts/release.sh --nightly --publish`: the same signed, notarized DMG, with build number
+`<CURRENT_PROJECT_VERSION>.<commits on main>`, uploaded with its feed to the rolling `nightly`
+pre-release. The Mac has to be on and logged in; it catches up after sleep. Log:
+`~/Library/Logs/VibeFlow Nightly.log`.
+
+```bash
+scripts/nightly.sh --status      # LaunchAgent, last published commit, recent log
+scripts/nightly.sh               # check once now
+scripts/nightly.sh --retry       # again, after a failed build of the same main
+scripts/nightly.sh --uninstall
+```
+
+If a nightly breaks, Settings > Advanced > Go Back to the Release turns the switch off and
+downloads the newest release's DMG; drag it to Applications. Sparkle never installs an older
+build by itself.
+
+Re-run `--install` after changing `scripts/nightly.sh`: the LaunchAgent runs an installed copy.
+Each run copies the gitignored `Config/Google.xcconfig` from your checkout into its worktree,
+since `--publish` refuses to build without the Google client.
 
 ## Google Calendar (Meetings)
 

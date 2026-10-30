@@ -145,7 +145,10 @@ final class AppContainer {
         }
 
         #if !DEBUG
-        updater = Updater { [weak self] in self?.isRunning ?? false }
+        updater = Updater(
+            isBusy: { [weak self] in self?.isRunning ?? false },
+            followsMain: { [weak self] in self?.preferences.updateToNewestMain ?? false }
+        )
         #endif
 
         warmConnections()

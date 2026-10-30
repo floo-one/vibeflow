@@ -11,21 +11,32 @@
 #         scripts/release.sh --publish       same, from a clean main that matches origin, then
 #                                            tag v<version> and create the GitHub release
 #         scripts/release.sh --no-notarize   stop after the signed export (no credentials)
+#         scripts/release.sh --nightly [--publish]
+#                                            a build of origin/main for the "Update to the
+#                                            newest main" channel, uploaded to the rolling
+#                                            "nightly" pre-release (scripts/nightly.sh runs it)
 #
 # Before --publish: bump MARKETING_VERSION and CURRENT_PROJECT_VERSION in project.yml and
 # give CHANGELOG.md a "## <version>" section; its text becomes the release notes.
+#
+# A nightly's build number is <CURRENT_PROJECT_VERSION>.<commits on main>, e.g. 3.52: above
+# release 3, which it follows, and below release 4, which replaces it. Sparkle compares the
+# parts as numbers, so both channels only ever move up.
 
 set -euo pipefail
 
 PROFILE="${VIBEFLOW_NOTARY_PROFILE:-VibeFlowNotary}"
 NOTARIZE=1
 PUBLISH=0
-case "${1:-}" in
-  --no-notarize) NOTARIZE=0 ;;
-  --publish) PUBLISH=1 ;;
-  "") ;;
-  *) print -u2 "Unknown option: $1"; exit 2 ;;
-esac
+NIGHTLY=0
+for arg in "$@"; do
+  case "$arg" in
+    --no-notarize) NOTARIZE=0 ;;
+    --publish) PUBLISH=1 ;;
+    --nightly) NIGHTLY=1 ;;
+    *) print -u2 "Unknown option: $arg"; exit 2 ;;
+  esac
+done
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -45,8 +56,21 @@ PROJECT_BUILD="$(sed -nE 's/^ *CURRENT_PROJECT_VERSION: *"?([0-9]+)"?.*/\1/p' pr
 UPDATE_KEY="$(sed -nE 's/^ *SUPublicEDKey: *"?([^" ]+)"?.*/\1/p' project.yml | head -1)"
 SPARKLE_BIN="build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin"
 
-# Changelog section "## <version>" up to the next "## " heading.
+if [[ $NIGHTLY -eq 1 ]]; then
+  COMMIT="$(git rev-parse --short HEAD)"
+  NIGHTLY_BUILD="$PROJECT_BUILD.$(git rev-list --count HEAD)"
+  LAST_TAG="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
+fi
+
+# Changelog section "## <version>" up to the next "## " heading; for a nightly, the commits
+# since the last release.
 release_notes() {
+  if [[ $NIGHTLY -eq 1 ]]; then
+    print "Built from main at $COMMIT, not a release. Changes since ${LAST_TAG:-the start}:"
+    print
+    git log --no-merges --format='- %s' ${LAST_TAG:+$LAST_TAG..}HEAD | head -40
+    return
+  fi
   awk -v v="$VERSION" '
     /^## / { if (found) exit; if (index($0, "## " v) == 1) { found = 1; next } }
     found { print }
@@ -54,7 +78,16 @@ release_notes() {
 }
 
 # Checks that can fail fast, before ten minutes of building and notarizing.
-if [[ $PUBLISH -eq 1 ]]; then
+if [[ $NIGHTLY -eq 1 ]]; then
+  step "Check that $COMMIT is origin/main"
+  [[ -z "$(git status --porcelain)" ]] || fail "working tree is not clean"
+  git fetch --quiet origin main
+  [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || fail "HEAD is not origin/main; a nightly is always a build of main"
+  if [[ $PUBLISH -eq 1 ]]; then
+    command -v gh >/dev/null || fail "gh is not installed"
+    gh auth status >/dev/null 2>&1 || fail "gh is not logged in (gh auth login)"
+  fi
+elif [[ $PUBLISH -eq 1 ]]; then
   step "Check that $TAG can be published"
   command -v gh >/dev/null || fail "gh is not installed"
   gh auth status >/dev/null 2>&1 || fail "gh is not logged in (gh auth login)"
@@ -103,11 +136,19 @@ if [[ $NOTARIZE -eq 1 ]]; then
     || fail "the login keychain has no Sparkle key (account vibeflow) matching SUPublicEDKey in project.yml; see docs/DEVELOPMENT.md, Release"
 fi
 
+# A nightly carries its build number and, like VibeFlow Dev, the commit it came from
+# (BuildStamp), which the menu shows next to the version.
+OVERRIDES=()
+if [[ $NIGHTLY -eq 1 ]]; then
+  OVERRIDES=(CURRENT_PROJECT_VERSION="$NIGHTLY_BUILD" VF_GIT_BRANCH=main VF_GIT_COMMIT="$COMMIT"
+    VF_BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)")
+fi
+
 step "Archive (Release)"
 xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Release \
   -destination 'generic/platform=macOS' \
   -derivedDataPath build/DerivedData -archivePath "$ARCHIVE" \
-  archive -quiet
+  archive -quiet "${OVERRIDES[@]}"
 
 step "Export with Developer ID"
 xcodebuild -exportArchive -archivePath "$ARCHIVE" \
@@ -116,6 +157,9 @@ xcodebuild -exportArchive -archivePath "$ARCHIVE" \
 BUILT="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")"
 [[ "$BUILT" == "$VERSION" ]] || fail "built version $BUILT does not match project.yml $VERSION"
+if [[ $NIGHTLY -eq 1 ]]; then
+  [[ "$BUILD" == "$NIGHTLY_BUILD" ]] || fail "built build number $BUILD is not $NIGHTLY_BUILD"
+fi
 print "VibeFlow $VERSION ($BUILD)"
 
 step "Verify the signature"
@@ -135,7 +179,7 @@ xcrun stapler staple "$APP"
 rm -f "$ZIP"
 
 step "Build the DMG"
-DMG="$OUT/VibeFlow-$VERSION.dmg"
+if [[ $NIGHTLY -eq 1 ]]; then DMG="$OUT/VibeFlow-$NIGHTLY_BUILD.dmg"; else DMG="$OUT/VibeFlow-$VERSION.dmg"; fi
 STAGE="$OUT/dmg"
 mkdir -p "$STAGE"
 ditto "$APP" "$STAGE/VibeFlow.app"
@@ -156,13 +200,37 @@ step "Sign the DMG for Sparkle and write the update feed"
 NOTES="$OUT/notes.md"
 release_notes > "$NOTES"
 APPCAST="$OUT/appcast.xml"
-scripts/write-appcast.sh "$DMG" "$VERSION" "$BUILD" "$NOTES" > "$APPCAST"
+if [[ $NIGHTLY -eq 1 ]]; then
+  # Each nightly DMG keeps its own name, so the feed never points at a file that was
+  # replaced under it.
+  scripts/write-appcast.sh --url "https://github.com/floo-one/vibeflow/releases/download/nightly/${DMG:t}" \
+    "$DMG" "$VERSION-nightly+$COMMIT" "$BUILD" "$NOTES" > "$APPCAST"
+else
+  scripts/write-appcast.sh "$DMG" "$VERSION" "$BUILD" "$NOTES" > "$APPCAST"
+fi
 xmllint --noout "$APPCAST"
 
 print
 print "Release ready: $DMG"
 
-if [[ $PUBLISH -eq 1 ]]; then
+if [[ $NIGHTLY -eq 1 && $PUBLISH -eq 1 ]]; then
+  step "Publish the nightly $NIGHTLY_BUILD ($COMMIT) to GitHub"
+  # One pre-release, created once and never --latest, so .../releases/latest stays the last
+  # release. Its tag is not moved (a moved tag breaks everyone's git fetch --tags); the title
+  # and notes name the commit. DMG first, then the feed that points at it, then old DMGs.
+  TITLE="VibeFlow nightly $VERSION ($NIGHTLY_BUILD, $COMMIT)"
+  if ! gh release view nightly >/dev/null 2>&1; then
+    gh release create nightly --target main --prerelease --latest=false \
+      --title "$TITLE" --notes-file "$NOTES"
+  fi
+  gh release upload nightly "$DMG#$TITLE (DMG)" --clobber
+  gh release upload nightly "$APPCAST#Update feed (Sparkle, nightly)" --clobber
+  gh release edit nightly --title "$TITLE" --notes-file "$NOTES" --prerelease
+  for old in $(gh release view nightly --json assets -q '.assets[].name' | grep -E '^VibeFlow-.*\.dmg$'); do
+    [[ "$old" == "${DMG:t}" ]] || gh release delete-asset nightly "$old" --yes
+  done
+  print "Published: $(gh release view nightly --json url -q .url)"
+elif [[ $PUBLISH -eq 1 ]]; then
   step "Publish $TAG to GitHub"
   git tag -a "$TAG" -m "VibeFlow $VERSION"
   git push origin "$TAG"
