@@ -126,7 +126,7 @@ struct MenuBarView: View {
         #if !DEBUG
         Divider()
         // The release updates itself (Updater); this shows which version is running.
-        Text("VibeFlow \(appVersion)")
+        Text(releaseTitle)
         Button("Check for Updates…") { container.updater?.checkForUpdates() }
         #endif
 
@@ -141,6 +141,12 @@ struct MenuBarView: View {
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
+
+    /// "VibeFlow 1.2.0", or "VibeFlow 1.2.0 · main 87d0257" for a nightly build of main.
+    private var releaseTitle: String {
+        guard let stamp = BuildStamp(info: Bundle.main.infoDictionary ?? [:]) else { return "VibeFlow \(appVersion)" }
+        return "VibeFlow \(appVersion) · \(stamp.branch) \(stamp.commit)"
     }
 
     #if DEBUG

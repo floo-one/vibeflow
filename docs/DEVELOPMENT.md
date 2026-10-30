@@ -146,6 +146,32 @@ always points at the newest version, and installed copies (which read
 `scripts/ExportOptions.plist`, the team id in the commands above, and `SUFeedURL` and
 `SUPublicEDKey` in `project.yml` to yours.
 
+### Nightly: follow main
+
+With Settings > General > "Update to the newest main", the installed VibeFlow updates to
+every new main instead of waiting for a release. Those builds come from this Mac:
+
+```bash
+scripts/nightly.sh --install
+```
+
+That adds a LaunchAgent (`~/Library/LaunchAgents/one.floo.vibeflow.nightly.plist`) that
+looks at origin/main every 30 minutes. When main moved and CI passed on it, it checks the
+commit out in its own worktree (`~/Library/Caches/one.floo.vibeflow.nightly/src`) and runs
+`scripts/release.sh --nightly --publish`: the same signed, notarized DMG, with build number
+`<CURRENT_PROJECT_VERSION>.<commits on main>`, uploaded with its feed to the rolling `nightly`
+pre-release. The Mac has to be on and logged in; it catches up after sleep. Log:
+`~/Library/Logs/VibeFlow Nightly.log`.
+
+```bash
+scripts/nightly.sh --status      # LaunchAgent, last published commit, recent log
+scripts/nightly.sh               # check once now
+scripts/nightly.sh --retry       # again, after a failed build of the same main
+scripts/nightly.sh --uninstall
+```
+
+Re-run `--install` after changing `scripts/nightly.sh`: the LaunchAgent runs an installed copy.
+
 ## Clocks data
 
 The time zone list comes from [vvo/tzdb](https://github.com/vvo/tzdb) (MIT, Copyright

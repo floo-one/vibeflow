@@ -173,6 +173,32 @@ As built (2026-10-29):
 - **No shortcut needed:** `ReadSession.refreshAccessibility` (tested) clears the warning icon
   and the "Grant Accessibility access to read selections" status without a shortcut press.
 
+### P5. Follow main (nightly channel)
+
+Settings > General > "Update to the newest main" (release only) switches Sparkle to a second
+feed, `releases/download/nightly/appcast.xml`, through `feedURLString(for:)` in
+`Updater.swift`; switching checks right away. That feed belongs to one rolling GitHub
+pre-release, `nightly`, never `--latest`, so the release feed and the README link are
+untouched. Its tag is created once and never moved: a moved tag breaks `git fetch --tags` in
+every clone. The title and notes name the commit.
+
+Built on this Mac, not in CI, so the Developer ID certificate, the notary profile and the
+Sparkle key stay in the login keychain. `scripts/nightly.sh --install` adds a LaunchAgent
+that runs every 30 minutes: when origin/main moved and the CI workflow passed on that commit,
+it checks the commit out in its own worktree (`~/Library/Caches/one.floo.vibeflow.nightly/src`)
+and runs `scripts/release.sh --nightly --publish`. A failed build waits for the next main
+(or `--retry`) instead of rebuilding every half hour. The cost: nothing is built while the Mac
+is off, asleep or logged out; it catches up on the next run.
+
+Build numbers: a nightly is `<CURRENT_PROJECT_VERSION>.<commits on main>`, e.g. `3.52`.
+Sparkle compares the parts as numbers, so a nightly sits above the release it follows (3) and
+below the next one (4), whose own nightlies then continue at `4.N`. Turning the setting off
+keeps the nightly until a release passes it; Sparkle never downgrades. The menu shows
+"VibeFlow 1.2.0 · main 87d0257" for a nightly (BuildStamp, as in VibeFlow Dev).
+
+A separate `nightly` branch was considered and dropped: main already is the integration
+branch, and a second one would mean merging every change twice.
+
 ### What stays the same
 
 - Settings and history: separate per app (own UserDefaults), as today.
@@ -197,8 +223,11 @@ As built (2026-10-29):
 3. P1 Sparkle + release.sh appcast, shipped as 1.2.0; install that DMG in /Applications once.
    Built 2026-10-29; ships when 1.2.0 is published.
 4. P4 permissions row. Done 2026-10-29.
+5. P5 nightly channel. Built 2026-10-29; needs 1.2.0 installed (the first Sparkle release)
+   and `scripts/nightly.sh --install` once this is on main.
 
 ## Open questions
 
 - Prod auto-installs silently (`SUAutomaticallyUpdate`) or asks first? Plan assumes silent.
-- Should prod also offer a "beta" channel (pre-release tags) later? Not in this plan.
+- Should prod also offer a "beta" channel (pre-release tags) later? Answered by P5: a
+  nightly channel that follows main.

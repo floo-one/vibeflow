@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Updates
+- Settings > General > "Update to the newest main": VibeFlow updates to a build of every new
+  main that passed CI, not only to releases. The menu then shows the commit next to the
+  version. Turning it off keeps that build until a release is newer.
+
 ## 1.2.0
 
 ### Updates

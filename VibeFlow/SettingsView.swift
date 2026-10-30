@@ -62,6 +62,10 @@ private struct GeneralTab: View {
             Section {
                 Toggle("Launch at login", isOn: $prefs.launchAtLogin)
                     .onChange(of: prefs.launchAtLogin) { container.applyLaunchAtLogin() }
+                #if !DEBUG
+                Toggle("Update to the newest main", isOn: $prefs.updateToNewestMain)
+                    .onChange(of: prefs.updateToNewestMain) { container.updater?.channelChanged() }
+                #endif
             }
             HistorySettings()
         }
