@@ -119,7 +119,6 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("Change shortcuts…") { SettingsWindow.present(openSettings, container: container, tab: .general) }
         Button("Settings…") { SettingsWindow.present(openSettings, container: container) }
             .keyboardShortcut(",")
 
@@ -155,7 +154,7 @@ struct MenuBarView: View {
 
     private func label(for action: ErrorAction) -> String {
         switch action {
-        case .openKeys: return "Open Settings > Advanced"
+        case .openKeys: return "Open Settings > Accounts"
         case .readOriginal: return "Read original instead"
         case .grantAccessibility: return "Grant Accessibility access"
         }
@@ -163,7 +162,7 @@ struct MenuBarView: View {
 
     private func perform(_ action: ErrorAction) {
         switch action {
-        case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .advanced)
+        case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .accounts)
         case .readOriginal: session.readOriginal()
         case .grantAccessibility: NSWorkspace.shared.open(Accessibility.settingsURL)
         }
@@ -174,7 +173,7 @@ struct MenuBarView: View {
         case .retry: return "Retry dictation"
         case .copyText: return "Copy dictated text"
         case .discard: return "Discard recording"
-        case .openKeys: return "Open Settings > Advanced"
+        case .openKeys: return "Open Settings > Accounts"
         case .openDictationSettings: return "Open Settings > Dictation"
         case .openMicrophoneSettings: return "Open Microphone settings"
         }
@@ -185,7 +184,7 @@ struct MenuBarView: View {
         case .retry: dictation.retry()
         case .copyText: Task { await dictation.copyText() }
         case .discard: dictation.discard()
-        case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .advanced)
+        case .openKeys: SettingsWindow.present(openSettings, container: container, tab: .accounts)
         case .openDictationSettings: SettingsWindow.present(openSettings, container: container, tab: .dictation)
         case .openMicrophoneSettings: NSWorkspace.shared.open(Microphone.settingsURL)
         }

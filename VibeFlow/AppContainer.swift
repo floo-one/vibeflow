@@ -50,6 +50,7 @@ final class AppContainer {
 
     init() {
         LegacyMigration.runIfNeeded()
+        ShortcutMigration.runIfNeeded()
         SystemVoiceCatalog.preload()
         let preferences = Preferences()
         let presets = AppPresetStore()
@@ -138,6 +139,7 @@ final class AppContainer {
         KeyboardShortcuts.onKeyUp(for: .pasteLastDictation) { [weak self] in self?.pasteLastDictation() }
         KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in self?.pasteLastAnswer() }
 
+        applyColorMode()
         refreshPermissions()
         // Every menu that opens re-checks, so a grant taken away later shows up as well.
         _ = NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in
@@ -325,6 +327,15 @@ final class AppContainer {
 
     private var needsSystemSettings: Bool {
         !session.accessibilityTrusted || microphonePermission == .denied
+    }
+
+    /// nil appearance lets every window follow macOS again.
+    func applyColorMode() {
+        switch preferences.colorMode {
+        case .system: NSApplication.shared.appearance = nil
+        case .light: NSApplication.shared.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
+        }
     }
 
     func applyLaunchAtLogin() {

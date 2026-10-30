@@ -117,6 +117,16 @@ struct PreferencesTests {
         #expect(Preferences(defaults: defaults).listeningStyle == .dot)
     }
 
+    @Test func colorModeDefaultsToSystemAndPersists() {
+        let defaults = scratchDefaults()
+        let p = Preferences(defaults: defaults)
+        #expect(p.colorMode == .system)
+        p.colorMode = .dark
+        #expect(Preferences(defaults: defaults).colorMode == .dark)
+        defaults.set("sepia", forKey: "feel.colorMode")
+        #expect(Preferences(defaults: defaults).colorMode == .system)
+    }
+
     @Test func vocabularyAcceptsLinesAndCommas() {
         #expect(Preferences.parseVocabulary("VibeFlow, Groq\n  Kokoro \n\n,ElevenLabs") == ["VibeFlow", "Groq", "Kokoro", "ElevenLabs"])
     }

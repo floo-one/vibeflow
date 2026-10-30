@@ -19,6 +19,21 @@ public enum ListeningStyle: String, CaseIterable, Sendable {
     }
 }
 
+/// Light or dark for VibeFlow's own windows, or whatever macOS uses.
+public enum ColorMode: String, CaseIterable, Sendable {
+    case system
+    case light
+    case dark
+
+    public var title: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+}
+
 /// The few settings that are not per-app presets, backed by UserDefaults: a model per job,
 /// the audio devices, the dictation cues, launch at login and the update channel. Shortcuts live in KeyboardShortcuts' own storage;
 /// keys live in the Keychain.
@@ -42,6 +57,7 @@ public final class Preferences {
         static let dictationSounds = "feel.dictationSounds"
         static let notchIndicator = "feel.notchIndicator"
         static let listeningStyle = "feel.listeningStyle"
+        static let colorMode = "feel.colorMode"
         static let meetingsEnabled = "meetings.enabled"
         static let meetingsLeadMinutes = "meetings.leadMinutes"
         static let meetingsCalendars = "meetings.calendars"
@@ -105,6 +121,10 @@ public final class Preferences {
     public var listeningStyle: ListeningStyle {
         didSet { defaults.set(listeningStyle.rawValue, forKey: Key.listeningStyle) }
     }
+    /// Settings and History follow this; the notch stays black either way.
+    public var colorMode: ColorMode {
+        didSet { defaults.set(colorMode.rawValue, forKey: Key.colorMode) }
+    }
     /// Upcoming meetings in the menu bar (works only once signed in to Google).
     public var meetingsEnabled: Bool {
         didSet { defaults.set(meetingsEnabled, forKey: Key.meetingsEnabled) }
@@ -136,6 +156,7 @@ public final class Preferences {
         dictationSounds = defaults.object(forKey: Key.dictationSounds) as? Bool ?? true
         notchIndicator = defaults.object(forKey: Key.notchIndicator) as? Bool ?? true
         listeningStyle = defaults.string(forKey: Key.listeningStyle).flatMap(ListeningStyle.init(rawValue:)) ?? .dot
+        colorMode = defaults.string(forKey: Key.colorMode).flatMap(ColorMode.init(rawValue:)) ?? .system
         meetingsEnabled = defaults.object(forKey: Key.meetingsEnabled) as? Bool ?? true
         meetingsLeadMinutes = (defaults.object(forKey: Key.meetingsLeadMinutes) as? Int)
             .flatMap { MeetingSchedule.leadTimes.contains($0) ? $0 : nil } ?? MeetingSchedule.defaultLeadMinutes
