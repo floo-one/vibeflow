@@ -52,15 +52,38 @@ final class Updater: NSObject, SPUUpdaterDelegate {
     var lastCheck: Date? { controller?.updater.lastUpdateCheckDate }
 
     /// Menu and Settings "Check for Updates…": Sparkle's window, in front, since VibeFlow has no Dock icon.
+    /// With an update already downloaded and waiting for idle, Sparkle would refuse the check
+    /// without a word (its session is still in progress), so install that one now instead.
     func checkForUpdates() {
+        if installNowIfWaiting() { return }
         NSApp.activate()
         controller?.checkForUpdates(nil)
     }
 
-    /// The setting changed: look at the other feed now instead of in up to 6 hours. Sparkle
-    /// never goes back to a lower build, so leaving main waits for a release above it.
+    /// The channel changed. To Nightly: check the nightly feed in Sparkle's window right away,
+    /// as Check for Updates… does, instead of downloading it silently and installing only after
+    /// minutes of idle. To Stable: a quiet check; Sparkle never goes back to a lower build, so
+    /// leaving a nightly waits for a release above it (or Back to Stable, StableInstaller).
     func channelChanged() {
-        controller?.updater.checkForUpdatesInBackground()
+        if followsMain() {
+            checkForUpdates()
+        } else {
+            controller?.updater.checkForUpdatesInBackground()
+        }
+    }
+
+    /// Installs a downloaded update now, unless VibeFlow is reading or dictating. False when
+    /// none is waiting.
+    private func installNowIfWaiting() -> Bool {
+        guard let install else { return false }
+        guard !isBusy() else {
+            log.notice("update: asked to install while busy, still waits")
+            return true
+        }
+        log.notice("update: installing now on request and relaunching")
+        waiting?.cancel()
+        install()
+        return true
     }
 
     /// nil keeps SUFeedURL from Info.plist, the releases.
