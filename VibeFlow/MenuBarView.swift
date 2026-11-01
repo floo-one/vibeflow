@@ -127,6 +127,13 @@ struct MenuBarView: View {
         // The release updates itself (Updater); this shows which version is running.
         Text("VibeFlow \(Updater.installedVersion)")
         Button("Check for Updates…") { container.updater?.checkForUpdates() }
+        if Updater.isNightly {
+            // The way out of a broken nightly, one click from the menu (StableInstaller).
+            Button(StableInstaller.shared.step ?? "Back to Stable") {
+                StableInstaller.shared.install(preferences: container.preferences)
+            }
+            .disabled(StableInstaller.shared.step != nil)
+        }
         #endif
 
         Button("Quit \(appName)") { NSApplication.shared.terminate(nil) }
