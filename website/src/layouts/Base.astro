@@ -1,0 +1,59 @@
+---
+import '@fontsource-variable/inter';
+import '../styles/global.css';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import { url } from '../data/site';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Path below the base, e.g. "meetings/". */
+  path: string;
+  page?: 'home' | 'meetings' | 'clocks' | 'other';
+  bodyClass?: string;
+  noindex?: boolean;
+}
+const { title, description, path, page = 'other', bodyClass, noindex = false } = Astro.props;
+const site = Astro.site ?? new URL('https://floo-one.github.io');
+const canonical = new URL(url(path), site).href;
+const ogImage = new URL(url('og.png'), site).href;
+const current = page === 'meetings' || page === 'clocks' ? page : undefined;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="theme-color" content="#FFFFFF" />
+    <link rel="icon" type="image/png" href={url('favicon.png')} />
+    <link rel="apple-touch-icon" href={url('apple-touch-icon.png')} />
+    <link rel="sitemap" href={url('sitemap-index.xml')} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="VibeFlow" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="VibeFlow: Hear anything. Say anything. Option and three keys to read, explain and dictate." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+  </head>
+  <body class={bodyClass}>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <Nav variant={page === 'home' ? 'home' : 'tool'} current={current} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer page={page} />
+  </body>
+</html>

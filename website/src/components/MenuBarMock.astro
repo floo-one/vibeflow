@@ -1,0 +1,27 @@
+---
+// The strip of a macOS menu bar with a desktop below it; items go in the default slot,
+// a dropdown in slot "below". Decorative: the caller's text says what it shows.
+interface Props { size?: 'md' | 'lg'; height?: number }
+const { size = 'md', height } = Astro.props;
+---
+<div class:list={['screen', size]} aria-hidden="true">
+  <div class="strip"><slot /></div>
+  <div class="below" style={height ? `height: ${height}px` : undefined}><slot name="below" /></div>
+</div>
+
+<style>
+  .screen {
+    display: flex; flex-direction: column; border-radius: var(--radius-card); overflow: hidden;
+    border: 1px solid var(--line); box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.35);
+    background: #E8E8ED;
+  }
+  .strip {
+    display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap;
+    background: rgba(255, 255, 255, 0.86); font-variant-numeric: tabular-nums;
+  }
+  .md .strip { gap: 16px; padding: 6px 14px; font-size: 13px; }
+  .lg .strip { gap: 18px; padding: 8px 16px; font-size: 15px; }
+  .below { display: flex; justify-content: flex-end; }
+  .md .below { padding: 10px 14px 40px; }
+  .lg .below { padding: 0; }
+</style>

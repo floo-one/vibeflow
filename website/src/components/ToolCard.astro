@@ -1,0 +1,34 @@
+---
+// A Tools card: menu bar mockup (slot "mockup"), green icon tile (slot "icon"), text, link.
+interface Props { title: string; href: string; linkText: string }
+const { title, href, linkText } = Astro.props;
+---
+<article class="card">
+  <div class="mock" aria-hidden="true"><slot name="mockup" /></div>
+  <div class="head">
+    <span class="tile small"><slot name="icon" /></span>
+    <h3>{title}</h3>
+  </div>
+  <p class="text"><slot /></p>
+  <a class="more" href={href}>{linkText}&nbsp;<span aria-hidden="true">→</span></a>
+</article>
+
+<style>
+  .card {
+    display: flex; flex-direction: column; gap: 18px;
+    padding: 28px; border-radius: var(--radius-card); border: 1px solid var(--line);
+  }
+  .mock {
+    display: flex; flex-direction: column; justify-content: center; gap: 8px;
+    padding: 14px; border-radius: 12px; background: var(--ground-2); min-height: 122px;
+  }
+  .head { display: flex; align-items: center; gap: 12px; }
+  .tile.small { width: 36px; height: 36px; border-radius: 9px; background: var(--tools); }
+  h3 { font-size: 22px; font-weight: 700; }
+  .text { font-size: 16px; line-height: 1.55; color: var(--text-2); }
+  .more {
+    align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px;
+    font-size: 15px; font-weight: 600; color: var(--tools);
+  }
+  .more:hover { color: #0A5944; }
+</style>

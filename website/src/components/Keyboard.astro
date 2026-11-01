@@ -1,0 +1,114 @@
+---
+// The right half of a MacBook Air (M-series) keyboard, German by default, with a US switch.
+// No JavaScript: two radios, and #kb-us:checked ~ shows the US panel. The radios, labels and
+// both panels are siblings inside the fieldset so the ~ selector reaches them.
+const layouts = [
+  {
+    id: 'de',
+    third: '-',
+    cmd: 'cmd',
+    label: 'German MacBook keyboard: comma is Smart read, period is Read and minus is Dictation, side by side above Option; Shift switches to the clipboard',
+    caption: 'German keyboard: comma, period and minus sit side by side, right above Option.',
+  },
+  {
+    id: 'us',
+    third: '/',
+    cmd: 'command',
+    label: 'US MacBook keyboard: comma is Smart read, period is Read and slash is Dictation, side by side above Option; Shift switches to the clipboard',
+    caption: 'US keyboard: comma, period and slash. Same three keys, same place, on every layout.',
+  },
+];
+---
+<fieldset class="kbfig">
+  <legend class="visually-hidden">Keyboard layout</legend>
+  <input class="visually-hidden" type="radio" name="kb" id="kb-de" checked />
+  <label class="seg first" for="kb-de"><span>German</span></label>
+  <input class="visually-hidden" type="radio" name="kb" id="kb-us" />
+  <label class="seg last" for="kb-us"><span>US</span></label>
+
+  {layouts.map((l) => (
+    <div class={`panel kb-${l.id}`}>
+      <div class="board" role="img" aria-label={l.label}>
+        <div class="kb">
+          <div class="kbr">
+            <div class="kk dim">N</div>
+            <div class="kk dim">M</div>
+            <div class="kk hot" style="background: var(--smart)">,<small>Smart read</small></div>
+            <div class="kk hot" style="background: var(--read)">.<small>Read</small></div>
+            <div class="kk hot" style="background: var(--dictation)">{l.third}<small>Dictation</small></div>
+            <div class="kk shf rsh">⇧<small>shift · clipboard</small></div>
+          </div>
+          <div class="kbr">
+            <div class="kk dim spc"></div>
+            <div class="kk dim cmd">⌘<small>{l.cmd}</small></div>
+            <div class="kk opt">⌥<small>option</small></div>
+            <div class="kk dim ar">◀</div>
+            <div class="arr"><span>▲</span><span>▼</span></div>
+            <div class="kk dim ar">▶</div>
+          </div>
+        </div>
+      </div>
+      <p class="caption">{l.caption}</p>
+    </div>
+  ))}
+</fieldset>
+
+<style>
+  .kbfig {
+    margin: 0; padding: 0; border: 0; min-width: 0;
+    display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: 14px;
+  }
+
+  /* Segmented control: two labels that together look like one pill. */
+  .seg { display: flex; background: #ECECF0; padding: 3px; cursor: pointer; }
+  .seg.first { border-radius: 10px 0 0 10px; padding-right: 0; }
+  .seg.last { border-radius: 0 10px 10px 0; padding-left: 0; }
+  .seg span {
+    display: flex; align-items: center; min-height: 38px; padding: 0 16px; border-radius: 8px;
+    font-size: 14px; font-weight: 600; color: var(--text);
+  }
+  input:checked + .seg span { background: #FFFFFF; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15); }
+  input:focus-visible + .seg span { outline: 2px solid var(--read); outline-offset: 2px; }
+
+  .panel { flex-basis: 100%; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  .kb-us { display: none; }
+  #kb-us:checked ~ .kb-us { display: flex; }
+  #kb-us:checked ~ .kb-de { display: none; }
+
+  .board {
+    align-self: flex-start; max-width: 100%; overflow-x: auto;
+    background: #C9CACF; border-radius: 22px; padding: 16px;
+  }
+  /* Scale the whole board on phones instead of scrolling it. */
+  @media (max-width: 520px) { .board { zoom: 0.7; } }
+  @media (max-width: 360px) { .board { zoom: 0.62; } }
+  .caption { font-size: 14px; line-height: 1.5; color: var(--text-3); }
+
+  .kb { display: flex; flex-direction: column; gap: 6px; width: 429px; }
+  .kbr { display: flex; gap: 6px; align-items: flex-end; justify-content: flex-end; }
+  .kk {
+    width: 54px; height: 54px; flex: none; border-radius: 8px; background: #1C1C1E; color: #F5F5F7;
+    padding: 6px 8px; display: flex; flex-direction: column; justify-content: space-between;
+    align-items: flex-start; font-size: 15px; font-weight: 500; line-height: 1;
+  }
+  .kk small { font-size: 12px; font-weight: 500; color: #AEAEB2; line-height: 1; }
+  .kk.dim { opacity: 0.42; }
+  .kk.rsh { width: 129px; }
+  .kk.cmd { width: 69px; }
+  .kk.spc { width: 114px; border-radius: 0 8px 8px 0; opacity: 0.25; }
+  .kk.ar { justify-content: flex-end; align-items: center; font-size: 11px; }
+  .kk.hot { font-size: 22px; font-weight: 700; color: #FFFFFF; box-shadow: 0 0 0 3px #FFFFFF; }
+  .kk.hot small { font-size: 9px; font-weight: 700; color: #FFFFFF; }
+  .kk.opt { background: #FFFFFF; color: #1D1D1F; box-shadow: 0 0 0 3px #1D1D1F; }
+  .kk.opt small { font-size: 10px; font-weight: 700; color: #1D1D1F; }
+  .kk.shf { background: #3A3A3F; box-shadow: 0 0 0 2px #8E8E93; }
+  .kk.shf small { font-size: 10px; color: #F5F5F7; }
+  .arr {
+    width: 54px; height: 54px; flex: none; display: flex; flex-direction: column;
+    justify-content: flex-end; gap: 6px; opacity: 0.42;
+  }
+  .arr span {
+    display: flex; align-items: center; justify-content: center; height: 24px; border-radius: 5px;
+    background: #1C1C1E; color: #F5F5F7; font-size: 9px;
+  }
+</style>

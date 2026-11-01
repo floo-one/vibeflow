@@ -1,0 +1,15 @@
+---
+import DownloadButton from './DownloadButton.astro';
+import { url } from '../data/site';
+
+// "Comes with a voice, too." at the end of every tool page.
+interface Props { tool: string }
+const { tool } = Astro.props;
+---
+<section class="voice-cta" aria-labelledby="voice-cta-title">
+  <div class="wrap inner">
+    <h2 id="voice-cta-title">Comes with a voice, too.</h2>
+    <p>{tool} is one of VibeFlow's tools. The app's main job is voice: Option and three keys to read, explain and dictate. <a href={url('#voice')}>See how it works</a>.</p>
+    <DownloadButton size="lg" />
+  </div>
+</section>

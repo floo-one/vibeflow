@@ -1,0 +1,37 @@
+---
+// Questions as <details>; the first one starts open. Answers may contain inline HTML.
+interface Props { items: { q: string; a: string }[]; title: string; small?: boolean }
+const { items, title, small = false } = Astro.props;
+---
+<section id="faq" class="faq wrap" aria-labelledby="faq-title">
+  <h2 id="faq-title" class:list={['h2', { small }]}>{title}</h2>
+  <div>
+    {items.map((item, i) => (
+      <details open={i === 0}>
+        <summary>{item.q}</summary>
+        <p set:html={item.a} />
+      </details>
+    ))}
+  </div>
+</section>
+
+<style>
+  .faq { max-width: 860px; padding-top: 96px; padding-bottom: 40px; display: flex; flex-direction: column; gap: 24px; }
+  .small { font-size: clamp(28px, 3.2vw, 40px); }
+  details { border-top: 1px solid var(--line); }
+  details:last-child { border-bottom: 1px solid var(--line); }
+  summary {
+    cursor: pointer; font-size: 18px; font-weight: 600;
+    padding: 18px 0; min-height: 44px; list-style: none;
+    display: flex; gap: 12px; align-items: baseline;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: '›'; flex: none; width: 12px; color: var(--text-3);
+    transition: transform 0.15s ease;
+  }
+  details[open] > summary::before { transform: rotate(90deg); }
+  p { padding-left: 24px; }
+  @media (prefers-reduced-motion: reduce) { summary::before { transition: none; } }
+  p { margin: 0 0 18px; font-size: 16px; line-height: 1.6; color: var(--text-2); }
+</style>
