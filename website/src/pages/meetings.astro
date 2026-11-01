@@ -1,0 +1,173 @@
+---
+import Base from '../layouts/Base.astro';
+import DownloadButton from '../components/DownloadButton.astro';
+import MenuBarMock from '../components/MenuBarMock.astro';
+import Flag from '../components/Flag.astro';
+import Faq from '../components/Faq.astro';
+import VoiceCta from '../components/VoiceCta.astro';
+import '../styles/tool-page.css';
+
+const timeline = [
+  { time: '09:50', title: 'Standup in 10m', text: 'Appears at your lead time: 5, 10 or 15 minutes.' },
+  { time: '10:00', title: 'Standup now', text: 'Click it, then Join. Meet, Zoom, Teams and Webex links are found for you.' },
+  { time: '10:05', title: 'Gone', text: 'Five minutes after the start it leaves your menu bar alone.' },
+  { time: 'Overlap', title: 'The next one first', text: 'Two meetings at once? The label shows the one starting soonest, the menu lists both.' },
+];
+
+const skipped = [
+  'Focus time', 'Out of office', 'Working location', 'All-day events and birthdays',
+  'Declined or cancelled', 'Marked as free', 'Just you, nobody else',
+];
+
+const faq = [
+  { q: 'Does it work with Outlook or iCloud calendars?', a: 'No. Meetings reads Google Calendar directly, which is how it finds exact Meet links. Other calendars are not planned.' },
+  { q: "My work account says it's blocked.", a: 'Some Google Workspace admins only allow approved apps. Ask yours to allow VibeFlow, or use a personal account.' },
+  { q: 'Can I turn it off?', a: 'Yes, with one switch in Settings › Meetings. Like every tool in VibeFlow, it is an on/off and nothing more.' },
+];
+---
+<Base
+  title="Meetings in your Mac menu bar · VibeFlow"
+  description="Your next Google Calendar meeting in the Mac menu bar, ten minutes before it starts. One click joins Meet, Zoom, Teams or Webex. Free, read-only, no server."
+  path="meetings/"
+  page="meetings"
+  bodyClass="tools-page"
+>
+  <section class="wrap hero">
+    <div class="hero-text">
+      <p class="tool-eyebrow">
+        <span class="tile" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg></span>
+        Tools · Meetings
+      </p>
+      <h1 class="tool-h1">Never notice a meeting two minutes late again.</h1>
+      <p class="intro">Your next Google Calendar meeting shows up in the menu bar ten minutes before it starts. One click and you're in the call. When it's over, it's gone.</p>
+      <div class="ctas">
+        <DownloadButton />
+        <span class="muted">Included since 1.3.0, free, no API key.</span>
+      </div>
+    </div>
+
+    <div class="hero-mock">
+      <MenuBarMock>
+        <span class="mb-active">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D1D1F" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>Standup in 8m
+        </span>
+        <span class="mb-clock"><Flag country="DE" />09:52</span>
+        <span>Thu 09:52</span>
+        <div slot="below" class="pop">
+          <div class="pop-main">
+            <strong>Standup</strong>
+            <span class="grey">10:00 – 10:15 · Google Meet</span>
+            <span class="grey">Organizer: Sam Lee</span>
+            <span class="join">Join</span>
+          </div>
+          <div class="pop-later">
+            <span class="later-head">LATER TODAY</span>
+            <span class="later-row"><span>11:30 Design review</span><span class="join-link">Join</span></span>
+            <span class="later-row"><span>15:00 1:1 with Alex</span><span class="join-link">Join</span></span>
+          </div>
+          <div class="pop-foot">Open Google Calendar</div>
+        </div>
+      </MenuBarMock>
+    </div>
+  </section>
+
+  <section class="grey-band" aria-labelledby="timeline-title">
+    <div class="wrap stack timeline">
+      <h2 id="timeline-title" class="h2">There when you need it. Gone when you don't.</h2>
+      <ol class="steps">
+        {timeline.map((t) => (
+          <li class="step">
+            <span class="step-time">{t.time}</span>
+            <span class="step-title">{t.title}</span>
+            <span class="step-text">{t.text}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section class="wrap real" aria-labelledby="real-title">
+    <div class="real-text">
+      <h2 id="real-title" class="h2">Only real meetings.</h2>
+      <p class="lead">A calendar is full of things that aren't meetings. VibeFlow skips them, judged by your own email, even on a colleague's calendar you watch. A meeting on two of your calendars shows once.</p>
+    </div>
+    <ul class="skipped" aria-label="Skipped">
+      {skipped.map((s) => <li>{s}</li>)}
+    </ul>
+  </section>
+
+  <section class="wrap setup">
+    <article class="setup-card">
+      <h2 class="card-h">Set up in Settings › Meetings</h2>
+      <ol>
+        <li>Sign in with Google. Read-only.</li>
+        <li>Pick the calendars to watch.</li>
+        <li>Choose the lead time: 5, 10 or 15 minutes.</li>
+      </ol>
+      <p class="note">It syncs every five minutes, after your Mac wakes and when the network comes back. A status line says whether you're signed in, offline, or blocked by your Workspace admin.</p>
+    </article>
+    <article class="setup-card dark">
+      <h2 class="card-h">Your calendar stays yours</h2>
+      <p>VibeFlow asks Google for read-only access and keeps events in memory on your Mac. Nothing goes to a VibeFlow server, because there isn't one. The sign-in lives in your Keychain.</p>
+      <p class="note">Sign out in Settings › Meetings, or remove VibeFlow at myaccount.google.com/permissions.</p>
+    </article>
+  </section>
+
+  <Faq title="Questions about Meetings" items={faq} small />
+
+  <VoiceCta tool="Meetings" />
+</Base>
+
+<style>
+  .hero { padding-top: 80px; padding-bottom: 72px; display: flex; flex-wrap: wrap; align-items: center; gap: 56px; }
+  .hero-text { flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+  .hero-mock { flex: 1 1 460px; min-width: 0; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+  .mb-active { display: flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 5px; background: #D2D2D7; font-weight: 500; }
+  .mb-clock { display: flex; align-items: center; gap: 5px; }
+  .pop {
+    width: min(320px, 100%); display: flex; flex-direction: column; border-radius: 12px; background: #FFFFFF;
+    box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.4); font-size: 14px; overflow: hidden;
+  }
+  .pop-main { padding: 16px; display: flex; flex-direction: column; gap: 5px; }
+  .pop-main strong { font-size: 16px; }
+  .join { margin-top: 10px; align-self: flex-start; padding: 7px 20px; border-radius: 16px; background: var(--tools); color: #FFFFFF; font-weight: 600; }
+  .pop-later { border-top: 1px solid var(--line); padding: 10px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .later-head { font-size: 11px; font-weight: 600; color: var(--text-3); letter-spacing: 0.03em; }
+  .later-row { display: flex; justify-content: space-between; }
+  .join-link { color: var(--tools); font-weight: 600; }
+  .pop-foot { border-top: 1px solid var(--line); padding: 12px 16px; color: var(--text-2); }
+  .grey { color: var(--text-3); }
+
+  .timeline { gap: 36px; }
+  .steps { padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 20px; }
+  .step { display: flex; flex-direction: column; gap: 10px; padding: 24px; border-radius: 16px; background: #FFFFFF; }
+  .step-time { font-size: 14px; font-weight: 600; color: var(--tools); font-variant-numeric: tabular-nums; }
+  .step-title { font-weight: 600; font-size: 17px; }
+  .step-text { font-size: 15px; line-height: 1.5; color: var(--text-3); }
+
+  .real { padding-top: 96px; padding-bottom: 40px; display: flex; flex-wrap: wrap; gap: 48px; }
+  .real-text { flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  .skipped {
+    flex: 1 1 420px; min-width: 0; padding: 0; list-style: none; display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: 10px;
+  }
+  .skipped li { padding: 14px 16px; border-radius: 12px; background: var(--ground-2); font-size: 15px; color: var(--text-2); }
+
+  .setup { padding-top: 80px; padding-bottom: 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 20px; }
+  .setup-card { display: flex; flex-direction: column; gap: 14px; padding: 32px; border-radius: var(--radius-card); border: 1px solid var(--line); }
+  .setup-card.dark { background: var(--dark); color: var(--dark-text); border-color: var(--dark); }
+  .card-h { font-size: 24px; font-weight: 700; }
+  .setup-card ol { padding-left: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 16px; line-height: 1.5; color: var(--text-2); }
+  .setup-card p { font-size: 16px; line-height: 1.55; color: var(--dark-text-2); }
+  .setup-card .note { font-size: 15px; line-height: 1.5; color: var(--text-3); }
+  .setup-card.dark .note { color: var(--dark-text-2); }
+
+  @media (max-width: 520px) {
+    .hero { padding-top: 48px; gap: 40px; }
+    .real { padding-top: 72px; }
+    .setup { padding-top: 56px; }
+    .setup-card { padding: 24px; }
+  }
+</style>

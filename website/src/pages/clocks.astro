@@ -1,0 +1,103 @@
+---
+import Base from '../layouts/Base.astro';
+import MenuBarMock from '../components/MenuBarMock.astro';
+import Flag from '../components/Flag.astro';
+import VoiceCta from '../components/VoiceCta.astro';
+import { url } from '../data/site';
+import '../styles/tool-page.css';
+
+const ways = [
+  { kind: 'City', example: 'Lisbon' },
+  { kind: 'Country', example: 'Japan' },
+  { kind: 'Abbreviation', example: 'PST' },
+  { kind: 'Time zone', example: 'America/New_York' },
+];
+
+const who = [
+  { title: 'Remote teams', text: "See at a glance whether it's a sensible hour to ping a colleague." },
+  { title: 'Clients abroad', text: 'Propose a call time without opening a converter first.' },
+  { title: 'Family far away', text: "Know when they're awake before you call." },
+];
+---
+<Base
+  title="World clocks in your Mac menu bar · VibeFlow"
+  description="The time where your team, clients or family are, in the Mac menu bar next to yours, each with its flag. Add clocks by city, country, abbreviation or time zone. Free."
+  path="clocks/"
+  page="clocks"
+  bodyClass="tools-page"
+>
+  <section class="wrap hero">
+    <p class="tool-eyebrow">
+      <span class="tile" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg></span>
+      Tools · Clocks
+    </p>
+    <h1 class="tool-h1 title">Know what time it is for them, without doing the math.</h1>
+    <p class="intro wide">The time where your team, your clients or your family are, right in the menu bar next to yours, each with its flag. 24-hour, always visible.</p>
+
+    <div class="mock">
+      <MenuBarMock size="lg" height={120}>
+        <span class="clocks">
+          <span class="clock"><Flag country="IE" width={20} />13:05</span>
+          <span class="clock"><Flag country="DE" width={20} />14:05</span>
+          <span class="clock"><Flag country="JP" width={20} />22:05</span>
+        </span>
+        <span>Thu 09:05</span>
+      </MenuBarMock>
+    </div>
+    <p class="muted">The app shows each country's flag emoji; flags are drawn here for the mockup.</p>
+  </section>
+
+  <section class="grey-band" aria-labelledby="ways-title">
+    <div class="wrap ways">
+      <div class="ways-text">
+        <h2 id="ways-title" class="h2">Type it the way you think of it.</h2>
+        <p class="lead">Add a clock in Settings › Clocks by city, country, abbreviation or time zone name. Reorder them and remove what you don't need. It starts with Berlin.</p>
+      </div>
+      <dl class="ways-grid">
+        {ways.map((w) => (
+          <div class="way"><dt>{w.kind}</dt><dd>{w.example}</dd></div>
+        ))}
+      </dl>
+    </div>
+  </section>
+
+  <section class="wrap who" aria-labelledby="who-title">
+    <h2 id="who-title" class="h2">For people who work across time zones</h2>
+    <div class="who-grid">
+      {who.map((w) => (
+        <article class="who-card"><h3>{w.title}</h3><p>{w.text}</p></article>
+      ))}
+    </div>
+    <p class="pairs">Free, no key, no sign-in, one switch in Settings. Pairs with <a href={url('meetings/')}>Meetings</a>: when a meeting is close, it sits right next to your clocks.</p>
+  </section>
+
+  <VoiceCta tool="Clocks" />
+</Base>
+
+<style>
+  .hero { padding-top: 80px; padding-bottom: 64px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; }
+  .title { max-width: 52rem; }
+  .intro.wide { max-width: 40rem; }
+  .mock { width: 100%; max-width: 900px; margin-top: 24px; text-align: left; }
+  .clocks { display: flex; align-items: center; gap: 16px; padding: 3px 10px; border-radius: 6px; background: #D2D2D7; }
+  .clock { display: flex; align-items: center; gap: 6px; }
+
+  .ways { display: flex; flex-wrap: wrap; gap: 48px; align-items: center; }
+  .ways-text { flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  .ways-grid { flex: 1 1 420px; min-width: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 12px; }
+  .way { display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: 14px; background: #FFFFFF; }
+  .way dt { font-size: 13px; font-weight: 600; color: var(--text-3); }
+  .way dd { margin: 0; font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+
+  .who { padding-top: 96px; padding-bottom: 40px; display: flex; flex-direction: column; gap: 32px; }
+  .who-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 20px; }
+  .who-card { display: flex; flex-direction: column; gap: 10px; padding: 28px; border-radius: var(--radius-card); border: 1px solid var(--line); }
+  .who-card h3 { font-size: 20px; font-weight: 700; }
+  .who-card p { font-size: 16px; line-height: 1.55; color: var(--text-2); }
+  .pairs { font-size: 15px; color: var(--text-3); }
+
+  @media (max-width: 520px) {
+    .hero { padding-top: 48px; }
+    .who { padding-top: 72px; }
+  }
+</style>

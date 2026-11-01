@@ -1,0 +1,33 @@
+---
+import { CHANGELOG_URL, PUBLISHER, REPO_URL, url } from '../data/site';
+
+interface Props { page?: 'home' | 'meetings' | 'clocks' | 'other' }
+const { page = 'other' } = Astro.props;
+const links = [
+  page !== 'home' && { href: url(), label: 'Home' },
+  page !== 'meetings' && { href: url('meetings/'), label: 'Meetings' },
+  page !== 'clocks' && { href: url('clocks/'), label: 'Clocks' },
+  { href: REPO_URL, label: 'GitHub' },
+  { href: CHANGELOG_URL, label: 'Changelog' },
+].filter((l): l is { href: string; label: string } => l !== false);
+---
+<footer class="foot">
+  <div class="wrap row-f">
+    <span class="by">
+      VibeFlow by {PUBLISHER} · MIT licensed{page === 'clocks' && ' · Time zone data from vvo/tzdb'}
+    </span>
+    {links.map((l) => <a href={l.href}>{l.label}</a>)}
+  </div>
+</footer>
+
+<style>
+  .foot { border-top: 1px solid var(--line); background: var(--ground-2); }
+  .row-f {
+    padding-top: 22px; padding-bottom: 22px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0 28px;
+    font-size: 14px; color: var(--text-3);
+  }
+  .by { margin-right: auto; padding: 12px 0; }
+  a { display: inline-flex; align-items: center; min-height: 44px; color: var(--text-3); }
+  a:hover { color: var(--text); }
+</style>

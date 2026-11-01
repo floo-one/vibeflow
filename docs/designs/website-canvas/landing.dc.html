@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VibeFlow landing page</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#0064D2}a:hover{color:#004A9C}
+.k{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 7px;box-sizing:border-box;border-radius:6px;background:#FFFFFF;border:1px solid #D2D2D7;box-shadow:0 1.5px 0 #C7C7CC;font-weight:600;font-size:13px;line-height:1;color:#1D1D1F;white-space:nowrap}
+.key{width:64px;height:64px;flex:none;border-radius:9px;background:#1C1C1E;color:#8E8E93;box-sizing:border-box;padding:8px 9px;display:flex;flex-direction:column;justify-content:space-between;font-weight:500;font-size:16px;line-height:1}
+.key small{font-size:10px;font-weight:600}
+.hot{color:#FFFFFF;font-weight:700;font-size:24px}
+.hot small{color:rgba(255,255,255,0.95)}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #ECECF0}
+.lab{flex:1;font-size:15px;color:#1D1D1F}
+.lab small{display:block;font-size:13px;color:#6E6E73;margin-top:3px}
+.keys{display:flex;gap:3px;flex:none}
+.kb{display:flex;flex-direction:column;gap:6px;width:429px}
+.kbr{display:flex;gap:6px;align-items:flex-end;justify-content:flex-end}
+.kk.rsh{width:129px}
+.kk.cmd{width:69px}
+.kk.spc{width:114px;border-radius:0 8px 8px 0;opacity:0.25}
+.kk.ar{justify-content:flex-end;align-items:center;font-size:11px}
+.kk{width:54px;height:54px;flex:none;box-sizing:border-box;border-radius:8px;background:#1C1C1E;color:#F5F5F7;padding:6px 8px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;font-size:15px;font-weight:500;line-height:1}
+.kk small{font-size:12px;font-weight:500;color:#AEAEB2;line-height:1}
+.kk.dim{opacity:0.42}
+.kk.w13{width:72px}
+.kk.w15{width:84px}
+.kk.w25{width:144px}
+.kk.w26{width:150px}
+.kk.hot{font-size:22px;font-weight:700;color:#FFFFFF;box-shadow:0 0 0 3px #FFFFFF}
+.kk.hot small{font-size:9px;font-weight:700;color:#FFFFFF}
+.kk.opt{background:#FFFFFF;color:#1D1D1F;box-shadow:0 0 0 3px #1D1D1F}
+.kk.opt small{font-size:10px;font-weight:700;color:#1D1D1F}
+.kk.shf{background:#3A3A3F;box-shadow:0 0 0 2px #8E8E93}
+.kk.shf small{font-size:10px;color:#F5F5F7}
+.kk.half{height:24px;padding:0;justify-content:center;align-items:center;font-size:10px;border-radius:5px}
+.arr{width:54px;height:54px;flex:none;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;opacity:0.42}
+.arr span{display:flex;align-items:center;justify-content:center;height:24px;border-radius:5px;background:#1C1C1E;color:#F5F5F7;font-size:9px}
+</style>
+</helmet>
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif; color: #1D1D1F; background: #FFFFFF; min-height: 100%;">
+
+<!-- Nav -->
+<header style="border-bottom: 1px solid #ECECF0; background: rgba(255,255,255,0.9);">
+<nav aria-label="Main" style="max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px;">
+<a href="#top" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #1D1D1F; font-weight: 700; font-size: 19px; margin-right: auto;">
+<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><defs><linearGradient id="ic" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6B70FF"></stop><stop offset="1" stop-color="#4030C7"></stop></linearGradient></defs><rect width="30" height="30" rx="7" fill="url(#ic)"></rect><rect x="6.5" y="12" width="2.6" height="6" rx="1.3" fill="#FFFFFF"></rect><rect x="11.2" y="8" width="2.6" height="14" rx="1.3" fill="#FFFFFF"></rect><rect x="15.9" y="10" width="2.6" height="10" rx="1.3" fill="#FFFFFF"></rect><rect x="20.6" y="13" width="2.6" height="4" rx="1.3" fill="#FFFFFF"></rect></svg>
+VibeFlow
+</a>
+<a href="#voice" style="color: #424245; text-decoration: none; font-size: 15px; font-weight: 500;">Voice</a>
+<a href="#tools" style="color: #424245; text-decoration: none; font-size: 15px; font-weight: 500;">Tools</a>
+<a href="#keys" style="color: #424245; text-decoration: none; font-size: 15px; font-weight: 500;">Pricing</a>
+<a href="#privacy" style="color: #424245; text-decoration: none; font-size: 15px; font-weight: 500;">Privacy</a>
+<a href="#faq" style="color: #424245; text-decoration: none; font-size: 15px; font-weight: 500;">FAQ</a>
+<a href="https://github.com/floo-one/vibeflow" style="color: #424245; text-decoration: none; font-size: 15px; font-weight: 500;">GitHub</a>
+<a href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 22px; background: #1D1D1F; color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 600;">Download</a>
+</nav>
+</header>
+
+<!-- Hero -->
+<section id="top" style="max-width: 1200px; margin: 0 auto; padding: 80px 24px 64px; display: flex; flex-wrap: wrap; align-items: center; gap: 56px;">
+<div style="flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 22px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600; color: #6E6E73;">Free and open source · macOS 15 or later</p>
+<h1 style="margin: 0; font-weight: 800; font-size: clamp(44px, 6vw, 76px); line-height: 1.0; letter-spacing: -0.035em;">Hear anything.<br>Say anything.</h1>
+<p style="margin: 0; font-size: 20px; line-height: 1.5; color: #424245; max-width: 34rem;">A small Mac menu bar app. Option and the three keys right above it give your Mac a voice: one explains, one reads, one types what you say. A few quiet tools come with it.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+<a href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg" style="display: inline-flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 26px; border-radius: 26px; background: #1D1D1F; color: #FFFFFF; text-decoration: none; font-size: 17px; font-weight: 600;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+Download for Mac
+</a>
+<a href="https://github.com/floo-one/vibeflow" style="display: inline-flex; align-items: center; min-height: 52px; padding: 0 22px; border-radius: 26px; border: 1px solid #D2D2D7; color: #1D1D1F; text-decoration: none; font-size: 17px; font-weight: 600;">Source on GitHub</a>
+</div>
+<p style="margin: 0; font-size: 14px; color: #6E6E73;">Signed and notarized by Apple. Updates itself. No account, no subscription, no telemetry.</p>
+</div>
+
+<!-- Keyboard cluster -->
+<figure style="flex: 1 1 500px; min-width: 0; margin: 0; display: flex; flex-direction: column; gap: 14px;">
+<div role="group" aria-label="Keyboard layout" style="align-self: flex-start; display: flex; padding: 3px; border-radius: 10px; background: #ECECF0;">
+<button type="button" onClick="{{pickDe}}" aria-pressed="{{deOn}}" style="min-height: 36px; padding: 0 16px; border: 0; border-radius: 8px; font-family: inherit; font-size: 14px; font-weight: 600; color: #1D1D1F; cursor: pointer; background: {{deBg}}; box-shadow: {{deShadow}};">German</button>
+<button type="button" onClick="{{pickUs}}" aria-pressed="{{usOn}}" style="min-height: 36px; padding: 0 16px; border: 0; border-radius: 8px; font-family: inherit; font-size: 14px; font-weight: 600; color: #1D1D1F; cursor: pointer; background: {{usBg}}; box-shadow: {{usShadow}};">US</button>
+</div>
+<sc-if value="{{isDe}}" hint-placeholder-val="{{yes}}">
+<div role="img" aria-label="German MacBook keyboard: comma is Smart read, period is Read and minus is Dictation, side by side above Option; Shift switches to the clipboard" style="align-self: flex-start; max-width: 100%; box-sizing: border-box; background: #C9CACF; border-radius: 22px; padding: 16px; overflow-x: auto;">
+<div class="kb">
+<div class="kbr"><div class="kk dim">N</div><div class="kk dim">M</div><div class="kk hot" style="background: #5B4FE0;">,<small>Smart read</small></div><div class="kk hot" style="background: #0064D2;">.<small>Read</small></div><div class="kk hot" style="background: #D93025;">-<small>Dictation</small></div><div class="kk shf rsh">⇧<small>shift · clipboard</small></div></div>
+<div class="kbr"><div class="kk dim spc"></div><div class="kk dim cmd">⌘<small>cmd</small></div><div class="kk opt">⌥<small>option</small></div><div class="kk dim ar">◀</div><div class="arr"><span>▲</span><span>▼</span></div><div class="kk dim ar">▶</div></div>
+</div>
+</div>
+<figcaption style="font-size: 14px; line-height: 1.5; color: #6E6E73;">German keyboard: comma, period and minus sit side by side, right above Option.</figcaption>
+</sc-if>
+<sc-if value="{{isUs}}" hint-placeholder-val="{{no}}">
+<div role="img" aria-label="US MacBook keyboard: comma is Smart read, period is Read and slash is Dictation, side by side above Option; Shift switches to the clipboard" style="align-self: flex-start; max-width: 100%; box-sizing: border-box; background: #C9CACF; border-radius: 22px; padding: 16px; overflow-x: auto;">
+<div class="kb">
+<div class="kbr"><div class="kk dim">N</div><div class="kk dim">M</div><div class="kk hot" style="background: #5B4FE0;">,<small>Smart read</small></div><div class="kk hot" style="background: #0064D2;">.<small>Read</small></div><div class="kk hot" style="background: #D93025;">/<small>Dictation</small></div><div class="kk shf rsh">⇧<small>shift · clipboard</small></div></div>
+<div class="kbr"><div class="kk dim spc"></div><div class="kk dim cmd">⌘<small>command</small></div><div class="kk opt">⌥<small>option</small></div><div class="kk dim ar">◀</div><div class="arr"><span>▲</span><span>▼</span></div><div class="kk dim ar">▶</div></div>
+</div>
+</div>
+<figcaption style="font-size: 14px; line-height: 1.5; color: #6E6E73;">US keyboard: comma, period and slash. Same three keys, same place, on every layout.</figcaption>
+</sc-if>
+</figure>
+</section>
+
+<!-- Grammar strip -->
+<section aria-label="How the shortcuts work" style="background: #F5F5F7; border-top: 1px solid #ECECF0; border-bottom: 1px solid #ECECF0;">
+<div style="max-width: 1200px; margin: 0 auto; padding: 28px 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px 32px; align-items: center;">
+<div style="display: flex; align-items: center; gap: 14px;"><span class="keys"><span class="k">⌥</span><span class="k">key</span></span><span style="font-size: 16px; font-weight: 600;">the selection, or dictate</span></div>
+<div style="display: flex; align-items: center; gap: 14px;"><span class="keys"><span class="k">⇧</span><span class="k">⌥</span><span class="k">key</span></span><span style="font-size: 16px; font-weight: 600;">the clipboard instead</span></div>
+<div style="display: flex; align-items: center; gap: 14px;"><span class="keys"><span class="k">hold</span></span><span style="font-size: 16px; font-weight: 600;">and talk: ask, or dictate</span></div>
+<p style="margin: 0; font-size: 14px; color: #6E6E73;">Tap the same key again to stop. Every shortcut can be changed.</p>
+</div>
+</section>
+
+<!-- Voice -->
+<section id="voice" style="max-width: 1200px; margin: 0 auto; padding: 104px 24px 40px; display: flex; flex-direction: column; gap: 44px;">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 46rem;">
+<p style="margin: 0; font-size: 14px; font-weight: 600; color: #6E6E73;">Voice</p>
+<h2 style="margin: 0; font-weight: 800; font-size: clamp(32px, 4vw, 48px); line-height: 1.05; letter-spacing: -0.025em;">Three keys. Works in every app.</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; color: #424245;">No window to open and no box to paste into. Select text in Mail, Safari, Slack, a PDF or ChatGPT and press a key.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 20px;">
+
+<article style="display: flex; flex-direction: column; gap: 14px; padding: 26px 26px 14px; border-radius: 18px; background: #F5F5F7;">
+<div style="display: flex; align-items: center; gap: 12px;">
+<span style="width: 40px; height: 40px; border-radius: 10px; background: #0064D2; display: flex; align-items: center; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"></path></svg></span>
+<div><h3 style="margin: 0; font-size: 22px; font-weight: 700;">Read</h3><span style="font-size: 14px; color: #6E6E73;">Selected text, aloud</span></div>
+</div>
+<p style="margin: 0; font-size: 16px; line-height: 1.55; color: #424245;">A natural ElevenLabs voice, usually in well under a second. Tables, links and Markdown are rewritten for listening. Without a key, the best Apple voice on your Mac reads instead.</p>
+<div>
+<div class="row"><span class="lab">Read selection<small>Tap again to stop</small></span><span class="keys"><span class="k">⌥</span><span class="k">.</span></span></div>
+<div class="row"><span class="lab">Read clipboard</span><span class="keys"><span class="k">⇧</span><span class="k">⌥</span><span class="k">.</span></span></div>
+</div>
+</article>
+
+<article style="display: flex; flex-direction: column; gap: 14px; padding: 26px 26px 14px; border-radius: 18px; background: #F5F5F7;">
+<div style="display: flex; align-items: center; gap: 12px;">
+<span style="width: 40px; height: 40px; border-radius: 10px; background: #5B4FE0; display: flex; align-items: center; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"></path><path d="M18.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"></path></svg></span>
+<div><h3 style="margin: 0; font-size: 22px; font-weight: 700;">Smart read</h3><span style="font-size: 14px; color: #6E6E73;">A spoken brief, then ask about it</span></div>
+</div>
+<p style="margin: 0; font-size: 16px; line-height: 1.55; color: #424245;">Claude tells you what the text means in a few spoken sentences: what an email wants and by when, a contract's money and deadlines, an error's likely fix. Hold the key to ask a follow-up out loud.</p>
+<div>
+<div class="row"><span class="lab">Smart read selection</span><span class="keys"><span class="k">⌥</span><span class="k">,</span></span></div>
+<div class="row"><span class="lab">Ask a follow-up<small>Hold, speak, let go</small></span><span class="keys"><span class="k">hold</span><span class="k">⌥</span><span class="k">,</span></span></div>
+<div class="row"><span class="lab">Smart read clipboard</span><span class="keys"><span class="k">⇧</span><span class="k">⌥</span><span class="k">,</span></span></div>
+<div class="row"><span class="lab">Paste again</span><span class="keys"><span class="k">⇧</span><span class="k">⌃</span><span class="k">⌥</span><span class="k">V</span></span></div>
+</div>
+</article>
+
+<article style="display: flex; flex-direction: column; gap: 14px; padding: 26px 26px 14px; border-radius: 18px; background: #F5F5F7;">
+<div style="display: flex; align-items: center; gap: 12px;">
+<span style="width: 40px; height: 40px; border-radius: 10px; background: #D93025; display: flex; align-items: center; justify-content: center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3"></path></svg></span>
+<div><h3 style="margin: 0; font-size: 22px; font-weight: 700;">Dictation</h3><span style="font-size: 14px; color: #6E6E73;">Speak, it types</span></div>
+</div>
+<p style="margin: 0; font-size: 16px; line-height: 1.55; color: #424245;">Hold, talk, let go. Your words are transcribed, cleaned up and pasted where you were typing, in about 0.8 seconds. Punctuation, casing and misheard words are fixed for you. The key is the one right of the period: - on German keyboards, / on US.</p>
+<div>
+<div class="row"><span class="lab">Dictate<small>Hold, speak, let go: it is pasted</small></span><span class="keys"><span class="k">hold</span><span class="k">⌥</span><span class="k">-</span></span></div>
+<div class="row"><span class="lab">Hands-free<small>Tap again to stop</small></span><span class="keys"><span class="k">⇧</span><span class="k">⌥</span><span class="k">-</span></span></div>
+<div class="row"><span class="lab">Paste again</span><span class="keys"><span class="k">⌃</span><span class="k">⌥</span><span class="k">V</span></span></div>
+</div>
+</article>
+</div>
+</section>
+
+<!-- AI replies band -->
+<section style="padding: 40px 24px;">
+<div style="max-width: 1200px; margin: 0 auto; border-radius: 28px; background: #1D1D1F; color: #F5F5F7; padding: clamp(32px, 5vw, 64px); display: flex; flex-wrap: wrap; gap: 48px; align-items: center;">
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 18px;">
+<p style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #A9A2FF;"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 5px; background: #8F86FF;"></span>Smart read, made for AI chat</p>
+<h2 style="margin: 0; font-weight: 800; font-size: clamp(30px, 3.6vw, 44px); line-height: 1.08; letter-spacing: -0.025em;">Stop reading walls of AI text. Listen to them.</h2>
+<p style="margin: 0; font-size: 17px; line-height: 1.6; color: #C7C7CC;">In the ChatGPT, Claude, Codex and Gemini apps, smart read speaks the reply as that assistant, in first person, and ends on what it needs from you. Then hold the key and answer back by voice.</p>
+<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 16px; color: #E5E5EA;">
+<li>Leads with what matters, keeps numbers and dates exactly</li>
+<li>Warnings about data, security or money are never dropped</li>
+<li>The answer starts speaking after its first sentence</li>
+</ul>
+</div>
+<div style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 12px;">
+<div style="align-self: flex-end; max-width: 85%; padding: 14px 18px; border-radius: 18px 18px 4px 18px; background: #3A3A3F; font-size: 15px; line-height: 1.5;">Can you refactor the auth module to use the new token service?</div>
+<div style="max-width: 92%; padding: 16px 18px; border-radius: 18px 18px 18px 4px; background: #2C2C30; font-size: 15px; line-height: 1.55; color: #C7C7CC;">I've moved token refresh into TokenService and updated 14 call sites… <span style="color: #98989D;">(1,200 more words)</span></div>
+<div style="display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 16px; background: #2C2C30; border: 1px solid #5B4FE0;">
+<span style="width: 32px; height: 32px; flex: none; border-radius: 8px; background: #5B4FE0; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"></path></svg></span>
+<span style="font-size: 15px; line-height: 1.5; color: #F5F5F7;">“I moved token refresh into one place and touched fourteen files. Two tests fail on the old mock. Should I update the mock, or keep the old path for now?”</span>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Tools -->
+<section id="tools" style="max-width: 1200px; margin: 0 auto; padding: 96px 24px 40px; display: flex; flex-direction: column; gap: 40px;">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 46rem;">
+<p style="margin: 0; font-size: 14px; font-weight: 600; color: #6E6E73;">Tools</p>
+<h2 style="margin: 0; font-weight: 800; font-size: clamp(30px, 3.6vw, 44px); line-height: 1.08; letter-spacing: -0.025em;">Small tools that wait in the menu bar.</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; color: #424245;">Each one is a menu bar item, a switch in Settings and nothing more. They show up when they have something to tell you.</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px;">
+
+<article style="display: flex; flex-direction: column; gap: 18px; padding: 28px; border-radius: 18px; border: 1px solid #ECECF0;">
+<div aria-hidden="true" style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 12px; background: #F5F5F7;">
+<div style="align-self: flex-end; display: flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 6px; background: #FFFFFF; font-size: 13px; font-weight: 500;">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1D1D1F" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Standup in 8m</div>
+<div style="align-self: flex-end; width: 240px; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: #FFFFFF; box-shadow: 0 10px 24px -12px rgba(0,0,0,0.3); font-size: 13px;">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;"><span><strong>Standup</strong><br><span style="color: #6E6E73;">10:00 – 10:15</span></span><span style="padding: 6px 14px; border-radius: 14px; background: #0F7B5F; color: #FFFFFF; font-weight: 600;">Join</span></div>
+<div style="border-top: 1px solid #ECECF0; padding-top: 8px; color: #6E6E73;">11:30 Design review · 15:00 1:1</div>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 12px;">
+<span style="width: 36px; height: 36px; border-radius: 9px; background: #0F7B5F; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg></span>
+<h3 style="margin: 0; font-size: 22px; font-weight: 700;">Meetings</h3>
+</div>
+<p style="margin: 0; font-size: 16px; line-height: 1.55; color: #424245;">Your next Google Calendar meeting appears ten minutes before it starts. One click joins the Meet, Zoom, Teams or Webex call. Focus time, all-day events and declined invites are skipped.</p>
+<a href="Meetings.dc.html" style="font-size: 15px; font-weight: 600; color: #0F7B5F;">More about Meetings →</a>
+</article>
+
+<article style="display: flex; flex-direction: column; gap: 18px; padding: 28px; border-radius: 18px; border: 1px solid #ECECF0;">
+<div aria-hidden="true" style="display: flex; flex-direction: column; justify-content: center; padding: 14px; border-radius: 12px; background: #F5F5F7; min-height: 122px; box-sizing: border-box;">
+<div style="align-self: flex-end; display: flex; align-items: center; gap: 12px; padding: 3px 9px; border-radius: 6px; background: #FFFFFF; font-size: 13px; font-variant-numeric: tabular-nums;">
+<span style="display: flex; align-items: center; gap: 5px;"><svg width="16" height="11" viewBox="0 0 3 2"><rect width="1" height="2" fill="#169B62"></rect><rect x="1" width="1" height="2" fill="#FFFFFF"></rect><rect x="2" width="1" height="2" fill="#FF883E"></rect></svg>13:05</span>
+<span style="display: flex; align-items: center; gap: 5px;"><svg width="16" height="11" viewBox="0 0 5 3"><rect width="5" height="1" fill="#000000"></rect><rect y="1" width="5" height="1" fill="#DD0000"></rect><rect y="2" width="5" height="1" fill="#FFCE00"></rect></svg>14:05</span>
+<span style="display: flex; align-items: center; gap: 5px;"><svg width="16" height="11" viewBox="0 0 3 2"><rect width="3" height="2" fill="#FFFFFF" stroke="#D2D2D7" stroke-width="0.1"></rect><circle cx="1.5" cy="1" r="0.6" fill="#BC002D"></circle></svg>22:05</span>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 12px;">
+<span style="width: 36px; height: 36px; border-radius: 9px; background: #0F7B5F; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+<h3 style="margin: 0; font-size: 22px; font-weight: 700;">Clocks</h3>
+</div>
+<p style="margin: 0; font-size: 16px; line-height: 1.55; color: #424245;">The time where your team, clients or family are, next to yours, each with its flag. Add a clock by city, country, abbreviation or time zone.</p>
+<a href="Clocks.dc.html" style="font-size: 15px; font-weight: 600; color: #0F7B5F;">More about Clocks →</a>
+</article>
+</div>
+</section>
+
+<!-- Shared by both -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 64px 24px 40px; display: flex; flex-direction: column; gap: 28px;">
+<h2 style="margin: 0; font-weight: 700; font-size: 26px; letter-spacing: -0.015em;">Also in the box</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 28px 36px;">
+<div style="display: flex; flex-direction: column; gap: 6px;"><h3 style="margin: 0; font-size: 17px; font-weight: 600;">Notch indicator</h3><p style="margin: 0; font-size: 15px; line-height: 1.55; color: #6E6E73;">Small black wings at the notch while VibeFlow listens, thinks or speaks. Macs without a notch get the same shape in the menu bar.</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><h3 style="margin: 0; font-size: 17px; font-weight: 600;">History</h3><p style="margin: 0; font-size: 15px; line-height: 1.55; color: #6E6E73;">Every read and every answer, kept on your Mac for as long as you choose. Read again, copy or delete.</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><h3 style="margin: 0; font-size: 17px; font-weight: 600;">Updates itself</h3><p style="margin: 0; font-size: 15px; line-height: 1.55; color: #6E6E73;">New versions install in the background while you're away from the keyboard, never mid-read.</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><h3 style="margin: 0; font-size: 17px; font-weight: 600;">Careful with your clipboard</h3><p style="margin: 0; font-size: 15px; line-height: 1.55; color: #6E6E73;">Restored after every copy and paste. Never pastes into a password field or a window you left.</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><h3 style="margin: 0; font-size: 17px; font-weight: 600;">Good with AirPods</h3><p style="margin: 0; font-size: 15px; line-height: 1.55; color: #6E6E73;">Records on the built-in mic so your headphones stay in high-quality mode. Or pick a microphone yourself.</p></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><h3 style="margin: 0; font-size: 17px; font-weight: 600;">Tells you what's missing</h3><p style="margin: 0; font-size: 15px; line-height: 1.55; color: #6E6E73;">A missing permission shows in the menu with a button straight to the right System Settings page.</p></div>
+</div>
+</section>
+
+<!-- Keys / pricing -->
+<section id="keys" style="max-width: 1200px; margin: 0 auto; padding: 96px 24px 40px; display: flex; flex-direction: column; gap: 36px;">
+<div style="display: flex; flex-direction: column; gap: 12px; max-width: 46rem;">
+<p style="margin: 0; font-size: 14px; font-weight: 600; color: #6E6E73;">Pricing</p>
+<h2 style="margin: 0; font-weight: 800; font-size: clamp(30px, 3.6vw, 44px); line-height: 1.08; letter-spacing: -0.025em;">Free. Works without any keys. Better with them.</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; color: #424245;">VibeFlow costs nothing and has no subscription. Out of the box it reads with an Apple voice and dictates on device (macOS 26). Add a key to unlock more; you pay the provider directly, and most have a free tier. Keys live in your Keychain.</p>
+</div>
+<div style="overflow-x: auto; border-radius: 18px; border: 1px solid #ECECF0;">
+<table style="width: 100%; min-width: 640px; border-collapse: collapse; font-size: 15px; line-height: 1.5;">
+<caption style="position: absolute; left: -9999px;">What each optional key unlocks</caption>
+<thead><tr style="background: #F5F5F7;"><th scope="col" style="text-align: left; padding: 14px 20px; font-weight: 600;">Key</th><th scope="col" style="text-align: left; padding: 14px 20px; font-weight: 600;">Unlocks</th><th scope="col" style="text-align: left; padding: 14px 20px; font-weight: 600;">Without it</th><th scope="col" style="text-align: left; padding: 14px 20px; font-weight: 600;">Cost</th></tr></thead>
+<tbody>
+<tr><th scope="row" style="text-align: left; padding: 16px 20px; border-top: 1px solid #ECECF0; font-weight: 600;"><span style="display: inline-flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #0064D2;"></span>ElevenLabs</span></th><td style="padding: 16px 20px; border-top: 1px solid #ECECF0;">The natural reading voice</td><td style="padding: 16px 20px; border-top: 1px solid #ECECF0; color: #6E6E73;">The best Apple voice on your Mac</td><td style="padding: 16px 20px; border-top: 1px solid #ECECF0; color: #6E6E73;">Free allowance</td></tr>
+<tr><th scope="row" style="text-align: left; padding: 16px 20px; border-top: 1px solid #ECECF0; font-weight: 600;"><span style="display: inline-flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #5B4FE0;"></span>Anthropic</span></th><td style="padding: 16px 20px; border-top: 1px solid #ECECF0;">Smart read and follow-up questions</td><td style="padding: 16px 20px; border-top: 1px solid #ECECF0; color: #6E6E73;">Plain reading only</td><td style="padding: 16px 20px; border-top: 1px solid #ECECF0; color: #6E6E73;">Pay as you go</td></tr>
+<tr><th scope="row" style="text-align: left; padding: 16px 20px; border-top: 1px solid #ECECF0; font-weight: 600;"><span style="display: inline-flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #D93025;"></span>Groq</span></th><td style="padding: 16px 20px; border-top: 1px solid #ECECF0;">Fast dictation with cleanup</td><td style="padding: 16px 20px; border-top: 1px solid #ECECF0; color: #6E6E73;">Apple's on-device recognizer (macOS 26)</td><td style="padding: 16px 20px; border-top: 1px solid #ECECF0; color: #6E6E73;">Free tier</td></tr>
+<tr><th scope="row" style="text-align: left; padding: 16px 20px; border-top: 1px solid #ECECF0; font-weight: 600;"><span style="display: inline-flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #0F7B5F;"></span>Google sign-in</span></th><td style="padding: 16px 20px; border-top: 1px solid #ECECF0;">Meetings</td><td style="padding: 16px 20px; border-top: 1px solid #ECECF0; color: #6E6E73;">No meeting item</td><td style="padding: 16px 20px; border-top: 1px solid #ECECF0; color: #6E6E73;">Free</td></tr>
+</tbody>
+</table>
+</div>
+<p style="margin: 0; font-size: 15px; color: #6E6E73;">Typical cost for a heavy daily user: [MEASURE AND ADD, e.g. “a few dollars a month”].</p>
+</section>
+
+<!-- Privacy -->
+<section id="privacy" style="max-width: 1200px; margin: 0 auto; padding: 96px 24px 40px; display: flex; flex-wrap: wrap; gap: 48px;">
+<div style="flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 12px;">
+<p style="margin: 0; font-size: 14px; font-weight: 600; color: #6E6E73;">Privacy</p>
+<h2 style="margin: 0; font-weight: 800; font-size: clamp(30px, 3.6vw, 44px); line-height: 1.08; letter-spacing: -0.025em;">Exactly what leaves your Mac.</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; color: #424245;">There is no VibeFlow server. Text goes straight from your Mac to the provider you chose, only when you press a key. The code is public, so you can check.</p>
+</div>
+<div style="flex: 1.4 1 480px; min-width: 0; overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.5;">
+<caption style="text-align: left; font-size: 13px; color: #6E6E73; padding-bottom: 10px;">Data sent per action</caption>
+<thead><tr><th scope="col" style="text-align: left; padding: 12px 16px 12px 0; border-bottom: 2px solid #1D1D1F; font-weight: 600;">When you</th><th scope="col" style="text-align: left; padding: 12px 0; border-bottom: 2px solid #1D1D1F; font-weight: 600;">What is sent, and to whom</th></tr></thead>
+<tbody>
+<tr><td style="padding: 14px 16px 14px 0; border-bottom: 1px solid #ECECF0; font-weight: 600; white-space: nowrap;">Read</td><td style="padding: 14px 0; border-bottom: 1px solid #ECECF0; color: #424245;">The selected text, to ElevenLabs. With an Apple voice: nothing.</td></tr>
+<tr><td style="padding: 14px 16px 14px 0; border-bottom: 1px solid #ECECF0; font-weight: 600; white-space: nowrap;">Smart read</td><td style="padding: 14px 0; border-bottom: 1px solid #ECECF0; color: #424245;">The selected text, to Anthropic, then the brief to ElevenLabs.</td></tr>
+<tr><td style="padding: 14px 16px 14px 0; border-bottom: 1px solid #ECECF0; font-weight: 600; white-space: nowrap;">Dictate</td><td style="padding: 14px 0; border-bottom: 1px solid #ECECF0; color: #424245;">Your recording, to Groq. Without Groq on macOS 26: nothing, it stays on device.</td></tr>
+<tr><td style="padding: 14px 16px 14px 0; border-bottom: 1px solid #ECECF0; font-weight: 600; white-space: nowrap;">Meetings</td><td style="padding: 14px 0; border-bottom: 1px solid #ECECF0; color: #424245;">Nothing. Your calendars are read from Google, read-only, and kept in memory.</td></tr>
+<tr><td style="padding: 14px 16px 14px 0; border-bottom: 1px solid #ECECF0; font-weight: 600; white-space: nowrap;">Never</td><td style="padding: 14px 0; border-bottom: 1px solid #ECECF0; color: #424245;">History, recordings and keys. They stay on your Mac.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" style="max-width: 860px; margin: 0 auto; padding: 96px 24px 40px; display: flex; flex-direction: column; gap: 24px;">
+<h2 style="margin: 0; font-weight: 800; font-size: clamp(30px, 3.6vw, 44px); line-height: 1.08; letter-spacing: -0.025em;">Questions</h2>
+<div style="display: flex; flex-direction: column;">
+<details style="border-top: 1px solid #ECECF0; padding: 18px 0;" open=""><summary style="cursor: pointer; font-size: 18px; font-weight: 600;">Do I need API keys?</summary><p style="margin: 12px 0 0; font-size: 16px; line-height: 1.6; color: #424245;">No. Without any key VibeFlow reads with an Apple voice, dictates on device on macOS 26, and the clocks work. Keys unlock the ElevenLabs voice, smart read and faster dictation, and you pay those providers directly.</p></details>
+<details style="border-top: 1px solid #ECECF0; padding: 18px 0;"><summary style="cursor: pointer; font-size: 18px; font-weight: 600;">Do the shortcuts work on my keyboard layout?</summary><p style="margin: 12px 0 0; font-size: 16px; line-height: 1.6; color: #424245;">Yes. VibeFlow uses the position, not the character: the three keys right above Option, next to M. On a German keyboard that is comma, period and minus; on a US keyboard comma, period and slash.</p></details>
+<details style="border-top: 1px solid #ECECF0; padding: 18px 0;"><summary style="cursor: pointer; font-size: 18px; font-weight: 600;">Which Macs does it run on?</summary><p style="margin: 12px 0 0; font-size: 16px; line-height: 1.6; color: #424245;">macOS 15 Sequoia or later. [CONFIRM: Apple silicon and Intel?]</p></details>
+<details style="border-top: 1px solid #ECECF0; padding: 18px 0;"><summary style="cursor: pointer; font-size: 18px; font-weight: 600;">Why does it need Accessibility access?</summary><p style="margin: 12px 0 0; font-size: 16px; line-height: 1.6; color: #424245;">To read the text you selected in other apps and to paste dictation where you were typing. It acts only when you press one of its keys.</p></details>
+<details style="border-top: 1px solid #ECECF0; padding: 18px 0;"><summary style="cursor: pointer; font-size: 18px; font-weight: 600;">How do updates work?</summary><p style="margin: 12px 0 0; font-size: 16px; line-height: 1.6; color: #424245;">VibeFlow checks every few hours and installs a new version while you're away from the keyboard. Check for Updates… in the menu looks right away.</p></details>
+<details style="border-top: 1px solid #ECECF0; border-bottom: 1px solid #ECECF0; padding: 18px 0;"><summary style="cursor: pointer; font-size: 18px; font-weight: 600;">Why isn't it in the Mac App Store?</summary><p style="margin: 12px 0 0; font-size: 16px; line-height: 1.6; color: #424245;">Store apps run in a sandbox that blocks global shortcuts and reading other apps' selections. VibeFlow is signed and notarized by Apple instead, and MIT licensed.</p></details>
+</div>
+</section>
+
+<!-- Final CTA -->
+<section style="padding: 80px 24px 96px;">
+<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px;">
+<svg width="72" height="72" viewBox="0 0 30 30" aria-hidden="true"><defs><linearGradient id="ic2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6B70FF"></stop><stop offset="1" stop-color="#4030C7"></stop></linearGradient></defs><rect width="30" height="30" rx="7" fill="url(#ic2)"></rect><rect x="6.5" y="12" width="2.6" height="6" rx="1.3" fill="#FFFFFF"></rect><rect x="11.2" y="8" width="2.6" height="14" rx="1.3" fill="#FFFFFF"></rect><rect x="15.9" y="10" width="2.6" height="10" rx="1.3" fill="#FFFFFF"></rect><rect x="20.6" y="13" width="2.6" height="4" rx="1.3" fill="#FFFFFF"></rect></svg>
+<h2 style="margin: 0; font-weight: 800; font-size: clamp(34px, 4.6vw, 56px); line-height: 1.04; letter-spacing: -0.03em;">Give your Mac a voice.</h2>
+<p style="margin: 0; font-size: 18px; color: #424245;">Free, open source, and it keeps itself up to date.</p>
+<a href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg" style="display: inline-flex; align-items: center; min-height: 56px; padding: 0 30px; border-radius: 28px; background: #1D1D1F; color: #FFFFFF; text-decoration: none; font-size: 18px; font-weight: 600;">Download for Mac</a>
+<p style="margin: 0; font-size: 14px; color: #6E6E73;">Version 1.3.0 · macOS 15 or later · <a href="https://github.com/floo-one/vibeflow/blob/main/CHANGELOG.md">What's new</a></p>
+</div>
+</section>
+
+<footer style="border-top: 1px solid #ECECF0; background: #F5F5F7;">
+<div style="max-width: 1200px; margin: 0 auto; padding: 28px 24px; display: flex; flex-wrap: wrap; gap: 12px 28px; font-size: 14px; color: #6E6E73;">
+<span style="margin-right: auto;">VibeFlow by floo.one LLC · MIT licensed</span>
+<a href="Meetings.dc.html">Meetings</a>
+<a href="Clocks.dc.html">Clocks</a>
+<a href="https://github.com/floo-one/vibeflow">GitHub</a>
+<a href="https://github.com/floo-one/vibeflow/blob/main/CHANGELOG.md">Changelog</a>
+</div>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":7000}}'>
+class Component extends DCLogic {
+renderVals() {
+const isDe = !(this.state && this.state.layout === 'us');
+return {
+yes: true,
+no: false,
+isDe: isDe,
+isUs: !isDe,
+deOn: isDe ? 'true' : 'false',
+usOn: isDe ? 'false' : 'true',
+deBg: isDe ? '#FFFFFF' : 'transparent',
+deShadow: isDe ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
+usBg: isDe ? 'transparent' : '#FFFFFF',
+usShadow: isDe ? 'none' : '0 1px 3px rgba(0,0,0,0.15)',
+pickDe: () => this.setState({ layout: 'de' }),
+pickUs: () => this.setState({ layout: 'us' })
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+---
+// ["⌥", ","] → two keycaps. The accessible name spells the symbols out for screen readers.
+interface Props { keys: string[] }
+const { keys } = Astro.props;
+const names: Record<string, string> = {
+  '⌥': 'Option', '⇧': 'Shift', '⌃': 'Control', '⌘': 'Command',
+  ',': 'comma', '.': 'period', '-': 'minus', '/': 'slash',
+};
+const label = keys.map((k) => names[k] ?? k).join(' + ');
+---
+<span class="keys" role="img" aria-label={label}>
+  {keys.map((k) => <span class="k" aria-hidden="true">{k}</span>)}
+</span>

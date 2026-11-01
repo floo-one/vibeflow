@@ -177,6 +177,9 @@ If a nightly breaks, Settings > General > Go Back to the Release turns the switc
 downloads the newest release's DMG; drag it to Applications. Sparkle never installs an older
 build by itself.
 
+A main whose only changes since the last nightly are in `website/` or
+`.github/workflows/website.yml` is marked done without a build: the app did not change.
+
 Re-run `--install` after changing `scripts/nightly.sh`: the LaunchAgent runs an installed copy.
 Each run copies the gitignored `Config/Google.xcconfig` from your checkout into its worktree,
 since `--publish` refuses to build without the Google client.
@@ -208,6 +211,32 @@ The author's client lives in the floo.one project `vibeflow-513107`. Release bui
 `Config/Google.xcconfig` from the checkout that runs `scripts/release.sh`, so copy the file
 into that checkout; `--publish` refuses to run unless it sets both `GOOGLE_CLIENT_ID` and
 `GOOGLE_CLIENT_SECRET` (a local build only warns).
+
+## Website
+
+The marketing site is an Astro project in `website/` (its own `package.json` and
+`pnpm-lock.yaml`; nothing outside `website/` uses it). Plan and decisions:
+`docs/designs/website-build-plan.md`. It needs Node 24 (the Mac's default `node` may be newer):
+
+```bash
+export PATH=/opt/homebrew/opt/node@24/bin:$PATH
+cd website && pnpm install && pnpm dev      # http://localhost:4321/vibeflow/
+pnpm verify                                 # astro check, build, internal link check
+```
+
+The Website workflow (`.github/workflows/website.yml`) runs `pnpm verify` on pull requests
+that touch `website/`, and on push to main also deploys `website/dist` to GitHub Pages, built
+for `https://vibeflow.floo.one` (`SITE_URL` and `BASE_PATH` in the workflow). Locally it builds
+for `https://floo-one.github.io/vibeflow/`. The version line reads `MARKETING_VERSION` from
+`project.yml`, so a release needs no website change.
+
+`public/og.png` is a screenshot of `/og/`. After changing `src/pages/og.astro`:
+
+```bash
+pnpm build && pnpm preview &
+pnpm dlx playwright@1.64.1 install chromium
+pnpm dlx playwright@1.64.1 screenshot --viewport-size=1200,630 http://localhost:4321/vibeflow/og/ public/og.png
+```
 
 ## Clocks data
 

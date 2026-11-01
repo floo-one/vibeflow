@@ -1,0 +1,28 @@
+---
+import { DMG_URL } from '../data/site';
+
+// Pill link to the latest DMG. sm: nav, md: hero, lg: closing call to action.
+interface Props { size?: 'sm' | 'md' | 'lg'; label?: string; icon?: boolean }
+const { size = 'md', label = 'Download for Mac', icon = false } = Astro.props;
+---
+<a class:list={['dl', size]} href={DMG_URL}>
+  {icon && (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" />
+    </svg>
+  )}
+  {label}
+</a>
+
+<style>
+  .dl {
+    display: inline-flex; align-items: center; gap: 10px;
+    border-radius: var(--radius-pill); background: var(--dark); color: #FFFFFF;
+    text-decoration: none; font-weight: 600; white-space: nowrap;
+  }
+  .dl:hover { color: #FFFFFF; background: #000000; }
+  .sm { min-height: 44px; padding: 0 18px; font-size: 15px; }
+  .md { min-height: 52px; padding: 0 26px; font-size: 17px; }
+  .lg { min-height: 56px; padding: 0 30px; font-size: 18px; }
+</style>

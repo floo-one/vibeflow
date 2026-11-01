@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VibeFlow Clocks</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#0F7B5F}a:hover{color:#0A5944}
+</style>
+</helmet>
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', Inter, system-ui, sans-serif; color: #1D1D1F; background: #FFFFFF; min-height: 100%;">
+
+<header style="border-bottom: 1px solid #ECECF0;">
+<nav aria-label="Main" style="max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px;">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #1D1D1F; font-weight: 700; font-size: 19px; margin-right: auto;">
+<svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><defs><linearGradient id="ic" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6B70FF"></stop><stop offset="1" stop-color="#4030C7"></stop></linearGradient></defs><rect width="30" height="30" rx="7" fill="url(#ic)"></rect><rect x="6.5" y="12" width="2.6" height="6" rx="1.3" fill="#FFFFFF"></rect><rect x="11.2" y="8" width="2.6" height="14" rx="1.3" fill="#FFFFFF"></rect><rect x="15.9" y="10" width="2.6" height="10" rx="1.3" fill="#FFFFFF"></rect><rect x="20.6" y="13" width="2.6" height="4" rx="1.3" fill="#FFFFFF"></rect></svg>
+VibeFlow
+</a>
+<a href="Main.dc.html#voice" style="color: #424245; text-decoration: none; font-size: 15px; font-weight: 500;">Voice</a>
+<a href="Meetings.dc.html" style="color: #424245; text-decoration: none; font-size: 15px; font-weight: 500;">Meetings</a>
+<a href="Clocks.dc.html" aria-current="page" style="color: #1D1D1F; text-decoration: none; font-size: 15px; font-weight: 700;">Clocks</a>
+<a href="https://github.com/floo-one/vibeflow" style="color: #424245; text-decoration: none; font-size: 15px; font-weight: 500;">GitHub</a>
+<a href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 22px; background: #1D1D1F; color: #FFFFFF; text-decoration: none; font-size: 15px; font-weight: 600;">Download</a>
+</nav>
+</header>
+
+<!-- Hero -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 80px 24px 64px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px;">
+<p style="margin: 0; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: #0F7B5F;">
+<span style="width: 28px; height: 28px; border-radius: 7px; background: #0F7B5F; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+Tools · Clocks</p>
+<h1 style="margin: 0; font-weight: 800; font-size: clamp(40px, 5.4vw, 68px); line-height: 1.02; letter-spacing: -0.035em; max-width: 52rem;">Know what time it is for them, without doing the math.</h1>
+<p style="margin: 0; font-size: 20px; line-height: 1.5; color: #424245; max-width: 40rem;">The time where your team, your clients or your family are, right in the menu bar next to yours, each with its flag. 24-hour, always visible.</p>
+
+<!-- Menu bar mock -->
+<div aria-hidden="true" style="width: 100%; max-width: 900px; margin-top: 24px; border-radius: 18px; overflow: hidden; border: 1px solid #ECECF0; box-shadow: 0 30px 60px -30px rgba(0,0,0,0.35); background: #E8E8ED;">
+<div style="display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 18px; padding: 8px 16px; background: rgba(255,255,255,0.86); font-size: 15px; font-variant-numeric: tabular-nums;">
+<span style="display: flex; align-items: center; gap: 16px; padding: 3px 10px; border-radius: 6px; background: #D2D2D7;">
+<span style="display: flex; align-items: center; gap: 6px;"><svg width="20" height="14" viewBox="0 0 3 2"><rect width="1" height="2" fill="#169B62"></rect><rect x="1" width="1" height="2" fill="#FFFFFF"></rect><rect x="2" width="1" height="2" fill="#FF883E"></rect></svg>13:05</span>
+<span style="display: flex; align-items: center; gap: 6px;"><svg width="20" height="14" viewBox="0 0 5 3"><rect width="5" height="1" fill="#000000"></rect><rect y="1" width="5" height="1" fill="#DD0000"></rect><rect y="2" width="5" height="1" fill="#FFCE00"></rect></svg>14:05</span>
+<span style="display: flex; align-items: center; gap: 6px;"><svg width="20" height="14" viewBox="0 0 3 2"><rect width="3" height="2" fill="#FFFFFF" stroke="#C7C7CC" stroke-width="0.08"></rect><circle cx="1.5" cy="1" r="0.6" fill="#BC002D"></circle></svg>22:05</span>
+</span>
+<span>Thu 30 Oct 09:05</span>
+</div>
+<div style="height: 120px;"></div>
+</div>
+<p style="margin: 0; font-size: 14px; color: #6E6E73;">The app shows each country's flag emoji; flags are drawn here for the mockup.</p>
+</section>
+
+<!-- Add any way -->
+<section style="background: #F5F5F7; padding: 80px 24px;">
+<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 48px; align-items: center;">
+<div style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+<h2 style="margin: 0; font-weight: 800; font-size: clamp(30px, 3.6vw, 44px); line-height: 1.08; letter-spacing: -0.025em;">Type it the way you think of it.</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.55; color: #424245;">Add a clock in Settings › Clocks by city, country, abbreviation or time zone name. Reorder them and remove what you don't need. It starts with Berlin.</p>
+</div>
+<div style="flex: 1 1 420px; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: 14px; background: #FFFFFF;"><span style="font-size: 13px; font-weight: 600; color: #6E6E73;">City</span><span style="font-size: 18px; font-weight: 600;">Lisbon</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: 14px; background: #FFFFFF;"><span style="font-size: 13px; font-weight: 600; color: #6E6E73;">Country</span><span style="font-size: 18px; font-weight: 600;">Japan</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: 14px; background: #FFFFFF;"><span style="font-size: 13px; font-weight: 600; color: #6E6E73;">Abbreviation</span><span style="font-size: 18px; font-weight: 600;">PST</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 18px; border-radius: 14px; background: #FFFFFF;"><span style="font-size: 13px; font-weight: 600; color: #6E6E73;">Time zone</span><span style="font-size: 18px; font-weight: 600;">America/New_York</span></div>
+</div>
+</div>
+</section>
+
+<!-- Who it's for -->
+<section style="max-width: 1200px; margin: 0 auto; padding: 96px 24px 40px; display: flex; flex-direction: column; gap: 32px;">
+<h2 style="margin: 0; font-weight: 800; font-size: clamp(30px, 3.6vw, 44px); line-height: 1.08; letter-spacing: -0.025em;">For people who work across time zones</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
+<article style="display: flex; flex-direction: column; gap: 10px; padding: 28px; border-radius: 18px; border: 1px solid #ECECF0;"><h3 style="margin: 0; font-size: 20px; font-weight: 700;">Remote teams</h3><p style="margin: 0; font-size: 16px; line-height: 1.55; color: #424245;">See at a glance whether it's a sensible hour to ping a colleague.</p></article>
+<article style="display: flex; flex-direction: column; gap: 10px; padding: 28px; border-radius: 18px; border: 1px solid #ECECF0;"><h3 style="margin: 0; font-size: 20px; font-weight: 700;">Clients abroad</h3><p style="margin: 0; font-size: 16px; line-height: 1.55; color: #424245;">Propose a call time without opening a converter first.</p></article>
+<article style="display: flex; flex-direction: column; gap: 10px; padding: 28px; border-radius: 18px; border: 1px solid #ECECF0;"><h3 style="margin: 0; font-size: 20px; font-weight: 700;">Family far away</h3><p style="margin: 0; font-size: 16px; line-height: 1.55; color: #424245;">Know when they're awake before you call.</p></article>
+</div>
+<p style="margin: 0; font-size: 15px; color: #6E6E73;">Free, no key, no sign-in, one switch in Settings. Pairs with <a href="Meetings.dc.html">Meetings</a>: when a meeting is close, it sits right next to your clocks.</p>
+</section>
+
+<section style="padding: 72px 24px 96px;">
+<div style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px;">
+<h2 style="margin: 0; font-weight: 800; font-size: clamp(32px, 4vw, 48px); line-height: 1.05; letter-spacing: -0.03em;">Comes with a voice, too.</h2>
+<p style="margin: 0; font-size: 18px; line-height: 1.5; color: #424245; max-width: 36rem;">Clocks is one of VibeFlow's tools. The app's main job is voice: Option and three keys to read, explain and dictate. <a href="Main.dc.html#voice">See how it works</a>.</p>
+<a href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg" style="display: inline-flex; align-items: center; min-height: 56px; padding: 0 30px; border-radius: 28px; background: #1D1D1F; color: #FFFFFF; text-decoration: none; font-size: 18px; font-weight: 600;">Download for Mac</a>
+</div>
+</section>
+
+<footer style="border-top: 1px solid #ECECF0; background: #F5F5F7;">
+<div style="max-width: 1200px; margin: 0 auto; padding: 28px 24px; display: flex; flex-wrap: wrap; gap: 12px 28px; font-size: 14px; color: #6E6E73;">
+<span style="margin-right: auto;">VibeFlow by floo.one LLC · MIT licensed · Time zone data from vvo/tzdb</span>
+<a href="Main.dc.html">Home</a>
+<a href="Meetings.dc.html">Meetings</a>
+<a href="https://github.com/floo-one/vibeflow">GitHub</a>
+<a href="https://github.com/floo-one/vibeflow/blob/main/CHANGELOG.md">Changelog</a>
+</div>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2500}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
