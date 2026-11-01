@@ -27,7 +27,7 @@ const current = page === 'meetings' || page === 'clocks' ? page : undefined;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
+    {!noindex && <link rel="canonical" href={canonical} />}
     {noindex && <meta name="robots" content="noindex" />}
     <meta name="theme-color" content="#FFFFFF" />
     <link rel="icon" type="image/png" href={url('favicon.png')} />

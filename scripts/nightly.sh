@@ -104,6 +104,18 @@ run() {
   # A failed build is not retried every 30 minutes; the next main is, or --retry.
   [[ "$(cat "$FAILED" 2>/dev/null)" != "$sha" ]] || exit 0
 
+  # Website-only commits change nothing in the app: mark them done without a build.
+  local last="$(cat "$PUBLISHED" 2>/dev/null || true)"
+  if [[ -n $last ]] && git -C "$SRC" cat-file -e "$last" 2>/dev/null; then
+    local app_changes="$(git -C "$SRC" diff --name-only "$last" "$sha" -- . \
+      ':(exclude)website' ':(exclude).github/workflows/website.yml')"
+    if [[ -z $app_changes ]]; then
+      print "$sha" > "$PUBLISHED"
+      say "${sha:0:7}: website only, no nightly needed"
+      exit 0
+    fi
+  fi
+
   # Every nightly installs itself on this Mac, so only commits CI built and tested.
   local ci="$(gh run list --repo "$GH_REPO" --workflow CI --commit "$sha" --json status,conclusion \
     -q '.[0] | "\(.status) \(.conclusion)"' 2>/dev/null || true)"

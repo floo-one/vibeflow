@@ -40,7 +40,7 @@ const layouts = [
           </div>
           <div class="kbr">
             <div class="kk dim spc"></div>
-            <div class="kk dim cmd">⌘<small>{l.cmd}</small></div>
+            <div class="kk dim cmd">⌘<small data-label={l.cmd}></small></div>
             <div class="kk opt">⌥<small>option</small></div>
             <div class="kk dim ar">◀</div>
             <div class="arr"><span>▲</span><span>▼</span></div>
@@ -95,6 +95,9 @@ const layouts = [
   .kk.dim { opacity: 0.42; }
   .kk.rsh { width: 129px; }
   .kk.cmd { width: 69px; }
+  /* The faded key's label is drawn as generated content: it is part of the picture (the
+     board's aria-label says what matters), not text that has to meet contrast rules. */
+  .kk.cmd small::after { content: attr(data-label); }
   .kk.spc { width: 114px; border-radius: 0 8px 8px 0; opacity: 0.25; }
   .kk.ar { justify-content: flex-end; align-items: center; font-size: 11px; }
   .kk.hot { font-size: 22px; font-weight: 700; color: #FFFFFF; box-shadow: 0 0 0 3px #FFFFFF; }
