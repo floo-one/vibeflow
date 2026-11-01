@@ -60,11 +60,14 @@ private struct UpdateSettings: View {
                 Text(lastChecked)
             }
             if Updater.isNightly {
-                // Off first, or the release would update straight back to this nightly.
                 LabeledContent("Something broke?") {
-                    Button("Go Back to the Release…") {
-                        prefs.updateToNewestMain = false
-                        NSWorkspace.shared.open(Updater.releaseDMG)
+                    if let step = StableInstaller.shared.step {
+                        HStack {
+                            ProgressView().controlSize(.small)
+                            Text(step)
+                        }
+                    } else {
+                        Button("Back to Stable") { StableInstaller.shared.install(preferences: prefs) }
                     }
                 }
             }
@@ -77,7 +80,7 @@ private struct UpdateSettings: View {
                 Text("VibeFlow Dev does not update itself; scripts/dev.sh builds a new one. The installed VibeFlow uses this choice.")
                 #else
                 if Updater.isNightly {
-                    Text("Go Back to the Release switches to Stable and downloads the release; drag it to Applications to replace this build. Stable alone keeps this build until a release is newer.")
+                    Text("Back to Stable installs the newest release in place of this nightly and reopens VibeFlow. Choose Nightly again once main is fixed. Stable alone keeps this build until a release is newer.")
                 } else if prefs.updateToNewestMain {
                     Text("Nightly installs a build of every new main that passed CI, between releases.")
                 } else {

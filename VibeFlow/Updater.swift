@@ -45,8 +45,8 @@ final class Updater: NSObject, SPUUpdaterDelegate {
     /// A nightly build of main, from scripts/release.sh --nightly (releases carry no BuildStamp).
     static var isNightly: Bool { BuildStamp(info: Bundle.main.infoDictionary ?? [:]) != nil }
 
-    /// The newest release's DMG. Sparkle never installs an older build, so leaving a broken
-    /// nightly means installing this one by hand.
+    /// The newest release's DMG. Sparkle never installs an older build, so StableInstaller
+    /// installs this one to leave a nightly.
     static let releaseDMG = URL(string: "https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg")!
 
     var lastCheck: Date? { controller?.updater.lastUpdateCheckDate }
