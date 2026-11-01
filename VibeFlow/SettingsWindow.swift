@@ -29,6 +29,28 @@ enum SettingsWindow {
         // switching Spaces to wherever the window was last.
         window.collectionBehavior.insert([.moveToActiveSpace, .fullScreenAuxiliary])
         window.hidesOnDeactivate = false
+        pinSidebar(in: window.contentView)
+    }
+
+    /// Width of the Settings sidebar. The divider does not move and the sidebar cannot be
+    /// dragged or toggled away: without it there is no way to reach the other panes.
+    static let sidebarWidth: CGFloat = 190
+
+    /// NavigationSplitView lets the sidebar collapse when its divider is dragged to the edge,
+    /// whatever its column width says. Its AppKit split view item can say no.
+    private static func pinSidebar(in view: NSView?) {
+        guard let view else { return }
+        if let splitView = view as? NSSplitView,
+           let controller = splitView.delegate as? NSSplitViewController,
+           let sidebar = controller.splitViewItems.first {
+            sidebar.canCollapse = false
+            sidebar.canCollapseFromWindowResize = false
+            sidebar.minimumThickness = sidebarWidth
+            sidebar.maximumThickness = sidebarWidth
+            if sidebar.isCollapsed { sidebar.isCollapsed = false }
+            return
+        }
+        for subview in view.subviews { pinSidebar(in: subview) }
     }
 
     private static func isSettingsWindow(_ window: NSWindow) -> Bool {

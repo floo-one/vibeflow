@@ -52,10 +52,12 @@ enum FeatureColor {
 /// shortcuts of that feature. Nothing else.
 struct SettingsView: View {
     @Environment(AppContainer.self) private var container
+    /// Always .all: the sidebar is the only way to the other panes (SettingsWindow pins it too).
+    @State private var columns = NavigationSplitViewVisibility.all
 
     var body: some View {
         @Bindable var container = container
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columns) {
             List(selection: $container.settingsTab) {
                 row(.general)
                 row(.accounts)
@@ -69,11 +71,14 @@ struct SettingsView: View {
                     row(.meetings)
                 }
             }
-            .navigationSplitViewColumnWidth(190)
+            .navigationSplitViewColumnWidth(SettingsWindow.sidebarWidth)
             .toolbar(removing: .sidebarToggle)
         } detail: {
             pane(container.settingsTab)
                 .navigationTitle(container.settingsTab.title)
+        }
+        .onChange(of: columns) { _, newValue in
+            if newValue != .all { columns = .all }
         }
         .frame(width: 720, height: 540)
         .background(SettingsWindowConfigurator())

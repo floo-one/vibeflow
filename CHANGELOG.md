@@ -1,5 +1,48 @@
 # Changelog
 
+## 1.4.0
+
+The new Settings, a one-click way back from a nightly, and the dictation key in the same row
+as the other voice keys on every keyboard.
+
+### New
+- **Settings, redesigned.** A sidebar replaces the eight toolbar tabs: General and Accounts,
+  then Voice (Read, Smart Read, Dictation), then Tools (Clocks, Meetings). Each voice pane
+  starts with its own shortcuts, and Smart Read shows "Ask a follow-up" (hold the smart read
+  key) as its own row.
+- **Appearance.** General > Look & Feel: System, Light or Dark for VibeFlow's windows.
+- **Back to Stable.** On a nightly, Settings > General and the menu (under Check for
+  Updates…) install the latest release in one click: VibeFlow downloads it, checks that it is
+  VibeFlow, signed by us and notarized, swaps it in and reopens. If anything fails, the
+  installed app stays as it was.
+- **Channel picker.** General > Updates: Stable or Nightly, in place of the "Update to the
+  newest main" toggle. Your earlier choice carries over.
+
+### Changed
+- **Dictation key.** Dictate (Option) and Dictate hands-free (Shift + Option) default to the
+  key right of ".": "-" on German, "/" on US. All three voice keys now sit in one row right
+  above Option, on every layout. Shortcuts still on the old default move over once; shortcuts
+  you recorded stay as they are.
+- **Settings layout.** General holds Look & Feel, History and Updates. Accounts replaces
+  Advanced and says what each API key unlocks. "Change shortcuts…" is no longer in the menu;
+  each feature's shortcuts are in its own pane.
+
+### Fixed
+- Switching to Nightly now checks right away in the update window, instead of downloading
+  silently and installing only after 5 minutes away from the Mac. While a downloaded update
+  waited for that idle time, Check for Updates… did nothing; it now installs that update.
+- Switching back to Stable from a nightly no longer keeps the nightly until the next release
+  (Back to Stable, above).
+- On German keyboards the dictation default was the "ß" key, not the key next to ".".
+- The Settings sidebar cannot be dragged away or hidden any more; before, dragging its edge
+  all the way left made it disappear with no way back to the other panes.
+
+### Behind the scenes
+- New website at vibeflow.floo.one, with download, features, Meetings and Clocks pages.
+- The nightly job builds from its own clone outside ~/Documents (macOS blocks background jobs
+  there), skips commits that only change the website, and `nightly.sh --install` copies the
+  right file.
+
 ## 1.3.0
 
 ### Updates
