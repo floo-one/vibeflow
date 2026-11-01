@@ -30,6 +30,7 @@ enum SettingsWindow {
         window.collectionBehavior.insert([.moveToActiveSpace, .fullScreenAuxiliary])
         window.hidesOnDeactivate = false
         pinSidebar(in: window.contentView)
+        repinOnLayout()
     }
 
     /// Width of the Settings sidebar. The divider does not move and the sidebar cannot be
@@ -43,14 +44,33 @@ enum SettingsWindow {
         if let splitView = view as? NSSplitView,
            let controller = splitView.delegate as? NSSplitViewController,
            let sidebar = controller.splitViewItems.first {
-            sidebar.canCollapse = false
-            sidebar.canCollapseFromWindowResize = false
-            sidebar.minimumThickness = sidebarWidth
-            sidebar.maximumThickness = sidebarWidth
+            // Assign only on change: each assignment lays the split view out again.
+            if sidebar.canCollapse { sidebar.canCollapse = false }
+            if sidebar.canCollapseFromWindowResize { sidebar.canCollapseFromWindowResize = false }
+            if sidebar.minimumThickness != sidebarWidth { sidebar.minimumThickness = sidebarWidth }
+            if sidebar.maximumThickness != sidebarWidth { sidebar.maximumThickness = sidebarWidth }
             if sidebar.isCollapsed { sidebar.isCollapsed = false }
             return
         }
         for subview in view.subviews { pinSidebar(in: subview) }
+    }
+
+    private static var layoutObserver: NSObjectProtocol?
+
+    /// SwiftUI often adds the split view items only after configure has run, so a one-time pin
+    /// finds nothing and the sidebar stays collapsible (and comes back collapsed, as saved).
+    /// The split view lays out once its items exist and again on every divider drag: pin then.
+    private static func repinOnLayout() {
+        guard layoutObserver == nil else { return }
+        layoutObserver = NotificationCenter.default.addObserver(
+            forName: NSSplitView.didResizeSubviewsNotification, object: nil, queue: .main
+        ) { note in
+            let splitView = note.object as? NSSplitView
+            MainActor.assumeIsolated {
+                guard let splitView, let window = splitView.window, isSettingsWindow(window) else { return }
+                pinSidebar(in: splitView)
+            }
+        }
     }
 
     private static func isSettingsWindow(_ window: NSWindow) -> Bool {
