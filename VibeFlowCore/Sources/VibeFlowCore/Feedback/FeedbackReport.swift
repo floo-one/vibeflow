@@ -154,11 +154,16 @@ public struct FeedbackReport: Equatable, Sendable {
         "vibeflow@\(version)+\(build)"
     }
 
-    /// The exact text the form shows under "What gets sent".
+    /// The feedback text Sentry receives: note, build facts, settings and a line about the
+    /// logs. The logs themselves go as the attachment.
+    public var text: String {
+        message + "\n\n" + summary + "\n\n" + logsNote
+    }
+
+    /// The exact text the form shows under "What gets sent": `text` plus the attachment.
     public func render() -> String {
-        var text = message + "\n\n" + summary + "\n\n" + logsNote
-        if let logFile, !logFile.isEmpty { text += "\n" + logFile }
-        return text
+        guard let logFile, !logFile.isEmpty else { return text }
+        return text + "\n" + logFile
     }
 
     // MARK: Scrubbing

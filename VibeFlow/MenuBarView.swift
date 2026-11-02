@@ -140,6 +140,9 @@ struct MenuBarView: View {
 
         Divider()
 
+        if FeedbackSender.isEnabled {
+            Button("Send Feedback…") { FeedbackWindow.present(openWindow) }
+        }
         Button("Settings…") { SettingsWindow.present(openSettings, container: container) }
             .keyboardShortcut(",")
 

@@ -73,6 +73,9 @@ enum SettingsWindow {
         }
     }
 
+    /// True while the Settings window is on screen (feedback reports name its pane).
+    static var isVisible: Bool { NSApp.windows.contains { isSettingsWindow($0) && $0.isVisible } }
+
     private static func isSettingsWindow(_ window: NSWindow) -> Bool {
         window.identifier?.rawValue.contains("Settings") == true
     }
