@@ -78,6 +78,10 @@ private final class FakeAssertion: PowerAssertion {
         #expect(KeepAwakeFormat.remaining(until: start.addingTimeInterval(3900), now: start) == "1:05")
         #expect(KeepAwakeFormat.remaining(until: start.addingTimeInterval(61), now: start) == "0:02")
         #expect(KeepAwakeFormat.remaining(until: .distantFuture, now: start) == "")
+        #expect(KeepAwakeFormat.countdown(until: start.addingTimeInterval(3872), now: start) == "1:04:32")
+        #expect(KeepAwakeFormat.countdown(until: start.addingTimeInterval(272), now: start) == "4:32")
+        #expect(KeepAwakeFormat.countdown(until: start.addingTimeInterval(-5), now: start) == "0:00")
+        #expect(KeepAwakeFormat.countdown(until: .distantFuture, now: start) == "")
         let utc = TimeZone(identifier: "UTC")!
         #expect(KeepAwakeFormat.status(until: nil) == "Not keeping awake")
         #expect(KeepAwakeFormat.status(until: .distantFuture) == "Awake indefinitely")
