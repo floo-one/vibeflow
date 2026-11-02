@@ -36,6 +36,8 @@ final class AppContainer {
     private let elevenLabs: ElevenLabsProvider
     let catalogs: RemoteCatalogs
     let meetings: MeetingsStore
+    /// Keeps the Mac awake (the Amphetamine replacement); its own menu bar item while on.
+    let keepAwake: KeepAwake
     /// Which settings tab is showing; "Add key" buttons jump to Keys.
     var settingsTab: SettingsTab = .general
     /// True after the record shortcut, false after a read: which session the menu's status
@@ -61,6 +63,7 @@ final class AppContainer {
         voices = SystemVoiceCatalog()
         catalogs = RemoteCatalogs(secrets: secrets)
         catalogs.refresh()
+        keepAwake = KeepAwake(assertion: LivePowerAssertion(), keepsDisplayOn: preferences.keepAwakeDisplayOn)
 
         let clock = ContinuousSessionClock()
         let pasteboard = LivePasteboard()
@@ -259,6 +262,12 @@ final class AppContainer {
         }
         if showsDictation, session.state == .idle, dictation.lastError != nil { return IconState.error.symbolName }
         return session.iconState.symbolName
+    }
+
+    /// Menu "Allow Display Sleep": remembered for the next session, applied to the running one.
+    func setKeepAwakeDisplayOn(_ on: Bool) {
+        preferences.keepAwakeDisplayOn = on
+        keepAwake.keepsDisplayOn = on
     }
 
     /// The models and speaker chosen in Settings, applied right before each read.
