@@ -40,6 +40,13 @@ struct VibeFlowApp: App {
             Text(MeetingSchedule.label(for: container.meetings.nudge(at: clock.now)) ?? "")
                 .monospacedDigit()
         }
+        MenuBarExtra(isInserted: keepAwakeInserted) {
+            KeepAwakeMenuItems()
+                .environment(container)
+        } label: {
+            KeepAwakeLabel(now: clock.now)
+                .environment(container)
+        }
         Settings {
             SettingsView()
                 .environment(container)
@@ -56,6 +63,11 @@ struct VibeFlowApp: App {
     /// each minute tick and whenever a sync changes the list.
     private var meetingsInserted: Binding<Bool> {
         Binding(get: { container.meetings.nudge(at: clock.now) != .hidden }, set: { _ in })
+    }
+
+    /// Shown while a keep-awake session runs; started from the VibeFlow menu.
+    private var keepAwakeInserted: Binding<Bool> {
+        Binding(get: { container.keepAwake.isActive }, set: { _ in })
     }
 
     /// Shown while there is at least one clock; the Clocks tab is the only way to change that.
