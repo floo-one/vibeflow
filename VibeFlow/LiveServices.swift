@@ -2,6 +2,7 @@ import AppKit
 import ApplicationServices
 import Carbon.HIToolbox
 import Foundation
+import IOKit.pwr_mgt
 import VibeFlowCore
 
 // Real implementations of the VibeFlowCore ports (design: Protocol seams, D2 Live/).
@@ -179,5 +180,31 @@ final class DictationSounds {
         let sound = cue == .recordingStarted ? started : stopped
         sound?.stop()
         sound?.play()
+    }
+}
+
+// MARK: - PowerAssertion on IOPMAssertion
+
+/// The same assertion `caffeinate -d` (display on) or `caffeinate -i` (display may sleep) holds.
+/// macOS drops it if the app quits or crashes, so nothing outlives VibeFlow.
+@MainActor
+final class LivePowerAssertion: PowerAssertion {
+    private var id: IOPMAssertionID?
+
+    func begin(keepsDisplayOn: Bool) -> Bool {
+        end()
+        let type = keepsDisplayOn ? kIOPMAssertionTypePreventUserIdleDisplaySleep : kIOPMAssertionTypePreventUserIdleSystemSleep
+        var newID = IOPMAssertionID(0)
+        let result = IOPMAssertionCreateWithName(type as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                                                 "VibeFlow Keep Awake" as CFString, &newID)
+        guard result == kIOReturnSuccess else { return false }
+        id = newID
+        return true
+    }
+
+    func end() {
+        guard let id else { return }
+        IOPMAssertionRelease(id)
+        self.id = nil
     }
 }

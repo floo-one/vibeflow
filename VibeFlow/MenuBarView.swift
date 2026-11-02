@@ -119,6 +119,10 @@ struct MenuBarView: View {
 
         Divider()
 
+        Menu("Keep Awake") { KeepAwakeMenuItems() }
+
+        Divider()
+
         Button("Settings…") { SettingsWindow.present(openSettings, container: container) }
             .keyboardShortcut(",")
 

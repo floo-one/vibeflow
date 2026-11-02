@@ -47,6 +47,13 @@ struct VibeFlowApp: App {
             FocusLabel(focus: container.focus)
         }
         .menuBarExtraStyle(.window)
+        MenuBarExtra(isInserted: keepAwakeInserted) {
+            KeepAwakeMenuItems()
+                .environment(container)
+        } label: {
+            KeepAwakeLabel(now: clock.now)
+                .environment(container)
+        }
         Settings {
             SettingsView()
                 .environment(container)
@@ -69,6 +76,11 @@ struct VibeFlowApp: App {
     /// item out of the menu bar never ends a session.
     private var focusInserted: Binding<Bool> {
         Binding(get: { container.preferences.focusEnabled }, set: { _ in })
+    }
+
+    /// Shown while a keep-awake session runs; started from the VibeFlow menu.
+    private var keepAwakeInserted: Binding<Bool> {
+        Binding(get: { container.keepAwake.isActive }, set: { _ in })
     }
 
     /// Shown while there is at least one clock; the Clocks tab is the only way to change that.

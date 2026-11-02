@@ -63,6 +63,7 @@ public final class Preferences {
         static let meetingsCalendars = "meetings.calendars"
         static let focusEnabled = "focus.enabled"
         static let focusPreset = "focus.preset"
+        static let keepAwakeDisplayOn = "keepAwake.displayOn"
     }
 
     public var launchAtLogin: Bool {
@@ -149,6 +150,11 @@ public final class Preferences {
         didSet { defaults.set(focusPreset.rawValue, forKey: Key.focusPreset) }
     }
 
+    /// Keep Awake also keeps the display on; off lets it sleep while the Mac stays awake.
+    public var keepAwakeDisplayOn: Bool {
+        didSet { defaults.set(keepAwakeDisplayOn, forKey: Key.keepAwakeDisplayOn) }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         launchAtLogin = defaults.bool(forKey: Key.launchAtLogin)
@@ -174,6 +180,7 @@ public final class Preferences {
         meetingsCalendars = defaults.stringArray(forKey: Key.meetingsCalendars)
         focusEnabled = defaults.bool(forKey: Key.focusEnabled)
         focusPreset = defaults.string(forKey: Key.focusPreset).flatMap(FocusPreset.init(rawValue:)) ?? .classic
+        keepAwakeDisplayOn = defaults.object(forKey: Key.keepAwakeDisplayOn) as? Bool ?? true
     }
 
     public var vocabularyTerms: [String] { Self.parseVocabulary(vocabulary) }
