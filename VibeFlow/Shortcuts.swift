@@ -36,6 +36,8 @@ extension KeyboardShortcuts.Name {
     /// Paste the last smart read result. Default: Shift-Control-Option-V. Not "pasteAnswer": an
     /// old build stored that name on Option-Minus, the push-to-talk key.
     static let pasteLastAnswer = Self("pasteLastAnswer", default: .init(.v, modifiers: pasteModifiers.union(.shift)))
+    /// Start, pause or resume focus. No default: recorded in Settings > Focus.
+    static let focusToggle = Self("focusToggle")
 }
 
 /// One-time move of the dictation shortcuts to the key right of "." (DictationKey). Earlier

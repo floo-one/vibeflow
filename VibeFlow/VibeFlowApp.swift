@@ -72,10 +72,10 @@ struct VibeFlowApp: App {
         Binding(get: { container.meetings.nudge(at: clock.now) != .hidden }, set: { _ in })
     }
 
-    /// Shown while the focus timer is on; only the General toggle changes that, so dragging the
-    /// item out of the menu bar never ends a session.
+    /// Shown from Start until Stop, waiting phases included; started from the VibeFlow menu,
+    /// Settings > Focus or the shortcut. Dragging the item away never ends a session.
     private var focusInserted: Binding<Bool> {
-        Binding(get: { container.preferences.focusEnabled }, set: { _ in })
+        Binding(get: { container.focus.session != nil }, set: { _ in })
     }
 
     /// Shown while a keep-awake session runs; started from the VibeFlow menu.

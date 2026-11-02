@@ -225,6 +225,16 @@ public enum FocusEngine {
         return session.stage == .awaiting(phase)
     }
 
+    /// The one command the start/pause shortcut sends: start from idle or a waiting phase,
+    /// pause a running one, resume a paused one.
+    public static func toggle(_ session: FocusSession?) -> FocusCommand {
+        switch session?.stage {
+        case nil, .awaiting?: return .start
+        case .running?: return .pause
+        case .paused?: return .resume
+        }
+    }
+
     /// Filled dots for the menu: the completed count up to the preset's cycle length.
     public static func dots(for session: FocusSession?, preset: FocusPreset) -> (filled: Int, total: Int) {
         let total = session?.preset.blocksBeforeLong ?? preset.blocksBeforeLong

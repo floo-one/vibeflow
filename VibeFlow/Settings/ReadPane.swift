@@ -11,6 +11,7 @@ struct ReadPane: View {
         @Bindable var prefs = container.preferences
         @Bindable var store = container.presets
         Form {
+            PaneHeader(.read, subtitle: "Reads the selected text aloud. Press again to stop.")
             Section("Shortcuts") {
                 ShortcutRecorder("Read selection", name: .read)
                 ShortcutRecorder("Read clipboard", name: .readClipboard)
@@ -19,8 +20,12 @@ struct ReadPane: View {
                 VoicePicker(voiceID: $store.defaultPreset.elevenLabsVoiceID)
                 ModelPicker(title: "Voice model", options: ModelOptions.voice, selection: $prefs.voiceModel)
                 SpeedSlider(speed: $store.defaultPreset.speed)
+            } header: {
+                Text("Voice")
+            } footer: {
+                Text("Smart Read speaks with this voice too.").foregroundStyle(.secondary)
             }
-            Section {
+            Section("Output") {
                 DevicePicker(title: "Speaker", automaticLabel: "System output", devices: speakers, selection: $prefs.speakerUID)
             }
         }

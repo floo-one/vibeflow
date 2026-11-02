@@ -25,11 +25,12 @@ struct FocusLabel: View {
     }
 }
 
-/// The focus popup: countdown, cycle dots, the buttons for each state, today and the last
-/// seven days, the preset. It stays open after a click and closes when you click elsewhere.
-/// `now` is the per-minute menu bar clock, so "Today" rolls over at midnight while idle.
+/// The focus popup, shown while a session runs: countdown, cycle dots, the buttons for each
+/// state and today. The rhythm and the week live in Settings > Focus. It stays open after a
+/// click and closes when you click elsewhere. `now` is the per-minute menu bar clock.
 struct FocusMenuView: View {
     @Environment(AppContainer.self) private var container
+    @Environment(\.openSettings) private var openSettings
     let now: Date
 
     private var focus: FocusTimer { container.focus }
@@ -38,9 +39,12 @@ struct FocusMenuView: View {
         VStack(spacing: 10) {
             timer
             Divider()
-            stats
-            Divider()
-            presetPicker
+            HStack {
+                FocusTodayLine(blocks: focus.blocks, now: now)
+                Spacer()
+                Button("Settings…") { SettingsWindow.present(openSettings, container: container, tab: .focus) }
+                    .buttonStyle(.link)
+            }
             if focus.saveFailed {
                 Label("Couldn't save focus data", systemImage: "exclamationmark.triangle.fill")
                     .font(.callout)
@@ -70,19 +74,11 @@ struct FocusMenuView: View {
 
     private func heading(_ session: FocusSession) -> String {
         switch session.stage {
-        case .running(let phase, _): return "\(name(phase)) · \(session.preset.title)"
-        case .paused(let phase, _): return "\(name(phase)) paused"
+        case .running(let phase, _): return "\(phase.title) · \(session.preset.title)"
+        case .paused(let phase, _): return "\(phase.title) paused"
         case .awaiting(let phase):
             let dots = FocusEngine.dots(for: session, preset: focus.preset)
             return phase.isBreak ? "Focus done · \(dots.filled) of \(dots.total)" : "Break over"
-        }
-    }
-
-    private func name(_ phase: FocusPhase) -> String {
-        switch phase {
-        case .focus: return "Focus"
-        case .shortBreak: return "Break"
-        case .longBreak: return "Long break"
         }
     }
 
@@ -132,22 +128,45 @@ struct FocusMenuView: View {
             Button("Stop") { focus.send(.stop) }
         }
     }
+}
 
-    // MARK: Stats
+extension FocusPhase {
+    var title: String {
+        switch self {
+        case .focus: return "Focus"
+        case .shortBreak: return "Break"
+        case .longBreak: return "Long break"
+        }
+    }
+}
 
-    private var stats: some View {
-        let today = FocusStats.today(focus.blocks, now: now)
-        let week = FocusStats.week(focus.blocks, now: now)
+/// "Today · 3 blocks · 1 h 15 min", or "Today · no blocks yet".
+struct FocusTodayLine: View {
+    let blocks: [FocusBlock]
+    let now: Date
+
+    var body: some View {
+        let today = FocusStats.today(blocks, now: now)
+        Text(today.blocks == 0 ? "**Today** · no blocks yet"
+             : "**Today** · \(today.blocks) \(today.blocks == 1 ? "block" : "blocks") · \(FocusStats.duration(minutes: today.minutes))")
+    }
+}
+
+/// The last seven days as bars, today last, with the week's total under them.
+struct FocusWeekChart: View {
+    let blocks: [FocusBlock]
+    let now: Date
+
+    var body: some View {
+        let week = FocusStats.week(blocks, now: now)
         let peak = max(week.map(\.minutes).max() ?? 0, 1)
         let weekMinutes = week.reduce(0) { $0 + $1.minutes }
-        return VStack(alignment: .leading, spacing: 6) {
-            Text(today.blocks == 0 ? "**Today** · no blocks yet"
-                 : "**Today** · \(today.blocks) \(today.blocks == 1 ? "block" : "blocks") · \(FocusStats.duration(minutes: today.minutes))")
+        VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .bottom, spacing: 6) {
                 ForEach(week, id: \.date) { day in
                     VStack(spacing: 3) {
                         RoundedRectangle(cornerRadius: 2)
-                            .fill(day.minutes == 0 ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.tint))
+                            .fill(day.minutes == 0 ? AnyShapeStyle(.quaternary) : AnyShapeStyle(FeatureColor.tools))
                             .frame(height: max(36 * CGFloat(day.minutes) / CGFloat(peak), 2))
                             .frame(height: 36, alignment: .bottom)
                         Text(day.date.formatted(.dateTime.weekday(.abbreviated)))
@@ -162,14 +181,57 @@ struct FocusMenuView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// The VibeFlow menu's focus row: Start Focus with one entry per preset while idle; while a
+/// session runs, the phase and time left with the same controls as the popup.
+struct FocusMenuItems: View {
+    @Environment(AppContainer.self) private var container
+
+    var body: some View {
+        let focus = container.focus
+        if let session = focus.session {
+            Menu {
+                switch session.stage {
+                case .running:
+                    Button("Pause") { focus.send(.pause) }
+                    Button("Skip") { focus.send(.skip) }
+                case .paused:
+                    Button("Resume") { focus.send(.resume) }
+                case .awaiting(let phase):
+                    Button(phase.isBreak ? "Start break" : "Start focus") { focus.send(.start) }
+                    if phase.isBreak {
+                        Button("Skip break") { focus.send(.skip) }
+                    }
+                }
+                Button("Stop") { focus.send(.stop) }
+            } label: {
+                Label(title(session), systemImage: "timer")
+            }
+        } else {
+            Menu {
+                ForEach(FocusPreset.allCases, id: \.self) { preset in
+                    Button("\(preset.title) · \(preset.focusMinutes) min") {
+                        focus.selectPreset(preset)
+                        focus.send(.start)
+                    }
+                }
+            } label: {
+                Label("Start Focus", systemImage: "timer")
+            }
+        }
     }
 
-    private var presetPicker: some View {
-        Picker("Preset", selection: Binding(get: { focus.preset }, set: { focus.selectPreset($0) })) {
-            ForEach(FocusPreset.allCases, id: \.self) { preset in
-                Text("\(preset.summary) · long \(preset.longBreakMinutes) after \(preset.blocksBeforeLong)").tag(preset)
-            }
+    /// "Focus · 24:10", "Break paused · 3:00", "Break?"
+    private func title(_ session: FocusSession) -> String {
+        switch session.stage {
+        case .running(let phase, _):
+            return "\(phase.title) · \(FocusStats.countdown(session.remaining(at: Date()) ?? 0))"
+        case .paused(let phase, let remaining):
+            return "\(phase.title) paused · \(FocusStats.countdown(remaining))"
+        case .awaiting(let phase):
+            return phase.isBreak ? "Focus done · Break?" : "Break over · Focus?"
         }
     }
 }

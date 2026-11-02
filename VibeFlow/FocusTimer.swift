@@ -50,11 +50,7 @@ final class FocusTimer {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.send(.tick) }
         }
-        if preferences.focusEnabled {
-            send(.tick) // a phase that ran out while VibeFlow was quit
-        } else if session != nil {
-            send(.stop)
-        }
+        send(.tick) // a phase that ran out while VibeFlow was quit waits for a click
         syncTicker()
     }
 
@@ -95,10 +91,16 @@ final class FocusTimer {
         if session != nil { send(.selectPreset(preset)) }
     }
 
-    /// Settings switched the timer off: the session ends without logging its partial block.
-    func switchedOff() {
-        send(.stop)
-        notifications.removeDelivered()
+    /// The start/pause shortcut: one key starts, pauses and resumes.
+    func toggle() {
+        send(FocusEngine.toggle(session))
+    }
+
+    /// A running phase reached its deadline while VibeFlow watched it. With auto-advance the
+    /// next phase starts at once; a phase that ran out during sleep or while quit still waits.
+    private func phaseRanOut() {
+        send(.tick)
+        if preferences.focusAutoAdvance, case .awaiting = session?.stage { send(.start) }
     }
 
     private func syncTicker() {
@@ -113,7 +115,7 @@ final class FocusTimer {
                 try? await Task.sleep(for: .seconds(1))
                 guard let self, !Task.isCancelled else { return }
                 now = Date()
-                if case .running(_, let deadline) = session?.stage, deadline <= now { send(.tick) }
+                if case .running(_, let deadline) = session?.stage, deadline <= now { phaseRanOut() }
             }
         }
     }

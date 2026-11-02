@@ -61,7 +61,7 @@ public final class Preferences {
         static let meetingsEnabled = "meetings.enabled"
         static let meetingsLeadMinutes = "meetings.leadMinutes"
         static let meetingsCalendars = "meetings.calendars"
-        static let focusEnabled = "focus.enabled"
+        static let focusAutoAdvance = "focus.autoAdvance"
         static let focusPreset = "focus.preset"
         static let keepAwakeDisplayOn = "keepAwake.displayOn"
     }
@@ -140,12 +140,11 @@ public final class Preferences {
     public var meetingsCalendars: [String]? {
         didSet { defaults.set(meetingsCalendars, forKey: Key.meetingsCalendars) }
     }
-    /// The focus timer in the menu bar. Off until switched on in General, so an update never
-    /// adds a menu bar item nobody asked for.
-    public var focusEnabled: Bool {
-        didSet { defaults.set(focusEnabled, forKey: Key.focusEnabled) }
+    /// A phase that runs out starts the next one by itself instead of waiting for a click.
+    public var focusAutoAdvance: Bool {
+        didSet { defaults.set(focusAutoAdvance, forKey: Key.focusAutoAdvance) }
     }
-    /// Picked in the focus menu; the running session keeps its own copy.
+    /// Picked in Settings > Focus or Start Focus; the running session keeps its own copy.
     public var focusPreset: FocusPreset {
         didSet { defaults.set(focusPreset.rawValue, forKey: Key.focusPreset) }
     }
@@ -178,7 +177,7 @@ public final class Preferences {
         meetingsLeadMinutes = (defaults.object(forKey: Key.meetingsLeadMinutes) as? Int)
             .flatMap { MeetingSchedule.leadTimes.contains($0) ? $0 : nil } ?? MeetingSchedule.defaultLeadMinutes
         meetingsCalendars = defaults.stringArray(forKey: Key.meetingsCalendars)
-        focusEnabled = defaults.bool(forKey: Key.focusEnabled)
+        focusAutoAdvance = defaults.bool(forKey: Key.focusAutoAdvance)
         focusPreset = defaults.string(forKey: Key.focusPreset).flatMap(FocusPreset.init(rawValue:)) ?? .classic
         keepAwakeDisplayOn = defaults.object(forKey: Key.keepAwakeDisplayOn) as? Bool ?? true
     }

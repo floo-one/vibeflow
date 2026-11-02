@@ -173,6 +173,17 @@ struct FocusEngineTests {
         #expect(!FocusEngine.accepts(sessionID: sessionID, blockIndex: 1, phase: .shortBreak, session: started.session))
         #expect(!FocusEngine.accepts(sessionID: sessionID, blockIndex: 1, phase: .shortBreak, session: nil))
     }
+
+    @Test func toggleStartsPausesAndResumes() {
+        #expect(FocusEngine.toggle(nil) == .start)
+        let running = run([(.start, 0)]).session
+        #expect(FocusEngine.toggle(running) == .pause)
+        let paused = run([(.pause, 5)], from: running).session
+        #expect(FocusEngine.toggle(paused) == .resume)
+        let waiting = run([(.resume, 6), (.tick, 26)], from: paused).session
+        #expect(waiting?.stage == .awaiting(.shortBreak))
+        #expect(FocusEngine.toggle(waiting) == .start)
+    }
 }
 
 @Suite("FocusStats")
@@ -263,5 +274,15 @@ struct FocusLogTests {
         let names = try FileManager.default.contentsOfDirectory(atPath: folder.path)
         #expect(names.contains { $0.hasPrefix("focus.broken-") && $0.hasSuffix(".json") })
         #expect(!names.contains("focus.json"))
+    }
+}
+
+@MainActor @Suite struct FocusPreferencesTests {
+    @Test func autoAdvanceIsOffUntilSwitchedOn() {
+        let defaults = UserDefaults(suiteName: "focus-tests-\(UUID())")!
+        let fresh = Preferences(defaults: defaults)
+        #expect(!fresh.focusAutoAdvance)
+        fresh.focusAutoAdvance = true
+        #expect(Preferences(defaults: defaults).focusAutoAdvance)
     }
 }

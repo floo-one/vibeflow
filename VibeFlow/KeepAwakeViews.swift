@@ -26,7 +26,8 @@ struct KeepAwakeMenuItems: View {
     }
 }
 
-/// Settings > Keep Awake: the same controls as the menu, with a live countdown.
+/// Settings > Keep Awake: state and Start or End in the header (a live countdown while on),
+/// the duration Start uses and whether the display stays on.
 struct KeepAwakePane: View {
     @Environment(AppContainer.self) private var container
     @State private var duration = KeepAwakeDuration.minutes(60)
@@ -34,43 +35,50 @@ struct KeepAwakePane: View {
     var body: some View {
         let awake = container.keepAwake
         Form {
-            Section {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    LabeledContent(KeepAwakeFormat.status(until: awake.endsAt)) {
-                        Text(KeepAwakeFormat.countdown(until: awake.endsAt, now: context.date))
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                PaneHeader(.keepAwake, subtitle: status(at: context.date)) {
+                    if awake.isActive {
+                        Button("End Session") { awake.stop() }
+                    } else {
+                        Button("Start for \(duration.title)") { awake.start(duration) }
+                            .buttonStyle(.borderedProminent)
                     }
                 }
+            }
+
+            Section {
                 Picker("Duration", selection: $duration) {
                     ForEach(KeepAwakeDuration.presets, id: \.self) { Text($0.title).tag($0) }
                 }
-                HStack {
-                    Spacer()
-                    if awake.isActive {
-                        Button("End Session") { awake.stop() }
+                if awake.isActive {
+                    LabeledContent("Restart with this duration") {
+                        Button("Restart") { awake.start(duration) }
                     }
-                    Button(awake.isActive ? "Restart" : "Start") { awake.start(duration) }
-                        .buttonStyle(.borderedProminent)
+                }
+                Toggle(isOn: Binding(
+                    get: { container.preferences.keepAwakeDisplayOn },
+                    set: { container.setKeepAwakeDisplayOn($0) }
+                )) {
+                    Text("Keep the display on")
+                    Text("Off: the screen may sleep, the Mac stays awake.")
                 }
             } header: {
                 Text("Session")
             } footer: {
-                Text("While a session runs, a cup with the time left sits in the menu bar. Restart replaces the running session with the duration above.")
-                    .foregroundStyle(.secondary)
-            }
-
-            Section {
-                Toggle("Keep the display on", isOn: Binding(
-                    get: { container.preferences.keepAwakeDisplayOn },
-                    set: { container.setKeepAwakeDisplayOn($0) }
-                ))
-            } footer: {
-                Text("Off lets the screen sleep while the Mac stays awake. Closing the lid still puts the Mac to sleep.")
+                Text("While a session runs, a cup with the time left sits in the menu bar. Closing the lid still puts the Mac to sleep.")
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// "Off · the Mac sleeps as usual", or the session's status and time left.
+    private func status(at now: Date) -> String {
+        let awake = container.keepAwake
+        guard awake.isActive else { return "Off · the Mac sleeps as usual" }
+        let left = KeepAwakeFormat.countdown(until: awake.endsAt, now: now)
+        let status = KeepAwakeFormat.status(until: awake.endsAt)
+        return left.isEmpty ? status : "\(status) · \(left) left"
     }
 }
 
