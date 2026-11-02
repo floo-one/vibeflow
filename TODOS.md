@@ -66,6 +66,30 @@
 **Priority:** P3
 **Depends on:** upcoming meetings shipped.
 
+### Focus timer extras only VibeFlow can do
+
+**What:** Build on the focus timer: sessions that end before your next meeting (MeetingsStore), the VibeFlow voice announcing focus and break ends, focus progress in the notch (NotchIndicator), and a dictated session title.
+
+**Why:** Parked on 2026-11-02 when the focus timer was designed as a plain Flow clone ("doesnt have to be super special for the start"). Each extra reuses something only VibeFlow has.
+
+**Context:** docs/designs/focus-timer.md, section "What Makes This Cool". Start with meeting-aware sessions, because no other timer has them. FocusEngine takes `now` and a preset, so a meeting-shortened block is one more input.
+
+**Effort:** M
+**Priority:** P3
+**Depends on:** the focus timer shipped and a week of daily use.
+
+### Custom focus preset
+
+**What:** A fourth preset, Custom, with its own focus, short break, long break and blocks-before-long, edited in the Focus popup rather than in Settings.
+
+**Why:** The user asked for a timer that is "customizable, but still easy to set up". v1 ships three fixed presets (Classic 25/5, Long 50/10, Deep 90/20).
+
+**Context:** docs/designs/focus-timer.md, premise 2 and The Assignment. The trigger is a Flow duration in daily use that isn't one of the three presets. Keep it out of Settings, which stay minimal.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** the focus timer shipped, and that trigger firing.
+
 ## Clipboard
 
 ### One clipboard owner across reads, dictation and paste again

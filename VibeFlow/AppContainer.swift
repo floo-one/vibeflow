@@ -36,6 +36,8 @@ final class AppContainer {
     private let elevenLabs: ElevenLabsProvider
     let catalogs: RemoteCatalogs
     let meetings: MeetingsStore
+    /// The focus timer; also installs the notification delegate, so it starts with the app.
+    let focus: FocusTimer
     /// Keeps the Mac awake (the Amphetamine replacement); its own menu bar item while on.
     let keepAwake: KeepAwake
     /// Which settings tab is showing; "Add key" buttons jump to Keys.
@@ -68,6 +70,7 @@ final class AppContainer {
         let clock = ContinuousSessionClock()
         let pasteboard = LivePasteboard()
         let http = URLSessionHTTPClient()
+        focus = FocusTimer(preferences: preferences)
         meetings = MeetingsStore(config: GoogleOAuthConfig(infoDictionary: Bundle.main.infoDictionary),
                                  secrets: secrets, preferences: preferences, http: http)
         let elevenLabs = ElevenLabsProvider(client: URLSessionByteStreamClient(), player: player, secrets: secrets)
