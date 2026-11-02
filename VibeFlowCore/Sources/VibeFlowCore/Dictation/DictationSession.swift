@@ -501,8 +501,10 @@ public final class DictationSession {
         switch error as? TranscriptionFailure {
         case .unauthorized:
             fail("\(name) key rejected or missing", actions: [.openKeys, .retry, .discard])
-        case .rejected(let status, let message):
-            fail("\(name) error \(status): \(message)", actions: [.openDictationSettings, .retry, .discard])
+        case .rejected(let status, let message, let rawBodyBytes):
+            fail("\(name) error \(status): \(message)",
+                 logged: LogLine.rejected(name: name, status: status, message: message, rawBodyBytes: rawBodyBytes),
+                 actions: [.openDictationSettings, .retry, .discard])
         case .rateLimited:
             fail("\(name) unavailable (rate limited)", actions: [.retry, .discard])
         case .serverError(let code):
@@ -536,7 +538,7 @@ public final class DictationSession {
     private static func reason(_ error: Error) -> String {
         switch error as? TranscriptionFailure {
         case .unauthorized: return "key rejected or missing"
-        case .rejected(let status, _): return "error \(status)"
+        case .rejected(let status, _, _): return "error \(status)"
         case .rateLimited: return "rate limited"
         case .serverError(let code): return "HTTP \(code)"
         case .offline: return "offline"
@@ -557,8 +559,10 @@ public final class DictationSession {
         self.status = status
     }
 
-    private func fail(_ message: String, actions: [DictationAction] = []) {
-        log.notice("Dictation failed: \(message, privacy: .public)")
+    /// `logged` replaces the message in the log when it differs from what the user sees (D7).
+    private func fail(_ message: String, logged: String? = nil, actions: [DictationAction] = []) {
+        let line = logged ?? LogLine.providerMessage(message)
+        log.notice("Dictation failed: \(line, privacy: .public)")
         tearDown()
         state = .idle
         lastError = DictationError(message: message, actions: actions)

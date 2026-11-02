@@ -56,7 +56,9 @@ public final class OpenAITranscriber: Transcriber {
         case 500...599:
             throw TranscriptionFailure.serverError(response.status)
         default:
-            throw TranscriptionFailure.rejected(status: response.status, message: Self.message(from: response.body))
+            let json = Self.jsonMessage(from: response.body)
+            throw TranscriptionFailure.rejected(status: response.status, message: json ?? Self.message(from: response.body),
+                                                rawBodyBytes: json == nil ? response.body.count : nil)
         }
     }
 
@@ -90,9 +92,13 @@ public final class OpenAITranscriber: Transcriber {
     }
 
     static func message(from body: Data) -> String {
+        jsonMessage(from: body) ?? String(decoding: body.prefix(200), as: UTF8.self)
+    }
+
+    /// The provider's own `error.message`, nil when the body is not that JSON.
+    static func jsonMessage(from body: Data) -> String? {
         struct E: Decodable { struct Inner: Decodable { let message: String? }; let error: Inner? }
-        if let e = try? JSONDecoder().decode(E.self, from: body), let m = e.error?.message { return m }
-        return String(decoding: body.prefix(200), as: UTF8.self)
+        return (try? JSONDecoder().decode(E.self, from: body))?.error?.message
     }
 
     private struct VerboseJSON: Decodable {

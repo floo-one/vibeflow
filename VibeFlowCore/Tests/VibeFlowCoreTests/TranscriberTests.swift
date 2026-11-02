@@ -54,6 +54,15 @@ struct OpenAITranscriberTests {
         }
     }
 
+    @Test func aNonJSONBodyIsShownButMarkedRaw() async {
+        http.status = 404
+        http.body = Data("<html>proxy says no to my private note</html>".utf8)
+        await #expect(throws: TranscriptionFailure.rejected(status: 404, message: "<html>proxy says no to my private note</html>",
+                                                            rawBodyBytes: 45)) {
+            try await transcriber().transcribe(speech, language: nil)
+        }
+    }
+
     @Test func networkErrorsAreOfflineOrTimeout() async {
         http.connectError = URLError(.notConnectedToInternet)
         await #expect(throws: TranscriptionFailure.offline) { try await transcriber().transcribe(speech, language: nil) }
