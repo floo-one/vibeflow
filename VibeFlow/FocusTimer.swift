@@ -6,7 +6,7 @@ import VibeFlowCore
 
 private let log = Logger(subsystem: "one.floo.vibeflow", category: "focus")
 
-/// The focus timer in the app: FocusEngine's rules, FocusLog's file, a one-second ticker while a
+/// The Pomodoro timer in the app: FocusEngine's rules, FocusLog's file, a one-second ticker while a
 /// phase runs, a chime and a silent notification when one ends. Every command is saved before
 /// it shows: if focus.json cannot be written, nothing changes and the menu says so.
 @MainActor
@@ -50,22 +50,20 @@ final class FocusTimer {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.send(.tick) }
         }
-        if preferences.focusEnabled {
-            send(.tick) // a phase that ran out while VibeFlow was quit
-        } else if session != nil {
-            send(.stop)
-        }
+        send(.tick) // a phase that ran out while VibeFlow was quit
         syncTicker()
     }
 
-    /// The selected preset, or the running session's.
+    /// The selected preset and rhythm, or the running session's.
     var preset: FocusPreset { session?.preset ?? preferences.focusPreset }
+    var rhythm: FocusRhythm { session?.rhythm ?? preferences.focusRhythm }
 
     func send(_ command: FocusCommand) {
         let now = Date()
         self.now = now
         let before = session
-        let transition = FocusEngine.apply(command, to: before, preset: preferences.focusPreset, now: now)
+        let transition = FocusEngine.apply(command, to: before, preset: preferences.focusPreset,
+                                           rhythm: preferences.focusRhythm, now: now)
         var next = store.file
         next.active = transition.session
         if let block = transition.logged { next.blocks.append(block) }
@@ -92,14 +90,25 @@ final class FocusTimer {
 
     func selectPreset(_ preset: FocusPreset) {
         preferences.focusPreset = preset
-        if session != nil { send(.selectPreset(preset)) }
+        if session != nil { send(.select(preset, preferences.focusRhythm)) }
     }
 
-    /// Settings switched the timer off: the session ends without logging its partial block.
-    func switchedOff() {
-        send(.stop)
-        notifications.removeDelivered()
+    /// The Custom steppers; a running Custom session picks the change up from its next phase.
+    func setCustom(_ rhythm: FocusRhythm) {
+        preferences.focusCustom = rhythm.clamped
+        if session?.preset == .custom { send(.select(.custom, preferences.focusCustom)) }
     }
+
+    /// History's right-click Delete, saved before it shows like every other change.
+    func deleteRound(_ id: FocusBlock.ID) {
+        if store.delete(id) {
+            saveFailed = false
+            blocks = store.file.blocks
+        } else {
+            saveFailed = true
+        }
+    }
+
 
     private func syncTicker() {
         guard case .running = session?.stage else {
@@ -156,13 +165,13 @@ final class FocusNotifications: NSObject, UNUserNotificationCenterDelegate {
 
     func post(for phase: FocusPhase, session: FocusSession) {
         let content = UNMutableNotificationContent()
-        let minutes = session.preset.minutes(for: phase)
+        let minutes = session.rhythm.minutes(for: phase)
         if phase.isBreak {
-            content.title = "Focus done"
+            content.title = "Pomodoro: focus done"
             content.body = phase == .longBreak ? "Time for a \(minutes)-minute long break." : "Time for a \(minutes)-minute break."
             content.categoryIdentifier = breakCategory
         } else {
-            content.title = "Break over"
+            content.title = "Pomodoro: break over"
             content.body = "Ready for \(minutes) minutes of focus?"
             content.categoryIdentifier = focusCategory
         }

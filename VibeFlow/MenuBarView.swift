@@ -120,6 +120,7 @@ struct MenuBarView: View {
         Divider()
 
         Menu("Keep Awake") { KeepAwakeMenuItems() }
+        Menu("Pomodoro") { PomodoroMenuItems() }
 
         Divider()
 

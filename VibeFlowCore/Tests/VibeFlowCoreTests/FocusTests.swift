@@ -8,13 +8,14 @@ struct FocusEngineTests {
     let sessionID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
 
     func minutes(_ m: Double) -> Date { t0.addingTimeInterval(m * 60) }
+    func select(_ preset: FocusPreset) -> FocusCommand { .select(preset, preset.fixedRhythm!) }
 
     func run(_ commands: [(FocusCommand, Double)], preset: FocusPreset = .classic,
              from session: FocusSession? = nil) -> (session: FocusSession?, logged: [FocusBlock]) {
         var session = session
         var logged: [FocusBlock] = []
         for (command, at) in commands {
-            let t = FocusEngine.apply(command, to: session, preset: preset, now: minutes(at), newID: { sessionID })
+            let t = FocusEngine.apply(command, to: session, preset: preset, rhythm: preset.fixedRhythm!, now: minutes(at), newID: { sessionID })
             session = t.session
             if let block = t.logged { logged.append(block) }
         }
@@ -22,16 +23,16 @@ struct FocusEngineTests {
     }
 
     @Test func fullCycleLogsOnceAndWaitsForClicks() {
-        let start = FocusEngine.apply(.start, to: nil, preset: .classic, now: t0, newID: { sessionID })
+        let start = FocusEngine.apply(.start, to: nil, preset: .classic, rhythm: FocusPreset.classic.fixedRhythm!, now: t0, newID: { sessionID })
         #expect(start.session?.stage == .running(.focus, deadline: minutes(25)))
 
-        let expired = FocusEngine.apply(.tick, to: start.session, preset: .classic, now: minutes(25))
+        let expired = FocusEngine.apply(.tick, to: start.session, preset: .classic, rhythm: FocusPreset.classic.fixedRhythm!, now: minutes(25))
         #expect(expired.ended == .focus)
         #expect(expired.logged == FocusBlock(id: "\(sessionID.uuidString)-1", start: t0, end: minutes(25), preset: .classic, minutes: 25))
         #expect(expired.session?.stage == .awaiting(.shortBreak))
 
         // A second expire on the same state logs nothing.
-        let again = FocusEngine.apply(.tick, to: expired.session, preset: .classic, now: minutes(26))
+        let again = FocusEngine.apply(.tick, to: expired.session, preset: .classic, rhythm: FocusPreset.classic.fixedRhythm!, now: minutes(26))
         #expect(again.logged == nil && again.ended == nil)
 
         let breakEnd = run([(.start, 30), (.tick, 35)], from: expired.session)
@@ -89,13 +90,13 @@ struct FocusEngineTests {
         var session: FocusSession?
         var ids: [String] = []
         var now = 0.0
-        session = FocusEngine.apply(.start, to: nil, preset: .deep, now: minutes(now), newID: { sessionID }).session
+        session = FocusEngine.apply(.start, to: nil, preset: .deep, rhythm: FocusPreset.deep.fixedRhythm!, now: minutes(now), newID: { sessionID }).session
         for _ in 0..<4 {
             now += 90
-            let t = FocusEngine.apply(.tick, to: session, preset: .deep, now: minutes(now))
+            let t = FocusEngine.apply(.tick, to: session, preset: .deep, rhythm: FocusPreset.deep.fixedRhythm!, now: minutes(now))
             if let block = t.logged { ids.append(block.id) }
-            session = FocusEngine.apply(.skip, to: t.session, preset: .deep, now: minutes(now)).session
-            session = FocusEngine.apply(.start, to: session, preset: .deep, now: minutes(now)).session
+            session = FocusEngine.apply(.skip, to: t.session, preset: .deep, rhythm: FocusPreset.deep.fixedRhythm!, now: minutes(now)).session
+            session = FocusEngine.apply(.start, to: session, preset: .deep, rhythm: FocusPreset.deep.fixedRhythm!, now: minutes(now)).session
         }
         #expect(ids.count == 4)
         #expect(Set(ids).count == 4)
@@ -124,7 +125,7 @@ struct FocusEngineTests {
     }
 
     @Test func presetChangeMidBlockLogsTheSnapshot() {
-        let r = run([(.start, 0), (.selectPreset(.deep), 5), (.tick, 25)])
+        let r = run([(.start, 0), (select(.deep), 5), (.tick, 25)])
         #expect(r.logged.first?.preset == .classic)
         #expect(r.logged.first?.minutes == 25)
         // The break uses the new preset.
@@ -139,9 +140,9 @@ struct FocusEngineTests {
         r = run([(.tick, 115)], from: r.session)
         #expect(r.session?.completed == 4)
         // Recompute while awaiting: still the long break, and back again keeps the count.
-        let deep = run([(.selectPreset(.deep), 116)], from: r.session)
+        let deep = run([(select(.deep), 116)], from: r.session)
         #expect(deep.session?.stage == .awaiting(.longBreak))
-        let back = run([(.selectPreset(.classic), 117)], from: deep.session)
+        let back = run([(select(.classic), 117)], from: deep.session)
         #expect(back.session?.completed == 4)
         #expect(back.session?.stage == .awaiting(.longBreak))
     }
@@ -150,9 +151,9 @@ struct FocusEngineTests {
         // Classic with 2 done awaits a short break; Deep (2 before long) makes it the long break.
         let r = run([(.start, 0), (.tick, 25), (.skip, 25), (.start, 25), (.tick, 50)])
         #expect(r.session?.stage == .awaiting(.shortBreak))
-        let deep = run([(.selectPreset(.deep), 51)], from: r.session)
+        let deep = run([(select(.deep), 51)], from: r.session)
         #expect(deep.session?.stage == .awaiting(.longBreak))
-        #expect(FocusEngine.dots(for: deep.session, preset: .deep) == (2, 2))
+        #expect(FocusEngine.dots(for: deep.session, rhythm: FocusPreset.deep.fixedRhythm!) == (2, 2))
     }
 
     @Test func stopDiscardsThePartialBlock() {
@@ -172,6 +173,51 @@ struct FocusEngineTests {
         let started = run([(.start, 26)], from: session)
         #expect(!FocusEngine.accepts(sessionID: sessionID, blockIndex: 1, phase: .shortBreak, session: started.session))
         #expect(!FocusEngine.accepts(sessionID: sessionID, blockIndex: 1, phase: .shortBreak, session: nil))
+    }
+
+    @Test func customRhythmRunsItsOwnLengths() {
+        let custom = FocusRhythm(focusMinutes: 40, shortBreakMinutes: 8, longBreakMinutes: 20, rounds: 1)
+        var t = FocusEngine.apply(.start, to: nil, preset: .custom, rhythm: custom, now: t0, newID: { sessionID })
+        #expect(t.session?.stage == .running(.focus, deadline: minutes(40)))
+        t = FocusEngine.apply(.tick, to: t.session, preset: .custom, rhythm: custom, now: minutes(40))
+        #expect(t.logged?.preset == .custom)
+        #expect(t.logged?.minutes == 40)
+        // One round earns the longer break.
+        #expect(t.session?.stage == .awaiting(.longBreak))
+        t = FocusEngine.apply(.start, to: t.session, preset: .custom, rhythm: custom, now: minutes(40))
+        #expect(t.session?.stage == .running(.longBreak, deadline: minutes(60)))
+    }
+
+    @Test func editingCustomMidRoundKeepsTheRunningRound() {
+        let custom = FocusRhythm(focusMinutes: 40, shortBreakMinutes: 8, longBreakMinutes: 20, rounds: 3)
+        var shorter = custom
+        shorter.focusMinutes = 30
+        var t = FocusEngine.apply(.start, to: nil, preset: .custom, rhythm: custom, now: t0, newID: { sessionID })
+        t = FocusEngine.apply(.select(.custom, shorter), to: t.session, preset: .custom, rhythm: shorter, now: minutes(5))
+        #expect(t.session?.stage == .running(.focus, deadline: minutes(40)))
+        t = FocusEngine.apply(.tick, to: t.session, preset: .custom, rhythm: shorter, now: minutes(40))
+        #expect(t.logged?.minutes == 40)
+        t = FocusEngine.apply(.skip, to: t.session, preset: .custom, rhythm: shorter, now: minutes(40))
+        t = FocusEngine.apply(.start, to: t.session, preset: .custom, rhythm: shorter, now: minutes(40))
+        #expect(t.session?.stage == .running(.focus, deadline: minutes(70)))
+    }
+
+    @Test func sessionsSavedBeforeCustomStillLoad() throws {
+        let session = FocusSession(id: sessionID, stage: .awaiting(.shortBreak), preset: .long, rhythm: FocusPreset.long.fixedRhythm!,
+                                   completed: 1, blockIndex: 2, blockStart: t0, blockPreset: .deep, blockMinutes: 90)
+        var json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(session)) as? [String: Any])
+        json["rhythm"] = nil
+        json["blockMinutes"] = nil
+        let old = try JSONDecoder().decode(FocusSession.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(old == session)
+    }
+
+    @Test func customValuesAreClampedToTheSteppers() {
+        let wild = FocusRhythm(focusMinutes: 500, shortBreakMinutes: 0, longBreakMinutes: 1, rounds: 20).clamped
+        #expect(wild == FocusRhythm(focusMinutes: 180, shortBreakMinutes: 1, longBreakMinutes: 5, rounds: 8))
+        #expect(FocusRhythm.classic.longBreakLine == "Longer 15 min break every 4 rounds")
+        #expect(FocusRhythm(focusMinutes: 40, shortBreakMinutes: 8, longBreakMinutes: 20, rounds: 1).longBreakLine == "Longer 20 min break every round")
+        #expect(FocusRhythm.classic.breakLine == "focus, then 5 min break")
     }
 }
 
@@ -209,11 +255,40 @@ struct FocusStatsTests {
         #expect(week.map(\.minutes).reduce(0, +) == 75)
     }
 
+    @Test func streakCountsDaysInARowEndingTodayOrYesterday() {
+        let blocks = [block("a", end: "2026-11-01T10:00:00Z"), block("b", end: "2026-10-31T10:00:00Z"),
+                      block("c", end: "2026-10-30T10:00:00Z"), block("d", end: "2026-10-28T10:00:00Z")]
+        // Nothing yet today: the streak still counts back from yesterday.
+        #expect(FocusStats.streak(blocks, now: berlin("2026-11-02T08:00:00Z"), calendar: calendar) == 3)
+        #expect(FocusStats.streak(blocks + [block("e", end: "2026-11-02T07:00:00Z")], now: berlin("2026-11-02T08:00:00Z"), calendar: calendar) == 4)
+        // A day without rounds before today breaks it.
+        #expect(FocusStats.streak(blocks, now: berlin("2026-11-03T08:00:00Z"), calendar: calendar) == 0)
+        #expect(FocusStats.streak([], now: berlin("2026-11-03T08:00:00Z"), calendar: calendar) == 0)
+    }
+
+    @Test func historyGroupsByDayNewestFirst() {
+        let history = FocusStats.history([block("a", end: "2026-11-01T09:00:00Z"), block("b", end: "2026-11-02T07:00:00Z", minutes: 50),
+                                          block("c", end: "2026-11-01T15:00:00Z")], calendar: calendar)
+        #expect(history.count == 2)
+        #expect(history[0].blocks.map(\.id) == ["b"])
+        #expect(history[1].blocks.map(\.id) == ["c", "a"])
+        #expect(history[1].minutes == 50)
+    }
+
+    @Test func thirtyDaysIncludeEmptyDays() {
+        let days = FocusStats.days([block("a", end: "2026-11-02T07:00:00Z")], last: 30, now: berlin("2026-11-02T08:00:00Z"), calendar: calendar)
+        #expect(days.count == 30)
+        #expect(days.last?.minutes == 25)
+        #expect(days.dropLast().allSatisfy { $0.minutes == 0 })
+    }
+
     @Test func formatting() {
         #expect(FocusStats.countdown(25 * 60) == "25:00")
         #expect(FocusStats.countdown(61.2) == "1:02")
         #expect(FocusStats.duration(minutes: 75) == "1 h 15 min")
         #expect(FocusStats.duration(minutes: 45) == "45 min")
+        #expect(FocusStats.rounds(1) == "1 round")
+        #expect(FocusStats.rounds(3) == "3 rounds")
     }
 }
 
@@ -225,8 +300,9 @@ struct FocusLogTests {
 
     let sessionID = UUID()
     var sample: FocusFile {
-        let session = FocusSession(id: sessionID, stage: .paused(.focus, remaining: 612.5), preset: .long, completed: 2,
-                                   blockIndex: 3, blockStart: t0, blockPreset: .classic)
+        let session = FocusSession(id: sessionID, stage: .paused(.focus, remaining: 612.5), preset: .custom,
+                                   rhythm: FocusRhythm(focusMinutes: 40, shortBreakMinutes: 8, longBreakMinutes: 20, rounds: 3),
+                                   completed: 2, blockIndex: 3, blockStart: t0, blockPreset: .classic, blockMinutes: 25)
         return FocusFile(active: session, blocks: [FocusBlock(id: "x-1", start: t0, end: t0.addingTimeInterval(1500), preset: .classic, minutes: 25)])
     }
 
@@ -253,6 +329,15 @@ struct FocusLogTests {
         doubled.blocks.append(doubled.blocks[0])
         #expect(FocusLog(fileURL: file).commit(doubled))
         #expect(FocusLog(fileURL: file).file.blocks.count == 1)
+    }
+
+    @Test func deleteRemovesOneRoundAndSaves() {
+        var two = sample
+        two.blocks.append(FocusBlock(id: "x-2", start: t0, end: t0.addingTimeInterval(3000), preset: .deep, minutes: 90))
+        let log = FocusLog(fileURL: file)
+        #expect(log.commit(two))
+        #expect(log.delete("x-1"))
+        #expect(FocusLog(fileURL: file).file.blocks.map(\.id) == ["x-2"])
     }
 
     @Test func unreadableFileIsMovedAsideNotOverwritten() throws {
