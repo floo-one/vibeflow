@@ -99,6 +99,18 @@ final class FocusTimer {
         if session?.preset == .custom { send(.select(.custom, preferences.focusCustom)) }
     }
 
+    /// The start/pause shortcut: one key starts, pauses and resumes.
+    func toggle() {
+        send(FocusEngine.toggle(session))
+    }
+
+    /// A running phase reached its deadline while VibeFlow watched it. With auto-advance the
+    /// next phase starts at once; a phase that ran out during sleep or while quit still waits.
+    private func phaseRanOut() {
+        send(.tick)
+        if preferences.focusAutoAdvance, case .awaiting = session?.stage { send(.start) }
+    }
+
     /// History's right-click Delete, saved before it shows like every other change.
     func deleteRound(_ id: FocusBlock.ID) {
         if store.delete(id) {
@@ -122,7 +134,7 @@ final class FocusTimer {
                 try? await Task.sleep(for: .seconds(1))
                 guard let self, !Task.isCancelled else { return }
                 now = Date()
-                if case .running(_, let deadline) = session?.stage, deadline <= now { send(.tick) }
+                if case .running(_, let deadline) = session?.stage, deadline <= now { phaseRanOut() }
             }
         }
     }

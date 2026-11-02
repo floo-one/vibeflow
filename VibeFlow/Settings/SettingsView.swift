@@ -3,7 +3,7 @@ import SwiftUI
 /// The Settings panes in sidebar order. Title, symbol and colour live here so the menu can
 /// use the same look for the same feature.
 enum SettingsTab: Hashable, CaseIterable {
-    case general, accounts, read, smartRead, dictation, clocks, meetings, keepAwake, pomodoro
+    case general, accounts, read, smartRead, dictation, clocks, meetings, pomodoro, keepAwake
 
     var title: String {
         switch self {
@@ -39,17 +39,20 @@ enum SettingsTab: Hashable, CaseIterable {
         case .read: return FeatureColor.read
         case .smartRead: return FeatureColor.smartRead
         case .dictation: return FeatureColor.dictation
-        case .clocks, .meetings, .keepAwake, .pomodoro: return FeatureColor.tools
+        case .clocks, .meetings, .pomodoro: return FeatureColor.tools
+        case .keepAwake: return FeatureColor.utilities
         }
     }
 }
 
-/// One colour per feature: the voice features each have their own, the tools share one.
+/// One colour per feature: the voice features each have their own, Focus & Time share one,
+/// Utilities another.
 enum FeatureColor {
     static let read = Color(red: 0x00 / 255, green: 0x64 / 255, blue: 0xD2 / 255)
     static let smartRead = Color(red: 0x5B / 255, green: 0x4F / 255, blue: 0xE0 / 255)
     static let dictation = Color(red: 0xD9 / 255, green: 0x30 / 255, blue: 0x25 / 255)
     static let tools = Color(red: 0x0F / 255, green: 0x7B / 255, blue: 0x5F / 255)
+    static let utilities = Color(red: 0x5A / 255, green: 0x64 / 255, blue: 0x78 / 255)
 }
 
 /// Settings: a sidebar of panes, each a dropdown per voice, model and device plus the
@@ -70,11 +73,13 @@ struct SettingsView: View {
                     row(.smartRead)
                     row(.dictation)
                 }
-                Section("Tools") {
+                Section("Focus & Time") {
                     row(.clocks)
                     row(.meetings)
-                    row(.keepAwake)
                     row(.pomodoro)
+                }
+                Section("Utilities") {
+                    row(.keepAwake)
                 }
             }
             .navigationSplitViewColumnWidth(SettingsWindow.sidebarWidth)
@@ -115,16 +120,52 @@ struct SettingsView: View {
     }
 }
 
-/// The white symbol on a small coloured rounded square, as in System Settings.
+/// The white symbol on a small coloured rounded square, as in System Settings. 20 points in
+/// the sidebar, 40 in a pane's header.
 struct SettingsIcon: View {
     let tab: SettingsTab
+    var size: CGFloat = 20
 
     var body: some View {
         Image(systemName: tab.symbol)
-            .font(.system(size: 11, weight: .semibold))
+            .font(.system(size: size * 0.55, weight: .semibold))
             .foregroundStyle(.white)
-            .frame(width: 20, height: 20)
-            .background(tab.tint.gradient, in: .rect(cornerRadius: 5))
+            .frame(width: size, height: size)
+            .background(tab.tint.gradient, in: .rect(cornerRadius: size / 4))
             .accessibilityHidden(true)
+    }
+}
+
+/// The card at the top of every pane: the feature's icon, a title, one line on what it does
+/// or its state, and its one main action (Start Focus, Check for Updates…) on the right.
+struct PaneHeader<Trailing: View>: View {
+    let tab: SettingsTab
+    var title: String?
+    let subtitle: String
+    @ViewBuilder var trailing: Trailing
+
+    init(_ tab: SettingsTab, title: String? = nil, subtitle: String, @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
+        self.tab = tab
+        self.title = title
+        self.subtitle = subtitle
+        self.trailing = trailing()
+    }
+
+    var body: some View {
+        Section {
+            HStack(spacing: 12) {
+                SettingsIcon(tab: tab, size: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title ?? tab.title).font(.headline)
+                    Text(subtitle)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                trailing
+            }
+            .padding(.vertical, 4)
+        }
     }
 }

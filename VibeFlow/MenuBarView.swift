@@ -4,8 +4,10 @@ import VibeFlowCore
 import SwiftUI
 
 /// The menu (design: Menu bar status, D6 remedies): status line, Last error with up to two
-/// actions, Stop, Read anyway, every action (reads, dictation, paste last dictation or AI
-/// answer) with the shortcut it is currently set to, Grant Accessibility access, Settings, Quit.
+/// actions, then three sections like the Settings sidebar: Voice (Stop, Read anyway, every
+/// read, dictation and paste action with the shortcut it is currently set to, History),
+/// Focus & Time (Pomodoro, the next meeting) and Utilities (Keep Awake). Grant
+/// Accessibility access, Settings, Quit.
 /// VibeFlow Dev starts with the branch and commit it was built from (BuildStamp); the release
 /// ends with its version and Check for Updates.
 struct MenuBarView: View {
@@ -62,65 +64,79 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("Stop") { container.stopAll() }
-            .disabled(!container.isRunning)
-            .keyboardShortcut(".", modifiers: .command)
+        Section("Voice") {
+            Button("Stop") { container.stopAll() }
+                .disabled(!container.isRunning)
+                .keyboardShortcut(".", modifiers: .command)
 
-        if case .awaitingConfirm(_, .menu, _) = session.state {
-            Button("Read anyway") { session.readAnyway() }
-        }
-
-        Button("Read selection") { container.hotkey(.read) }
-            .globalKeyboardShortcut(.read)
-        Button("Smart read selection") { container.hotkey(.smartRead) }
-            .globalKeyboardShortcut(.smartRead)
-        Button("Speak clipboard") { container.menuRead(.read) }
-            .globalKeyboardShortcut(.readClipboard)
-        Button("Smart read clipboard") { container.menuRead(.smartRead) }
-            .globalKeyboardShortcut(.smartReadClipboard)
-
-        Menu("History") {
-            let recent = container.history.entries.prefix(10)
-            if recent.isEmpty {
-                Text("Nothing yet")
+            if case .awaitingConfirm(_, .menu, _) = session.state {
+                Button("Read anyway") { session.readAnyway() }
             }
-            ForEach(recent) { entry in
-                Button(HistoryFormat.menuTitle(entry)) {
-                    // A read plays again; a question opens so the full answer can be seen.
-                    if entry.kind == .read {
-                        container.readAgain(entry)
-                    } else {
-                        HistoryWindow.present(openWindow, container: container, select: entry.id)
+
+            Button("Read selection") { container.hotkey(.read) }
+                .globalKeyboardShortcut(.read)
+            Button("Smart read selection") { container.hotkey(.smartRead) }
+                .globalKeyboardShortcut(.smartRead)
+            Button("Speak clipboard") { container.menuRead(.read) }
+                .globalKeyboardShortcut(.readClipboard)
+            Button("Smart read clipboard") { container.menuRead(.smartRead) }
+                .globalKeyboardShortcut(.smartReadClipboard)
+
+            Button(isDictatingHandsFree ? "Stop dictation" : "Start dictation") { container.toggleRecording() }
+                .globalKeyboardShortcut(.recordToggle)
+                .disabled(dictation.state.isBusy && !isDictatingHandsFree)
+            // Push-to-talk needs the key held down, so the menu only shows where it lives.
+            Button("Hold to dictate") {}
+                .globalKeyboardShortcut(.record)
+                .disabled(true)
+
+            Button("Paste last dictation") { container.pasteLastDictation() }
+                .globalKeyboardShortcut(.pasteLastDictation)
+                .disabled(dictation.lastText == nil || clipboardBusy)
+            Button("Paste last smart read") { container.pasteLastAnswer() }
+                .globalKeyboardShortcut(.pasteLastAnswer)
+                .disabled(session.lastAnswer == nil || clipboardBusy)
+
+            Menu("History") {
+                let recent = container.history.entries.prefix(10)
+                if recent.isEmpty {
+                    Text("Nothing yet")
+                }
+                ForEach(recent) { entry in
+                    Button(HistoryFormat.menuTitle(entry)) {
+                        // A read plays again; a question opens so the full answer can be seen.
+                        if entry.kind == .read {
+                            container.readAgain(entry)
+                        } else {
+                            HistoryWindow.present(openWindow, container: container, select: entry.id)
+                        }
                     }
                 }
+                Divider()
+                Button("Show All History…") { HistoryWindow.present(openWindow, container: container) }
             }
-            Divider()
-            Button("Show All History…") { HistoryWindow.present(openWindow, container: container) }
         }
 
         Divider()
 
-        Button(isDictatingHandsFree ? "Stop dictation" : "Start dictation") { container.toggleRecording() }
-            .globalKeyboardShortcut(.recordToggle)
-            .disabled(dictation.state.isBusy && !isDictatingHandsFree)
-        // Push-to-talk needs the key held down, so the menu only shows where it lives.
-        Button("Hold to dictate") {}
-            .globalKeyboardShortcut(.record)
-            .disabled(true)
+        Section("Focus & Time") {
+            Menu {
+                PomodoroMenuItems()
+            } label: {
+                Label(pomodoroTitle, systemImage: "timer")
+            }
+            NextMeetingMenu()
+        }
 
         Divider()
 
-        Button("Paste last dictation") { container.pasteLastDictation() }
-            .globalKeyboardShortcut(.pasteLastDictation)
-            .disabled(dictation.lastText == nil || clipboardBusy)
-        Button("Paste last smart read") { container.pasteLastAnswer() }
-            .globalKeyboardShortcut(.pasteLastAnswer)
-            .disabled(session.lastAnswer == nil || clipboardBusy)
-
-        Divider()
-
-        Menu("Keep Awake") { KeepAwakeMenuItems() }
-        Menu("Pomodoro") { PomodoroMenuItems() }
+        Section("Utilities") {
+            Menu {
+                KeepAwakeMenuItems()
+            } label: {
+                Label(keepAwakeTitle, systemImage: "cup.and.saucer")
+            }
+        }
 
         Divider()
 
@@ -158,6 +174,21 @@ struct MenuBarView: View {
         return "VibeFlow Dev · \(stamp.menuTitle())"
     }
     #endif
+
+    /// "Pomodoro" while idle, "Pomodoro · Focus · 18:22 left" while a session runs.
+    private var pomodoroTitle: String {
+        let focus = container.focus
+        guard focus.session != nil else { return "Pomodoro" }
+        return "Pomodoro · \(focus.statusLine(at: Date()))"
+    }
+
+    /// "Keep Awake · Off", "Keep Awake · 1:45", "Keep Awake · On" (no end).
+    private var keepAwakeTitle: String {
+        let awake = container.keepAwake
+        guard awake.isActive else { return "Keep Awake · Off" }
+        let remaining = KeepAwakeFormat.remaining(until: awake.endsAt, now: Date())
+        return "Keep Awake · \(remaining.isEmpty ? "On" : remaining)"
+    }
 
     /// A dictation or a read's Copy owns the clipboard, so pasting again would collide with it.
     private var clipboardBusy: Bool { dictation.state.isBusy || session.state == .capturing }

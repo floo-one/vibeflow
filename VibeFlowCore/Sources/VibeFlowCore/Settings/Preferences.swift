@@ -62,6 +62,7 @@ public final class Preferences {
         static let meetingsLeadMinutes = "meetings.leadMinutes"
         static let meetingsCalendars = "meetings.calendars"
         static let focusPreset = "focus.preset"
+        static let focusAutoAdvance = "focus.autoAdvance"
         static let focusCustomFocus = "focus.custom.focus"
         static let focusCustomBreak = "focus.custom.break"
         static let focusCustomLongBreak = "focus.custom.longBreak"
@@ -156,6 +157,10 @@ public final class Preferences {
             defaults.set(focusCustom.rounds, forKey: Key.focusCustomRounds)
         }
     }
+    /// A phase that runs out starts the next one by itself instead of waiting for a click.
+    public var focusAutoAdvance: Bool {
+        didSet { defaults.set(focusAutoAdvance, forKey: Key.focusAutoAdvance) }
+    }
     /// The rhythm of the selected preset.
     public var focusRhythm: FocusRhythm { focusPreset.rhythm(custom: focusCustom) }
 
@@ -188,6 +193,7 @@ public final class Preferences {
             .flatMap { MeetingSchedule.leadTimes.contains($0) ? $0 : nil } ?? MeetingSchedule.defaultLeadMinutes
         meetingsCalendars = defaults.stringArray(forKey: Key.meetingsCalendars)
         focusPreset = defaults.string(forKey: Key.focusPreset).flatMap(FocusPreset.init(rawValue:)) ?? .classic
+        focusAutoAdvance = defaults.bool(forKey: Key.focusAutoAdvance)
         let classic = FocusRhythm.classic
         focusCustom = FocusRhythm(
             focusMinutes: defaults.object(forKey: Key.focusCustomFocus) as? Int ?? classic.focusMinutes,

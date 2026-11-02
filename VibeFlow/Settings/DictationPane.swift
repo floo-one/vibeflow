@@ -1,7 +1,8 @@
 import SwiftUI
 import VibeFlowCore
 
-/// Dictation: its shortcuts, the transcription and cleanup models and the microphone.
+/// Dictation: its shortcuts, the transcription and cleanup models, the microphone and the
+/// start and stop sound.
 struct DictationPane: View {
     @Environment(AppContainer.self) private var container
     @State private var microphones: [AudioDevice] = []
@@ -9,6 +10,7 @@ struct DictationPane: View {
     var body: some View {
         @Bindable var prefs = container.preferences
         Form {
+            PaneHeader(.dictation, subtitle: "Speak, and the cleaned-up text is pasted where you type.")
             Section {
                 ShortcutRecorder("Dictate", hint: "Hold to talk, release to paste", name: .record)
                 ShortcutRecorder("Hands-free", hint: "Press to start, press again to stop", name: .recordToggle)
@@ -19,13 +21,14 @@ struct DictationPane: View {
                 Text("Smart read, read and dictate sit on the three keys right above Option: , . - on a German keyboard, , . / on a US one.")
                     .foregroundStyle(.secondary)
             }
-            Section {
+            Section("Transcription") {
                 ModelPicker(title: "Transcription model", options: ModelOptions.transcription, selection: $prefs.transcriptionModel)
                 ModelPicker(title: "Cleanup model", options: ModelOptions.cleanup, selection: $prefs.cleanupModel)
                 PromptsButton(initial: .dictation)
             }
-            Section {
+            Section("Input") {
                 DevicePicker(title: "Microphone", automaticLabel: "Automatic", devices: microphones, selection: $prefs.microphoneUID)
+                Toggle("Sound when dictation starts and stops", isOn: $prefs.dictationSounds)
             }
         }
         .formStyle(.grouped)

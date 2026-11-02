@@ -2,8 +2,9 @@ import Charts
 import SwiftUI
 import VibeFlowCore
 
-/// Settings > Pomodoro: the session controls, the rhythm as four cards in plain words (Custom
-/// shows its steppers), the stats with a 30-day chart, and the history by day. The per-minute
+/// Settings > Pomodoro: the status and the session controls in the header, the rhythm as four
+/// cards in plain words (Custom shows its steppers), what happens between phases with the
+/// start/pause shortcut, the stats with a 30-day chart, and the history by day. The per-minute
 /// timeline rolls "today" and the streak over at midnight.
 struct PomodoroPane: View {
     @Environment(AppContainer.self) private var container
@@ -15,6 +16,7 @@ struct PomodoroPane: View {
             Form {
                 session
                 rhythm
+                betweenPhases
                 stats(at: context.date)
                 history
             }
@@ -25,20 +27,26 @@ struct PomodoroPane: View {
     // MARK: Session
 
     private var session: some View {
-        Section {
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                LabeledContent("Status", value: container.focus.statusLine(at: context.date))
-                    .monospacedDigit()
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let focus = container.focus
+            PaneHeader(.pomodoro, subtitle: focus.session == nil
+                       ? "Start a round here or from the VibeFlow menu. It shows in the menu bar only while it runs."
+                       : focus.statusLine(at: context.date)) {
+                HStack { PomodoroControls() }
             }
-            HStack {
-                Spacer()
-                PomodoroControls()
+        }
+    }
+
+    // MARK: Between phases
+
+    private var betweenPhases: some View {
+        @Bindable var prefs = container.preferences
+        return Section("Between phases") {
+            Toggle(isOn: $prefs.focusAutoAdvance) {
+                Text("Start the next phase on its own")
+                Text("Off: the menu bar shows Break? or Focus? and waits for your click.")
             }
-        } header: {
-            Text("Session")
-        } footer: {
-            Text("Start a round here or from the VibeFlow menu. While a session runs, the time left sits in the menu bar.")
-                .foregroundStyle(.secondary)
+            ShortcutRecorder("Start or pause", hint: "Starts, pauses and resumes a round from anywhere", name: .focusToggle)
         }
     }
 
