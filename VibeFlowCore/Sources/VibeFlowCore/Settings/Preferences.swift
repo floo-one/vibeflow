@@ -35,7 +35,7 @@ public enum ColorMode: String, CaseIterable, Sendable {
 }
 
 /// The few settings that are not per-app presets, backed by UserDefaults: a model per job,
-/// the audio devices, the dictation cues, launch at login and the update channel. Shortcuts live in KeyboardShortcuts' own storage;
+/// the audio devices, the dictation cues, the focus timer, launch at login and the update channel. Shortcuts live in KeyboardShortcuts' own storage;
 /// keys live in the Keychain.
 @MainActor
 @Observable
@@ -61,6 +61,8 @@ public final class Preferences {
         static let meetingsEnabled = "meetings.enabled"
         static let meetingsLeadMinutes = "meetings.leadMinutes"
         static let meetingsCalendars = "meetings.calendars"
+        static let focusEnabled = "focus.enabled"
+        static let focusPreset = "focus.preset"
     }
 
     public var launchAtLogin: Bool {
@@ -137,6 +139,15 @@ public final class Preferences {
     public var meetingsCalendars: [String]? {
         didSet { defaults.set(meetingsCalendars, forKey: Key.meetingsCalendars) }
     }
+    /// The focus timer in the menu bar. Off until switched on in General, so an update never
+    /// adds a menu bar item nobody asked for.
+    public var focusEnabled: Bool {
+        didSet { defaults.set(focusEnabled, forKey: Key.focusEnabled) }
+    }
+    /// Picked in the focus menu; the running session keeps its own copy.
+    public var focusPreset: FocusPreset {
+        didSet { defaults.set(focusPreset.rawValue, forKey: Key.focusPreset) }
+    }
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -161,6 +172,8 @@ public final class Preferences {
         meetingsLeadMinutes = (defaults.object(forKey: Key.meetingsLeadMinutes) as? Int)
             .flatMap { MeetingSchedule.leadTimes.contains($0) ? $0 : nil } ?? MeetingSchedule.defaultLeadMinutes
         meetingsCalendars = defaults.stringArray(forKey: Key.meetingsCalendars)
+        focusEnabled = defaults.bool(forKey: Key.focusEnabled)
+        focusPreset = defaults.string(forKey: Key.focusPreset).flatMap(FocusPreset.init(rawValue:)) ?? .classic
     }
 
     public var vocabularyTerms: [String] { Self.parseVocabulary(vocabulary) }

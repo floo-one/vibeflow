@@ -40,6 +40,13 @@ struct VibeFlowApp: App {
             Text(MeetingSchedule.label(for: container.meetings.nudge(at: clock.now)) ?? "")
                 .monospacedDigit()
         }
+        MenuBarExtra(isInserted: focusInserted) {
+            FocusMenuView(now: clock.now)
+                .environment(container)
+        } label: {
+            FocusLabel(focus: container.focus)
+        }
+        .menuBarExtraStyle(.window)
         Settings {
             SettingsView()
                 .environment(container)
@@ -56,6 +63,12 @@ struct VibeFlowApp: App {
     /// each minute tick and whenever a sync changes the list.
     private var meetingsInserted: Binding<Bool> {
         Binding(get: { container.meetings.nudge(at: clock.now) != .hidden }, set: { _ in })
+    }
+
+    /// Shown while the focus timer is on; only the General toggle changes that, so dragging the
+    /// item out of the menu bar never ends a session.
+    private var focusInserted: Binding<Bool> {
+        Binding(get: { container.preferences.focusEnabled }, set: { _ in })
     }
 
     /// Shown while there is at least one clock; the Clocks tab is the only way to change that.
