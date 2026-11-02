@@ -107,7 +107,7 @@ public struct FeedbackReport: Equatable, Sendable {
         let scrub = { Self.scrub($0, home: home) }
         self.kind = kind
         environment = facts.environment
-        release = "vibeflow@\(facts.version)+\(facts.build)"
+        release = Self.release(version: facts.version, build: facts.build)
         message = scrub("[\(kind.title)] \(note.trimmingCharacters(in: .whitespacesAndNewlines))")
 
         var tags = [
@@ -147,6 +147,11 @@ public struct FeedbackReport: Equatable, Sendable {
             logFile = nil
             logsNote = scrub("Logs unavailable: \(reason)")
         }
+    }
+
+    /// Sentry's release name, shared by feedback and crash events.
+    public static func release(version: String, build: String) -> String {
+        "vibeflow@\(version)+\(build)"
     }
 
     /// The exact text the form shows under "What gets sent".

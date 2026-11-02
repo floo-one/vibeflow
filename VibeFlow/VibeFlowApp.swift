@@ -9,6 +9,7 @@ struct VibeFlowApp: App {
 
     init() {
         AppDelegate.quitOlderCopies()
+        FeedbackSender.start()
         _container = State(initialValue: AppContainer())
     }
 
