@@ -111,6 +111,16 @@ public enum KeepAwakeFormat {
         return "\(minutes / 60):\(String(format: "%02d", minutes % 60))"
     }
 
+    /// Settings countdown: "1:04:32", "4:32", "" while indefinite or off.
+    public static func countdown(until endsAt: Date?, now: Date) -> String {
+        guard let endsAt, endsAt != .distantFuture else { return "" }
+        let seconds = max(0, Int(endsAt.timeIntervalSince(now).rounded(.up)))
+        let (hours, minutes, rest) = (seconds / 3600, seconds / 60 % 60, seconds % 60)
+        return hours > 0
+            ? "\(hours):\(String(format: "%02d", minutes)):\(String(format: "%02d", rest))"
+            : "\(minutes):\(String(format: "%02d", rest))"
+    }
+
     /// Menu status line: "Awake until 14:30", "Awake indefinitely", "Not keeping awake".
     public static func status(until endsAt: Date?, in zone: TimeZone = .current) -> String {
         guard let endsAt else { return "Not keeping awake" }

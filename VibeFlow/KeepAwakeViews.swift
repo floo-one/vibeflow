@@ -5,6 +5,7 @@ import VibeFlowCore
 /// item: a duration starts (or replaces) a session, End Session stops it.
 struct KeepAwakeMenuItems: View {
     @Environment(AppContainer.self) private var container
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         let awake = container.keepAwake
@@ -21,6 +22,55 @@ struct KeepAwakeMenuItems: View {
             get: { !container.preferences.keepAwakeDisplayOn },
             set: { container.setKeepAwakeDisplayOn(!$0) }
         ))
+        Button("Keep Awake Settings…") { SettingsWindow.present(openSettings, container: container, tab: .keepAwake) }
+    }
+}
+
+/// Settings > Keep Awake: the same controls as the menu, with a live countdown.
+struct KeepAwakePane: View {
+    @Environment(AppContainer.self) private var container
+    @State private var duration = KeepAwakeDuration.minutes(60)
+
+    var body: some View {
+        let awake = container.keepAwake
+        Form {
+            Section {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    LabeledContent(KeepAwakeFormat.status(until: awake.endsAt)) {
+                        Text(KeepAwakeFormat.countdown(until: awake.endsAt, now: context.date))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Picker("Duration", selection: $duration) {
+                    ForEach(KeepAwakeDuration.presets, id: \.self) { Text($0.title).tag($0) }
+                }
+                HStack {
+                    Spacer()
+                    if awake.isActive {
+                        Button("End Session") { awake.stop() }
+                    }
+                    Button(awake.isActive ? "Restart" : "Start") { awake.start(duration) }
+                        .buttonStyle(.borderedProminent)
+                }
+            } header: {
+                Text("Session")
+            } footer: {
+                Text("While a session runs, a cup with the time left sits in the menu bar. Restart replaces the running session with the duration above.")
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle("Keep the display on", isOn: Binding(
+                    get: { container.preferences.keepAwakeDisplayOn },
+                    set: { container.setKeepAwakeDisplayOn($0) }
+                ))
+            } footer: {
+                Text("Off lets the screen sleep while the Mac stays awake. Closing the lid still puts the Mac to sleep.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 
