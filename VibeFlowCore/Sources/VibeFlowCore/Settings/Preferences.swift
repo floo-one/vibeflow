@@ -61,8 +61,12 @@ public final class Preferences {
         static let meetingsEnabled = "meetings.enabled"
         static let meetingsLeadMinutes = "meetings.leadMinutes"
         static let meetingsCalendars = "meetings.calendars"
-        static let focusAutoAdvance = "focus.autoAdvance"
         static let focusPreset = "focus.preset"
+        static let focusAutoAdvance = "focus.autoAdvance"
+        static let focusCustomFocus = "focus.custom.focus"
+        static let focusCustomBreak = "focus.custom.break"
+        static let focusCustomLongBreak = "focus.custom.longBreak"
+        static let focusCustomRounds = "focus.custom.rounds"
         static let keepAwakeDisplayOn = "keepAwake.displayOn"
     }
 
@@ -140,14 +144,25 @@ public final class Preferences {
     public var meetingsCalendars: [String]? {
         didSet { defaults.set(meetingsCalendars, forKey: Key.meetingsCalendars) }
     }
+    /// Picked in the Pomodoro pane or menu; the running session keeps its own copy.
+    public var focusPreset: FocusPreset {
+        didSet { defaults.set(focusPreset.rawValue, forKey: Key.focusPreset) }
+    }
+    /// The Custom card's values; kept while another preset is selected.
+    public var focusCustom: FocusRhythm {
+        didSet {
+            defaults.set(focusCustom.focusMinutes, forKey: Key.focusCustomFocus)
+            defaults.set(focusCustom.shortBreakMinutes, forKey: Key.focusCustomBreak)
+            defaults.set(focusCustom.longBreakMinutes, forKey: Key.focusCustomLongBreak)
+            defaults.set(focusCustom.rounds, forKey: Key.focusCustomRounds)
+        }
+    }
     /// A phase that runs out starts the next one by itself instead of waiting for a click.
     public var focusAutoAdvance: Bool {
         didSet { defaults.set(focusAutoAdvance, forKey: Key.focusAutoAdvance) }
     }
-    /// Picked in Settings > Focus or Start Focus; the running session keeps its own copy.
-    public var focusPreset: FocusPreset {
-        didSet { defaults.set(focusPreset.rawValue, forKey: Key.focusPreset) }
-    }
+    /// The rhythm of the selected preset.
+    public var focusRhythm: FocusRhythm { focusPreset.rhythm(custom: focusCustom) }
 
     /// Keep Awake also keeps the display on; off lets it sleep while the Mac stays awake.
     public var keepAwakeDisplayOn: Bool {
@@ -177,8 +192,15 @@ public final class Preferences {
         meetingsLeadMinutes = (defaults.object(forKey: Key.meetingsLeadMinutes) as? Int)
             .flatMap { MeetingSchedule.leadTimes.contains($0) ? $0 : nil } ?? MeetingSchedule.defaultLeadMinutes
         meetingsCalendars = defaults.stringArray(forKey: Key.meetingsCalendars)
-        focusAutoAdvance = defaults.bool(forKey: Key.focusAutoAdvance)
         focusPreset = defaults.string(forKey: Key.focusPreset).flatMap(FocusPreset.init(rawValue:)) ?? .classic
+        focusAutoAdvance = defaults.bool(forKey: Key.focusAutoAdvance)
+        let classic = FocusRhythm.classic
+        focusCustom = FocusRhythm(
+            focusMinutes: defaults.object(forKey: Key.focusCustomFocus) as? Int ?? classic.focusMinutes,
+            shortBreakMinutes: defaults.object(forKey: Key.focusCustomBreak) as? Int ?? classic.shortBreakMinutes,
+            longBreakMinutes: defaults.object(forKey: Key.focusCustomLongBreak) as? Int ?? classic.longBreakMinutes,
+            rounds: defaults.object(forKey: Key.focusCustomRounds) as? Int ?? classic.rounds
+        ).clamped
         keepAwakeDisplayOn = defaults.object(forKey: Key.keepAwakeDisplayOn) as? Bool ?? true
     }
 

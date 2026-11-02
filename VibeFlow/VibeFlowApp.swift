@@ -72,8 +72,8 @@ struct VibeFlowApp: App {
         Binding(get: { container.meetings.nudge(at: clock.now) != .hidden }, set: { _ in })
     }
 
-    /// Shown from Start until Stop, waiting phases included; started from the VibeFlow menu,
-    /// Settings > Focus or the shortcut. Dragging the item away never ends a session.
+    /// Shown while a Pomodoro session exists (running, paused or waiting for a click); started
+    /// from the VibeFlow menu or Settings > Pomodoro, like Keep Awake.
     private var focusInserted: Binding<Bool> {
         Binding(get: { container.focus.session != nil }, set: { _ in })
     }

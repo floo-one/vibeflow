@@ -6,7 +6,7 @@ import SwiftUI
 /// The menu (design: Menu bar status, D6 remedies): status line, Last error with up to two
 /// actions, then three sections like the Settings sidebar: Voice (Stop, Read anyway, every
 /// read, dictation and paste action with the shortcut it is currently set to, History),
-/// Focus & Time (start or steer focus, the next meeting) and Utilities (Keep Awake). Grant
+/// Focus & Time (Pomodoro, the next meeting) and Utilities (Keep Awake). Grant
 /// Accessibility access, Settings, Quit.
 /// VibeFlow Dev starts with the branch and commit it was built from (BuildStamp); the release
 /// ends with its version and Check for Updates.
@@ -120,7 +120,11 @@ struct MenuBarView: View {
         Divider()
 
         Section("Focus & Time") {
-            FocusMenuItems()
+            Menu {
+                PomodoroMenuItems()
+            } label: {
+                Label(pomodoroTitle, systemImage: "timer")
+            }
             NextMeetingMenu()
         }
 
@@ -170,6 +174,13 @@ struct MenuBarView: View {
         return "VibeFlow Dev · \(stamp.menuTitle())"
     }
     #endif
+
+    /// "Pomodoro" while idle, "Pomodoro · Focus · 18:22 left" while a session runs.
+    private var pomodoroTitle: String {
+        let focus = container.focus
+        guard focus.session != nil else { return "Pomodoro" }
+        return "Pomodoro · \(focus.statusLine(at: Date()))"
+    }
 
     /// "Keep Awake · Off", "Keep Awake · 1:45", "Keep Awake · On" (no end).
     private var keepAwakeTitle: String {

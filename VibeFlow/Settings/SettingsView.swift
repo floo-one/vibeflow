@@ -3,7 +3,7 @@ import SwiftUI
 /// The Settings panes in sidebar order. Title, symbol and colour live here so the menu can
 /// use the same look for the same feature.
 enum SettingsTab: Hashable, CaseIterable {
-    case general, accounts, read, smartRead, dictation, clocks, meetings, focus, keepAwake
+    case general, accounts, read, smartRead, dictation, clocks, meetings, pomodoro, keepAwake
 
     var title: String {
         switch self {
@@ -14,8 +14,8 @@ enum SettingsTab: Hashable, CaseIterable {
         case .dictation: return "Dictation"
         case .clocks: return "Clocks"
         case .meetings: return "Meetings"
-        case .focus: return "Focus"
         case .keepAwake: return "Keep Awake"
+        case .pomodoro: return "Pomodoro"
         }
     }
 
@@ -28,8 +28,8 @@ enum SettingsTab: Hashable, CaseIterable {
         case .dictation: return "mic.fill"
         case .clocks: return "clock"
         case .meetings: return "calendar"
-        case .focus: return "timer"
         case .keepAwake: return "cup.and.saucer.fill"
+        case .pomodoro: return "timer"
         }
     }
 
@@ -39,7 +39,7 @@ enum SettingsTab: Hashable, CaseIterable {
         case .read: return FeatureColor.read
         case .smartRead: return FeatureColor.smartRead
         case .dictation: return FeatureColor.dictation
-        case .clocks, .meetings, .focus: return FeatureColor.tools
+        case .clocks, .meetings, .pomodoro: return FeatureColor.tools
         case .keepAwake: return FeatureColor.utilities
         }
     }
@@ -76,7 +76,7 @@ struct SettingsView: View {
                 Section("Focus & Time") {
                     row(.clocks)
                     row(.meetings)
-                    row(.focus)
+                    row(.pomodoro)
                 }
                 Section("Utilities") {
                     row(.keepAwake)
@@ -114,8 +114,8 @@ struct SettingsView: View {
         case .dictation: DictationPane()
         case .clocks: ClocksTab()
         case .meetings: MeetingsTab()
-        case .focus: FocusPane()
         case .keepAwake: KeepAwakePane()
+        case .pomodoro: PomodoroPane()
         }
     }
 }
