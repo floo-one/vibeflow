@@ -9,18 +9,27 @@ struct SmartReadPane: View {
     var body: some View {
         @Bindable var prefs = container.preferences
         Form {
+            PaneHeader(.smartRead, subtitle: "Tap for a spoken brief of the selection. Hold to ask a follow-up.")
             Section("Shortcuts") {
                 ShortcutRecorder("Smart read selection", hint: "Tap for a brief of the selected text", name: .smartRead)
                 HeldShortcutRow(title: "Ask a follow-up", hint: "Hold the same key, speak, let go to hear the answer", name: .smartRead)
                 ShortcutRecorder("Smart read clipboard", name: .smartReadClipboard)
                 ShortcutRecorder("Paste last smart read", name: .pasteLastAnswer)
             }
-            Section {
+            Section("Thinking") {
                 ModelPicker(title: "Model", options: ModelOptions.smartRead, selection: $prefs.smartReadModel)
-                SpeedSlider(speed: $prefs.smartReadSpeed)
                 PromptsButton(initial: .brief)
+            }
+            Section {
+                LabeledContent("Voice") {
+                    Button("Same as Read") { container.settingsTab = .read }
+                        .buttonStyle(.link)
+                }
+                SpeedSlider(speed: $prefs.smartReadSpeed)
+            } header: {
+                Text("Speaking")
             } footer: {
-                Text("Speaks with the voice set in Read. The menu can copy the last answer.")
+                Text("A brief is listened to more slowly than a text you skim, so it has its own speed.")
                     .foregroundStyle(.secondary)
             }
         }

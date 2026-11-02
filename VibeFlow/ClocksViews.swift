@@ -28,6 +28,13 @@ struct ClocksTab: View {
         @Bindable var prefs = container.preferences
         TimelineView(.everyMinute) { context in
             Form {
+                PaneHeader(.clocks, subtitle: "Other time zones, always in the menu bar.") {
+                    if !prefs.worldClocks.isEmpty {
+                        Text(ClockFormat.label(for: prefs.worldClocks, at: context.date))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Section {
                     if prefs.worldClocks.isEmpty {
                         Text("No clocks in the menu bar.").foregroundStyle(.secondary)
@@ -49,10 +56,11 @@ struct ClocksTab: View {
                     }
                     .onMove { prefs.worldClocks.move(fromOffsets: $0, toOffset: $1) }
                 } header: {
-                    Text("Menu bar")
+                    Text("In the menu bar")
                 } footer: {
                     if prefs.worldClocks.count > 1 {
-                        Text("Drag to reorder, or right-click a clock.").foregroundStyle(.secondary)
+                        Text("Drag to reorder, or right-click a clock. The order here is the order in the menu bar.")
+                            .foregroundStyle(.secondary)
                     }
                 }
 

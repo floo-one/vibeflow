@@ -1,7 +1,8 @@
 import SwiftUI
 import VibeFlowCore
 
-/// The API keys, each with what it unlocks. Google sign-in lives in Meetings.
+/// Every key and sign-in VibeFlow uses, each with the features that need it: the API keys
+/// and Google Calendar (for Meetings).
 struct AccountsPane: View {
     @Environment(AppContainer.self) private var container
     @State private var elevenLabs = ""
@@ -12,19 +13,20 @@ struct AccountsPane: View {
 
     var body: some View {
         Form {
+            PaneHeader(.accounts, subtitle: "Every key and sign-in in one place, kept in your Keychain.")
             Section("API keys") {
-                keyField("ElevenLabs", hint: "Natural voices for Read and Smart read", text: $elevenLabs, key: .elevenLabs)
-                keyField("Anthropic", hint: "Smart read and follow-up questions", text: $anthropic, key: .anthropic)
-                keyField("Groq", hint: "Whisper transcription and cleanup", text: $groq, key: .groq)
-            }
-            Section {
+                keyField("ElevenLabs", hint: "Used by Read and Smart Read", text: $elevenLabs, key: .elevenLabs)
+                keyField("Anthropic", hint: "Used by Smart Read", text: $anthropic, key: .anthropic)
+                keyField("Groq", hint: "Used by Dictation", text: $groq, key: .groq)
                 HStack {
-                    Button("Save") { save() }
-                        .keyboardShortcut(.defaultAction)
                     if saved { Text("Saved").foregroundStyle(.secondary) }
                     if let error { Text(error).foregroundStyle(.red) }
+                    Spacer()
+                    Button("Save Keys") { save() }
+                        .keyboardShortcut(.defaultAction)
                 }
             }
+            GoogleAccountSection()
         }
         .formStyle(.grouped)
         .onAppear {
