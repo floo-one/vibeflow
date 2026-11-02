@@ -72,10 +72,10 @@ struct VibeFlowApp: App {
         Binding(get: { container.meetings.nudge(at: clock.now) != .hidden }, set: { _ in })
     }
 
-    /// Shown while the focus timer is on; only the General toggle changes that, so dragging the
-    /// item out of the menu bar never ends a session.
+    /// Shown while a Pomodoro session exists (running, paused or waiting for a click); started
+    /// from the VibeFlow menu or Settings > Pomodoro, like Keep Awake.
     private var focusInserted: Binding<Bool> {
-        Binding(get: { container.preferences.focusEnabled }, set: { _ in })
+        Binding(get: { container.focus.session != nil }, set: { _ in })
     }
 
     /// Shown while a keep-awake session runs; started from the VibeFlow menu.

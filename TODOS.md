@@ -78,18 +78,6 @@
 **Priority:** P3
 **Depends on:** the focus timer shipped and a week of daily use.
 
-### Custom focus preset
-
-**What:** A fourth preset, Custom, with its own focus, short break, long break and blocks-before-long, edited in the Focus popup rather than in Settings.
-
-**Why:** The user asked for a timer that is "customizable, but still easy to set up". v1 ships three fixed presets (Classic 25/5, Long 50/10, Deep 90/20).
-
-**Context:** docs/designs/focus-timer.md, premise 2 and The Assignment. The trigger is a Flow duration in daily use that isn't one of the three presets. Keep it out of Settings, which stay minimal.
-
-**Effort:** S
-**Priority:** P3
-**Depends on:** the focus timer shipped, and that trigger firing.
-
 ## Clipboard
 
 ### One clipboard owner across reads, dictation and paste again

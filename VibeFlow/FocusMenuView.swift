@@ -1,7 +1,7 @@
 import SwiftUI
 import VibeFlowCore
 
-/// The focus item in the menu bar: the countdown while a phase runs, "Break?" or "Focus?"
+/// The Pomodoro item in the menu bar: the countdown while a phase runs, "Break?" or "Focus?"
 /// while it waits for a click, a timer symbol when idle.
 struct FocusLabel: View {
     let focus: FocusTimer
@@ -25,7 +25,7 @@ struct FocusLabel: View {
     }
 }
 
-/// The focus popup: countdown, cycle dots, the buttons for each state, today and the last
+/// The Pomodoro popup: countdown, cycle dots, the buttons for each state, today and the last
 /// seven days, the preset. It stays open after a click and closes when you click elsewhere.
 /// `now` is the per-minute menu bar clock, so "Today" rolls over at midnight while idle.
 struct FocusMenuView: View {
@@ -64,7 +64,7 @@ struct FocusMenuView: View {
                 .monospacedDigit()
         }
         dots(session)
-        HStack(spacing: 8) { buttons(session) }
+        HStack(spacing: 8) { PomodoroControls() }
             .controlSize(.large)
     }
 
@@ -73,8 +73,8 @@ struct FocusMenuView: View {
         case .running(let phase, _): return "\(name(phase)) · \(session.preset.title)"
         case .paused(let phase, _): return "\(name(phase)) paused"
         case .awaiting(let phase):
-            let dots = FocusEngine.dots(for: session, preset: focus.preset)
-            return phase.isBreak ? "Focus done · \(dots.filled) of \(dots.total)" : "Break over"
+            let dots = FocusEngine.dots(for: session, rhythm: focus.rhythm)
+            return phase.isBreak ? "Focus done · round \(dots.filled) of \(dots.total)" : "Break over"
         }
     }
 
@@ -87,7 +87,7 @@ struct FocusMenuView: View {
     }
 
     private func dots(_ session: FocusSession?) -> some View {
-        let dots = FocusEngine.dots(for: session, preset: focus.preset)
+        let dots = FocusEngine.dots(for: session, rhythm: focus.rhythm)
         let runningFocus: Bool = {
             if case .running(.focus, _) = session?.stage { return true }
             if case .paused(.focus, _) = session?.stage { return true }
@@ -106,32 +106,9 @@ struct FocusMenuView: View {
             .frame(width: 9, height: 9)
         }
         .accessibilityElement()
-        .accessibilityLabel("\(dots.filled) of \(dots.total) focus blocks done")
+        .accessibilityLabel("\(dots.filled) of \(dots.total) rounds done")
     }
 
-    @ViewBuilder private func buttons(_ session: FocusSession?) -> some View {
-        switch session?.stage {
-        case nil:
-            Button("Start focus (\(focus.preset.focusMinutes) min)") { focus.send(.start) }
-                .buttonStyle(.borderedProminent)
-        case .running?:
-            Button("Pause") { focus.send(.pause) }
-            Button("Skip") { focus.send(.skip) }
-            Button("Stop") { focus.send(.stop) }
-        case .paused?:
-            Button("Resume") { focus.send(.resume) }
-                .buttonStyle(.borderedProminent)
-            Button("Stop") { focus.send(.stop) }
-        case .awaiting(let phase)?:
-            let minutes = focus.preset.minutes(for: phase)
-            Button(phase.isBreak ? "Start break (\(minutes) min)" : "Start focus (\(minutes) min)") { focus.send(.start) }
-                .buttonStyle(.borderedProminent)
-            if phase.isBreak {
-                Button("Skip break") { focus.send(.skip) }
-            }
-            Button("Stop") { focus.send(.stop) }
-        }
-    }
 
     // MARK: Stats
 
@@ -141,8 +118,8 @@ struct FocusMenuView: View {
         let peak = max(week.map(\.minutes).max() ?? 0, 1)
         let weekMinutes = week.reduce(0) { $0 + $1.minutes }
         return VStack(alignment: .leading, spacing: 6) {
-            Text(today.blocks == 0 ? "**Today** · no blocks yet"
-                 : "**Today** · \(today.blocks) \(today.blocks == 1 ? "block" : "blocks") · \(FocusStats.duration(minutes: today.minutes))")
+            Text(today.blocks == 0 ? "**Today** · no rounds yet"
+                 : "**Today** · \(FocusStats.rounds(today.blocks)) · \(FocusStats.duration(minutes: today.minutes))")
             HStack(alignment: .bottom, spacing: 6) {
                 ForEach(week, id: \.date) { day in
                     VStack(spacing: 3) {
@@ -166,10 +143,83 @@ struct FocusMenuView: View {
     }
 
     private var presetPicker: some View {
-        Picker("Preset", selection: Binding(get: { focus.preset }, set: { focus.selectPreset($0) })) {
+        Picker("Rhythm", selection: Binding(get: { focus.preset }, set: { focus.selectPreset($0) })) {
             ForEach(FocusPreset.allCases, id: \.self) { preset in
-                Text("\(preset.summary) · long \(preset.longBreakMinutes) after \(preset.blocksBeforeLong)").tag(preset)
+                Text("\(preset.title): \(preset.rhythm(custom: container.preferences.focusCustom).summary)").tag(preset)
             }
+        }
+    }
+}
+
+/// The buttons for the current state, shared by the VibeFlow menu, Settings > Pomodoro and the
+/// running item's popup: Start when idle; Pause, Skip, Stop while a phase runs; Resume, Stop
+/// when paused; Start break or Start focus (plus Skip break), Stop while waiting.
+struct PomodoroControls: View {
+    @Environment(AppContainer.self) private var container
+
+    var body: some View {
+        let focus = container.focus
+        switch focus.session?.stage {
+        case nil:
+            Button("Start Focus (\(focus.rhythm.focusMinutes) min)") { focus.send(.start) }
+                .buttonStyle(.borderedProminent)
+        case .running?:
+            Button("Pause") { focus.send(.pause) }
+            Button("Skip") { focus.send(.skip) }
+            Button("Stop") { focus.send(.stop) }
+        case .paused?:
+            Button("Resume") { focus.send(.resume) }
+                .buttonStyle(.borderedProminent)
+            Button("Stop") { focus.send(.stop) }
+        case .awaiting(let phase)?:
+            let minutes = focus.rhythm.minutes(for: phase)
+            Button(phase.isBreak ? "Start Break (\(minutes) min)" : "Start Focus (\(minutes) min)") { focus.send(.start) }
+                .buttonStyle(.borderedProminent)
+            if phase.isBreak {
+                Button("Skip Break") { focus.send(.skip) }
+            }
+            Button("Stop") { focus.send(.stop) }
+        }
+    }
+}
+
+/// VibeFlow menu > Pomodoro: where a session starts. The timer's own menu bar item only
+/// appears once one runs.
+struct PomodoroMenuItems: View {
+    @Environment(AppContainer.self) private var container
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        let focus = container.focus
+        Text(focus.statusLine(at: focus.now))
+        PomodoroControls()
+        Divider()
+        Picker("Rhythm", selection: Binding(get: { focus.preset }, set: { focus.selectPreset($0) })) {
+            ForEach(FocusPreset.allCases, id: \.self) { preset in
+                Text("\(preset.title): \(preset.rhythm(custom: container.preferences.focusCustom).summary)").tag(preset)
+            }
+        }
+        Button("Pomodoro Settings…") { SettingsWindow.present(openSettings, container: container, tab: .pomodoro) }
+    }
+}
+
+extension FocusTimer {
+    /// "Focus · 18:22 left", "Break paused · 3:10 left", "Focus done, break next", "Not running".
+    func statusLine(at now: Date) -> String {
+        guard let session else { return "Not running" }
+        let name: String
+        switch session.phase {
+        case .focus: name = "Focus"
+        case .shortBreak: name = "Break"
+        case .longBreak: name = "Longer break"
+        }
+        switch session.stage {
+        case .running:
+            return "\(name) · \(FocusStats.countdown(session.remaining(at: now) ?? 0)) left"
+        case .paused(_, let remaining):
+            return "\(name) paused · \(FocusStats.countdown(remaining)) left"
+        case .awaiting(let phase):
+            return phase.isBreak ? "Focus done, break next" : "Break over, focus next"
         }
     }
 }

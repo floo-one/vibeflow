@@ -61,8 +61,11 @@ public final class Preferences {
         static let meetingsEnabled = "meetings.enabled"
         static let meetingsLeadMinutes = "meetings.leadMinutes"
         static let meetingsCalendars = "meetings.calendars"
-        static let focusEnabled = "focus.enabled"
         static let focusPreset = "focus.preset"
+        static let focusCustomFocus = "focus.custom.focus"
+        static let focusCustomBreak = "focus.custom.break"
+        static let focusCustomLongBreak = "focus.custom.longBreak"
+        static let focusCustomRounds = "focus.custom.rounds"
         static let keepAwakeDisplayOn = "keepAwake.displayOn"
     }
 
@@ -140,15 +143,21 @@ public final class Preferences {
     public var meetingsCalendars: [String]? {
         didSet { defaults.set(meetingsCalendars, forKey: Key.meetingsCalendars) }
     }
-    /// The focus timer in the menu bar. Off until switched on in General, so an update never
-    /// adds a menu bar item nobody asked for.
-    public var focusEnabled: Bool {
-        didSet { defaults.set(focusEnabled, forKey: Key.focusEnabled) }
-    }
-    /// Picked in the focus menu; the running session keeps its own copy.
+    /// Picked in the Pomodoro pane or menu; the running session keeps its own copy.
     public var focusPreset: FocusPreset {
         didSet { defaults.set(focusPreset.rawValue, forKey: Key.focusPreset) }
     }
+    /// The Custom card's values; kept while another preset is selected.
+    public var focusCustom: FocusRhythm {
+        didSet {
+            defaults.set(focusCustom.focusMinutes, forKey: Key.focusCustomFocus)
+            defaults.set(focusCustom.shortBreakMinutes, forKey: Key.focusCustomBreak)
+            defaults.set(focusCustom.longBreakMinutes, forKey: Key.focusCustomLongBreak)
+            defaults.set(focusCustom.rounds, forKey: Key.focusCustomRounds)
+        }
+    }
+    /// The rhythm of the selected preset.
+    public var focusRhythm: FocusRhythm { focusPreset.rhythm(custom: focusCustom) }
 
     /// Keep Awake also keeps the display on; off lets it sleep while the Mac stays awake.
     public var keepAwakeDisplayOn: Bool {
@@ -178,8 +187,14 @@ public final class Preferences {
         meetingsLeadMinutes = (defaults.object(forKey: Key.meetingsLeadMinutes) as? Int)
             .flatMap { MeetingSchedule.leadTimes.contains($0) ? $0 : nil } ?? MeetingSchedule.defaultLeadMinutes
         meetingsCalendars = defaults.stringArray(forKey: Key.meetingsCalendars)
-        focusEnabled = defaults.bool(forKey: Key.focusEnabled)
         focusPreset = defaults.string(forKey: Key.focusPreset).flatMap(FocusPreset.init(rawValue:)) ?? .classic
+        let classic = FocusRhythm.classic
+        focusCustom = FocusRhythm(
+            focusMinutes: defaults.object(forKey: Key.focusCustomFocus) as? Int ?? classic.focusMinutes,
+            shortBreakMinutes: defaults.object(forKey: Key.focusCustomBreak) as? Int ?? classic.shortBreakMinutes,
+            longBreakMinutes: defaults.object(forKey: Key.focusCustomLongBreak) as? Int ?? classic.longBreakMinutes,
+            rounds: defaults.object(forKey: Key.focusCustomRounds) as? Int ?? classic.rounds
+        ).clamped
         keepAwakeDisplayOn = defaults.object(forKey: Key.keepAwakeDisplayOn) as? Bool ?? true
     }
 

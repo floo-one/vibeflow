@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import VibeFlowCore
 
-/// Launch at login, the focus timer, how VibeFlow looks and sounds, History and updates.
+/// Launch at login, how VibeFlow looks and sounds, History and updates.
 struct GeneralPane: View {
     @Environment(AppContainer.self) private var container
 
@@ -12,15 +12,6 @@ struct GeneralPane: View {
             Section {
                 Toggle("Launch at login", isOn: $prefs.launchAtLogin)
                     .onChange(of: prefs.launchAtLogin) { container.applyLaunchAtLogin() }
-            }
-            Section {
-                Toggle("Focus timer in menu bar", isOn: $prefs.focusEnabled)
-                    .onChange(of: prefs.focusEnabled) { if !prefs.focusEnabled { container.focus.switchedOff() } }
-            } header: {
-                Text("Focus")
-            } footer: {
-                Text("A Pomodoro timer: focus, break, and a long break after a few blocks. Pick the preset in its menu.")
-                    .foregroundStyle(.secondary)
             }
             Section("Look & Feel") {
                 Picker("Appearance", selection: $prefs.colorMode) {

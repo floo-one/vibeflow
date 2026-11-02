@@ -54,6 +54,14 @@ public final class FocusLog {
         return true
     }
 
+    /// Removes a round logged by mistake (History's right-click Delete); same save-first rule.
+    @discardableResult
+    public func delete(_ id: FocusBlock.ID) -> Bool {
+        var next = file
+        next.blocks.removeAll { $0.id == id }
+        return commit(next)
+    }
+
     private func load() {
         guard let fileURL, FileManager.default.fileExists(atPath: fileURL.path) else { return }
         do {
