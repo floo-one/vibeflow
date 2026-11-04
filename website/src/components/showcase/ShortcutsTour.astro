@@ -231,7 +231,6 @@ const first = FLAT[0];
       top: var(--bar-h); z-index: 5; background: var(--kt-page); transition: background-color 0.6s var(--ease); gap: 10px;
       margin: 0 -20px; padding: 12px 20px 10px; box-shadow: 0 12px 16px -14px rgba(0, 0, 0, 0.25);
     }
-    .kt-stage.low { box-shadow: 0 -12px 16px -14px rgba(0, 0, 0, 0.25); }
     .kt-win { --u: calc(100cqw / 9.4); }
     .kt-screen { min-height: 36px; font-size: 13px; }
     .kt-secs { padding-top: 12px; }
@@ -275,7 +274,7 @@ const first = FLAT[0];
   const BAR = 44;
   const narrow = () => innerWidth <= 900;
   const deskTop = () => Math.max(68, innerHeight / 2 - 190);
-  const lineFor = (a: HTMLElement) => (narrow() ? (phoneLow(secOf(a)) ? BAR + 8 : BAR + stage.offsetHeight) : deskTop());
+  const lineFor = (_a: HTMLElement) => (narrow() ? BAR + stage.offsetHeight : deskTop());
   const target = (a: HTMLElement) => lineFor(a) + parseFloat(getComputedStyle(a).scrollMarginTop || '0');
   // Where the page is scrolled when a headline rests on the reading line.
   const restAt = (a: HTMLElement) => a.getBoundingClientRect().top + scrollY - target(a);
@@ -326,10 +325,7 @@ const first = FLAT[0];
   // opposite edge. Phones: every section swipes the keyboard in from the side, and Smart read
   // drops it to the bottom of the screen.
   const secIds = [...new Set(flat.map((f) => f.sec.id))];
-  const secOf = (a: HTMLElement) => secIds.indexOf(a.closest<HTMLElement>('.kt-sec')!.dataset.sec!);
   const body = section.querySelector<HTMLElement>('.kt-body')!;
-  const PHONE_LOW = [false, true, false, false];
-  const phoneLow = (n: number) => PHONE_LOW[n % PHONE_LOW.length];
   let mode: 'off' | 'desk' | 'phone' = 'off', posed = -1;
   let poseTl: gsap.core.Timeline | null = null;
   let ghost: HTMLElement | null = null;
@@ -366,15 +362,14 @@ const first = FLAT[0];
         .fromTo(stage, { x: enter }, { x: tx, ...move }, 0);
       avoid(true); // it comes in already clear of the leaving card
     } else {
-      const low = phoneLow(n), sy = low ? Math.max(0, innerHeight - BAR - stage.offsetHeight) : 0;
-      stage.classList.toggle('low', low);
-      if (instant) { gsap.set(stage, { x: 0, y: sy, autoAlpha: 1 }); return; }
-      // Forward swipes in from the right, back from the left.
-      const dir = n > from ? 1 : -1, w = stage.offsetWidth;
+      // Phones: the sticky bar never moves (one steady reading line under it); only the keyboard
+      // inside it swipes, forward from the right, back from the left.
+      if (instant) { gsap.set(win, { x: 0, autoAlpha: 1 }); return; }
+      const dir = n > from ? 1 : -1, w = win.offsetWidth;
       poseTl = gsap.timeline()
-        .to(stage, { x: -dir * w * 0.35, autoAlpha: 0, duration: 0.25, ease: 'power2.in' })
-        .set(stage, { x: dir * w * 0.35, y: sy })
-        .to(stage, { x: 0, autoAlpha: 1, duration: 0.5, ease: 'power3.out' });
+        .to(win, { x: -dir * w * 0.2, autoAlpha: 0, duration: 0.18, ease: 'power2.in' })
+        .set(win, { x: dir * w * 0.2 })
+        .to(win, { x: 0, autoAlpha: 1, duration: 0.35, ease: 'power3.out' });
     }
   }
 
@@ -408,9 +403,8 @@ const first = FLAT[0];
     ScrollTrigger.addEventListener('refresh', onRefresh);
     return () => {
       mode = 'off'; posed = -1; poseTl?.kill(); ghost?.remove(); ghost = null;
-      stage.classList.remove('low');
       ScrollTrigger.removeEventListener('refresh', onRefresh);
-      gsap.set([stage, secsEl], { clearProps: 'transform,opacity,visibility' });
+      gsap.set([stage, secsEl, win], { clearProps: 'transform,opacity,visibility' });
     };
   };
   mm.add('(min-width: 901px)', () => enter('desk'));
@@ -490,8 +484,9 @@ const first = FLAT[0];
   });
 
   // Snap: while the tour fills the screen, scrolling settles with a headline on the reading line,
-  // one step per gesture. Outside the tour the page scrolls freely. No snapping for reduced motion.
-  gsap.matchMedia().add(MOTION, () => {
+  // one step per gesture. Outside the tour the page scrolls freely. Wide screens only: on phones a
+  // snap after a flick fights the finger's momentum, and reduced motion gets none.
+  gsap.matchMedia().add(`${MOTION} and (min-width: 901px)`, () => {
     let points: number[] = [];
     const first = flat[0].anchor, last = flat[flat.length - 1].anchor;
     ScrollTrigger.create({

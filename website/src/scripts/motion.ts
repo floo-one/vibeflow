@@ -5,6 +5,9 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+// Phones: the address bar showing or hiding changes the viewport height on every scroll direction
+// change; recalculating every trigger then makes pinned and snapped sections jump.
+ScrollTrigger.config({ ignoreMobileResize: true });
 
 export const MOTION = '(prefers-reduced-motion: no-preference)';
 export const STILL = '(prefers-reduced-motion: reduce)';
