@@ -56,8 +56,85 @@ struct MeetingsMenuView: View {
     }
 }
 
-/// Settings > Meetings (R1, R6): Google sign-in with its status line, the on/off switch,
-/// lead time and the calendars to watch.
+/// The VibeFlow menu's next meeting: the first one still ahead today, to join or open.
+struct NextMeetingMenu: View {
+    @Environment(AppContainer.self) private var container
+
+    var body: some View {
+        if container.preferences.meetingsEnabled,
+           let next = MeetingSchedule.restOfToday(container.meetings.state.meetings, at: Date()).first {
+            Menu {
+                Text(MeetingsMenuView.details(next))
+                if let joinURL = next.joinURL {
+                    Button("Join") { NSWorkspace.shared.open(joinURL) }
+                }
+                if let link = next.htmlLink {
+                    Button("Open in Google Calendar") { NSWorkspace.shared.open(link) }
+                }
+            } label: {
+                Label("\(ClockFormat.time(next.start, in: .current))  \(next.title)", systemImage: "calendar")
+            }
+        }
+    }
+}
+
+/// Google Calendar sign-in with its status line, shown in Settings > Accounts.
+struct GoogleAccountSection: View {
+    @Environment(AppContainer.self) private var container
+
+    var body: some View {
+        let store = container.meetings
+        Section {
+            if store.config == nil {
+                LabeledContent("Google Calendar", value: MeetingsStatus.notConfigured.line())
+            } else {
+                LabeledContent {
+                    if store.isSigningIn {
+                        HStack {
+                            ProgressView().controlSize(.small)
+                            Text("Waiting for the browser…").foregroundStyle(.secondary)
+                            Button("Cancel") { store.cancelSignIn() }
+                        }
+                    } else if store.state.email != nil {
+                        HStack {
+                            Button("Sync Now") { store.sync() }
+                            Button("Sign Out") { store.signOut() }
+                        }
+                    } else {
+                        Button("Sign in with Google…") { store.signIn() }
+                    }
+                } label: {
+                    Text("Google Calendar")
+                    Text("Used by Meetings · \(store.state.status.line())")
+                        .foregroundStyle(statusColor(store.state.status))
+                }
+                if let message = store.signInMessage {
+                    Text(message).foregroundStyle(.red)
+                }
+            }
+        } header: {
+            Text("Sign-ins")
+        } footer: {
+            if store.config == nil {
+                Text("This build has no Google client. Copy Config/Google.xcconfig.example to Config/Google.xcconfig, fill it in and rebuild.")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Read-only access to your calendars. Events stay on this Mac, in memory.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func statusColor(_ status: MeetingsStatus) -> Color {
+        switch status {
+        case .signedIn, .syncing, .signedOut, .notConfigured: .secondary
+        default: .orange
+        }
+    }
+}
+
+/// Settings > Meetings (R1, R6): the on/off switch in the header, the Google account it reads
+/// (signed in under Accounts), lead time and the calendars to watch.
 struct MeetingsTab: View {
     @Environment(AppContainer.self) private var container
 
@@ -65,51 +142,26 @@ struct MeetingsTab: View {
         @Bindable var prefs = container.preferences
         let store = container.meetings
         Form {
+            PaneHeader(.meetings, subtitle: "Your next meeting appears in the menu bar shortly before it starts.") {
+                Toggle("Show upcoming meetings in the menu bar", isOn: $prefs.meetingsEnabled)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .onChange(of: prefs.meetingsEnabled) { store.sync() }
+            }
             Section {
-                if store.config == nil {
-                    LabeledContent("Google Calendar", value: MeetingsStatus.notConfigured.line())
-                } else {
-                    LabeledContent("Google Calendar") {
-                        Text(store.state.status.line()).foregroundStyle(statusColor(store.state.status))
-                    }
-                    HStack {
-                        if store.isSigningIn {
-                            ProgressView().controlSize(.small)
-                            Text("Waiting for the browser…").foregroundStyle(.secondary)
-                            Spacer()
-                            Button("Cancel") { store.cancelSignIn() }
-                        } else if store.state.email != nil {
-                            Spacer()
-                            Button("Sync Now") { store.sync() }
-                            Button("Sign Out") { store.signOut() }
-                        } else {
-                            Spacer()
-                            Button("Sign in with Google…") { store.signIn() }
-                        }
-                    }
-                    if let message = store.signInMessage {
-                        Text(message).foregroundStyle(.red)
-                    }
-                }
-            } footer: {
-                if store.config == nil {
-                    Text("This build has no Google client. Copy Config/Google.xcconfig.example to Config/Google.xcconfig, fill it in and rebuild.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Read-only access to your calendars. Events stay on this Mac, in memory.")
-                        .foregroundStyle(.secondary)
+                LabeledContent {
+                    Button("Manage in Accounts") { container.settingsTab = .accounts }
+                } label: {
+                    Text("Google Calendar")
+                    Text(store.state.email.map { "Signed in as \($0)" } ?? store.state.status.line())
                 }
             }
-
-            Section {
-                Toggle("Show upcoming meetings in the menu bar", isOn: $prefs.meetingsEnabled)
-                    .onChange(of: prefs.meetingsEnabled) { store.sync() }
+            Section("In the menu bar") {
                 Picker("Appear", selection: $prefs.meetingsLeadMinutes) {
                     ForEach(MeetingSchedule.leadTimes, id: \.self) { Text("\($0) minutes before").tag($0) }
                 }
-                .disabled(!prefs.meetingsEnabled)
             }
-
+            .disabled(!prefs.meetingsEnabled)
             if let email = store.state.email, !store.state.calendars.isEmpty {
                 Section("Calendars") {
                     ForEach(sortedCalendars(store.state.calendars, email: email)) { calendar in
@@ -120,14 +172,6 @@ struct MeetingsTab: View {
             }
         }
         .formStyle(.grouped)
-    }
-
-    private func statusColor(_ status: MeetingsStatus) -> Color {
-        switch status {
-        case .signedIn, .syncing: .primary
-        case .signedOut, .notConfigured: .secondary
-        default: .orange
-        }
     }
 
     private func sortedCalendars(_ calendars: [GoogleCalendarEntry], email: String) -> [GoogleCalendarEntry] {
