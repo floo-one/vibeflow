@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>VibeFlow 1.5 showcase</title>
+<script>document.documentElement.classList.add('js');</script>
 <!--
   Minimal 1.5 feature showcase for the landing page (replaces the interactive demo for now;
   a demo video comes later). The menu is the hero: hover or focus a feature and its row
@@ -57,8 +58,9 @@ h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); li
 .menu { position: absolute; right: 96px; top: 40px; width: 300px; padding: 5px; border-radius: 12px; font-size: 13.5px;
   background: rgba(250,250,253,.86); backdrop-filter: blur(40px) saturate(1.8); -webkit-backdrop-filter: blur(40px) saturate(1.8);
   box-shadow: 0 0 0 .5px rgba(0,0,0,.2), 0 30px 60px -20px rgba(40,30,120,.45);
-  opacity: 0; transform: translateY(-6px) scale(.98); transform-origin: top right; transition: opacity .6s var(--ease), transform .7s var(--ease); }
-.in .menu { opacity: 1; transform: none; }
+  transform-origin: top right; transition: opacity .6s var(--ease), transform .7s var(--ease); }
+/* Visible by default; the entrance only hides it once scripts are known to run. */
+.js .scene:not(.in) .menu { opacity: 0; transform: translateY(-6px) scale(.98); }
 .mh { padding: 7px 10px 3px; font-size: 11.5px; font-weight: 600; color: rgba(0,0,0,.42); }
 .mi { display: flex; align-items: center; gap: 9px; padding: 4px 10px; border-radius: 6px; white-space: nowrap; transition: background .25s var(--ease), color .25s var(--ease); }
 .mi svg { flex: none; stroke: currentColor; }
@@ -450,9 +452,9 @@ body { padding-top: 44px; }
     </div>
 
     <div class="card book" id="abook">
-      <p class="from"><span id="asrc"></span>
+      <p class="from"><span id="asrc"><b>The Beginning of Infinity</b> · David Deutsch</span>
         <span class="akeys" id="akeys"><span class="hold">hold</span><span class="k">⌥</span><span class="k">,</span></span></p>
-      <p class="body" id="abody"></p>
+      <p class="body" id="abody">Deutsch's claim is that all progress comes from one thing: the search for good explanations. A bad explanation can be bent to fit any outcome, so it tells us nothing. Good explanations are <span class="sel on" id="asel">hard to vary</span>: every detail does work, and you can't change one without breaking the whole.</p>
     </div>
 
     <div class="pill" id="apill">
