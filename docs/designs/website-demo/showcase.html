@@ -145,6 +145,7 @@ h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); li
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .book .from { display: flex; align-items: center; gap: 10px; }
 .book .from > span:first-child { flex: 1; }
+.book .from .by { display: block; margin-top: 1px; }
 .book .body { font-family: "New York", "Iowan Old Style", Charter, Georgia, serif; font-size: 16.5px; line-height: 1.62; color: var(--text); }
 .sel { border-radius: 3px; background: linear-gradient(rgba(0,100,210,.24), rgba(0,100,210,.24)) no-repeat; background-size: 0% 100%;
   transition: background-size .9s var(--ease); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
@@ -467,7 +468,7 @@ body { padding-top: 44px; }
     </div>
 
     <div class="card book" id="abook">
-      <p class="from"><span id="asrc"><b>The Beginning of Infinity</b> · David Deutsch</span>
+      <p class="from"><span id="asrc"><b>The Beginning of Infinity</b><span class="by">David Deutsch</span></span>
         <span class="akeys" id="akeys"><span class="hold">hold</span><span class="k">⌥</span><span class="k">,</span></span></p>
       <p class="body" id="abody">Deutsch’s claim is that all progress comes from one thing: the search for good explanations. A bad explanation can be bent to fit any outcome, so it tells us nothing. Good explanations are <span class="sel on" id="asel">hard to vary</span>: every detail does work, and you can’t change one without breaking the whole.</p>
     </div>
@@ -578,7 +579,7 @@ body { padding-top: 44px; }
 
   function render(i) {
     const s = SOURCES[i];
-    $('#asrc').innerHTML = `<b>${s.title}</b> · ${s.author}`;
+    $('#asrc').innerHTML = `<b>${s.title}</b><span class="by">${s.author}</span>`;
     $('#abody').innerHTML = `${s.pre}<span class="sel" id="asel">${s.sel}</span>${s.post}`;
   }
   function reset() {
