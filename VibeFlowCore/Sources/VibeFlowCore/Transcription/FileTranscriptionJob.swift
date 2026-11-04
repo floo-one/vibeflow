@@ -280,7 +280,7 @@ public final class FileTranscriptionJob {
         state = .running(file: file, phase: phase, startedAt: startedAt, note: note ?? oldNote)
     }
 
-    static func stopReason(_ failure: TranscriptionFailure) -> String {
+    nonisolated static func stopReason(_ failure: TranscriptionFailure) -> String {
         switch failure {
         case .rateLimited: "Groq hourly limit"
         case .unauthorized: "Groq key rejected"
@@ -289,7 +289,7 @@ public final class FileTranscriptionJob {
     }
 
     /// The status text for any failure the job can meet.
-    public static func describe(_ error: Error) -> String {
+    nonisolated public static func describe(_ error: Error) -> String {
         switch error {
         case let failure as TranscriptionFailure:
             switch failure {
@@ -302,6 +302,15 @@ public final class FileTranscriptionJob {
             case .malformed: return "Unreadable response"
             case .assetsMissing(let language): return "Download the on-device model for \(language) in Settings > Dictation"
             case .unavailable(let reason): return reason
+            }
+        case let claude as SmartReadFailure:
+            switch claude {
+            case .unauthorized: return "Anthropic key rejected or missing"
+            case .rateLimited: return "Claude is rate limited"
+            case .overloaded: return "Claude is overloaded"
+            case .offline: return "Offline"
+            case .timeout: return "Timed out"
+            case .other(let reason): return reason.prefix(1).uppercased() + reason.dropFirst()
             }
         case let file as AudioFileError:
             switch file {
