@@ -24,6 +24,9 @@ final class FileTranscriptions {
     private(set) var pending: Pending?
     /// The transcript the Transcript window shows.
     var openTranscriptID: UUID?
+    /// Goes up whenever the job saves a transcript, so an open window reloads (the summary
+    /// arrives after the first save).
+    private(set) var revision = 0
     /// "Couldn't read notes.m4a" from the open panel step, shown in the menu.
     private(set) var pickError: String?
 
@@ -47,8 +50,14 @@ final class FileTranscriptions {
         job = FileTranscriptionJob(engines: {
             Self.engines(secrets: secrets, preferences: preferences, http: http)
         }, store: store)
-        job.onSaved = { [history] in history.upsertTranscript($0) }
-        job.onUpdated = { [history] in history.upsertTranscript($0) }
+        job.onSaved = { [weak self, history] in
+            history.upsertTranscript($0)
+            self?.revision += 1
+        }
+        job.onUpdated = { [weak self, history] in
+            history.upsertTranscript($0)
+            self?.revision += 1
+        }
     }
 
     /// Built on the main actor when a file starts, so models are read from Preferences here and

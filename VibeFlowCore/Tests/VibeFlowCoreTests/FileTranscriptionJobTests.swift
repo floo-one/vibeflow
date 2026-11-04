@@ -341,3 +341,43 @@ private struct ScriptedOnDeviceNeverUsed: FileTranscriber {
         return []
     }
 }
+
+// MARK: - Review fixes (pre-landing review, 2026-11-04)
+
+/// Renames speaker S1 in the stored transcript while "Claude" is busy, like the window would.
+private struct RenamingSummarizer: TranscriptSummarizer {
+    let store: TranscriptStore
+    func summarize(_ transcript: Transcript) async throws -> Transcript.Summary {
+        var stored = try store.load(transcript.id)
+        stored.rename("S1", to: "Florian")
+        try store.save(stored)
+        return .init(text: "{S1} greets {S2}.", actionItems: [])
+    }
+}
+
+@Suite("FileTranscriptionJob review fixes") @MainActor
+struct FileTranscriptionJobReviewFixTests {
+    @Test func aRenameMadeWhileSummarizingIsKept() async throws {
+        let h = Harness(engines: .init(pieces: nil, call: FakeWholeFile(.success(twoSpeakers)), onDevice: nil, summarizer: nil))
+        h.engines.summarizer = RenamingSummarizer(store: h.store)
+        _ = await h.run(.call, summarize: true)
+        let saved = try h.store.load(try #require(h.finished).transcript.id)
+        #expect(saved.name(of: "S1") == "Florian", "the summary must not overwrite the rename")
+        #expect(saved.summary?.text == "{S1} greets {S2}.")
+    }
+}
+
+@Suite("Temporary file sweep")
+struct TemporaryFileSweepTests {
+    @Test func removesOnlyVibeFlowLeftovers() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("vf-sweep-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        for name in ["vibeflow-file-a.wav", "vibeflow-file-b.m4a", "vibeflow-file-c.body", "someone-else.wav", "vibeflow-1.wav"] {
+            try Data("x".utf8).write(to: dir.appendingPathComponent(name))
+        }
+        #expect(AudioFileDecoder.removeLeftovers(in: dir) == 3)
+        #expect(Set(try FileManager.default.contentsOfDirectory(atPath: dir.path)) == ["someone-else.wav", "vibeflow-1.wav"],
+                "dictation's own temp files and other apps' files are left alone")
+    }
+}

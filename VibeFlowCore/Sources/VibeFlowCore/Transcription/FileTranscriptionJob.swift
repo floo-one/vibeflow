@@ -162,6 +162,9 @@ public final class FileTranscriptionJob {
                 setPhase(.summarizing)
                 do {
                     let summary = try await summarizer.summarize(transcript)
+                    // A rename or merge made in the window while Claude was busy is kept: the
+                    // summary goes onto the stored copy, not the one from before it.
+                    if let stored = try? store.load(transcript.id) { transcript = stored }
                     transcript.summary = transcript.validated(summary)
                     try store.save(transcript)
                     onUpdated?(transcript)

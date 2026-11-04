@@ -129,3 +129,19 @@ private struct StaticFile: FileTranscriber {
     let segments: [SpeakerSegment]
     func transcribe(file: URL, options: FileTranscriptionOptions) async throws -> [SpeakerSegment] { segments }
 }
+
+@Suite("Claude timeouts")
+struct ClaudeTimeoutTests {
+    let http = FakeHTTPClient()
+
+    @Test func summariesWaitLongerThanSmartRead() async throws {
+        http.body = try JSONSerialization.data(withJSONObject: ["content": [["type": "text", "text": #"{"summary":"Kurz."}"#]], "stop_reason": "end_turn"])
+        let client = AnthropicClient(http: http, secrets: FakeSecrets([.anthropic: "sk-ant-test"]))
+        _ = try await ClaudeTranscriptSummarizer(client: client, model: { "claude-sonnet-5-5" }).summarize(
+            Transcript.make(from: [.init(speaker: nil, start: 0, end: 1, text: "Hallo.")], date: Date(timeIntervalSince1970: 0),
+                            sourceFileName: "a.m4a", duration: 1, engine: .groq))
+        #expect(http.requests[0].timeoutInterval == 120)
+        _ = try await client.complete(system: "s", user: "u", model: "claude-haiku-5-5", maxTokens: 10)
+        #expect(http.requests[1].timeoutInterval == 25, "smart read keeps its 25 s")
+    }
+}

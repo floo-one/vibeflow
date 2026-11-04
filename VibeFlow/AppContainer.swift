@@ -105,6 +105,8 @@ final class AppContainer {
         let historyURL = HistoryStore.defaultFileURL
         let transcripts = TranscriptStore()
         #endif
+        // A quit or crash mid-job leaves decoded audio in the temp folder; no job runs yet.
+        AudioFileDecoder.removeLeftovers()
         let history = HistoryStore(fileURL: historyURL, retention: preferences.historyRetention,
                                    transcripts: transcripts)
         history.adoptOrphanTranscripts() // eng review R5
@@ -203,7 +205,7 @@ final class AppContainer {
                 notifications.postTranscriptReady(id: t.id, title: t.completion == .complete ? "Transcript ready" : "Transcript partly ready", body: body)
                 self?.openTranscript(t.id)
             case .failed(let file, let message):
-                notifications.postTranscriptReady(id: UUID(), title: "Transcription failed", body: "\(file): \(message)")
+                notifications.postTranscriptionFailed(file: file, message: message)
                 NSApp.activate()
                 let alert = NSAlert()
                 alert.messageText = "Couldn't transcribe \(file)"

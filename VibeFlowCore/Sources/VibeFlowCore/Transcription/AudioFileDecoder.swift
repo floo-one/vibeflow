@@ -172,6 +172,20 @@ public enum AudioFileDecoder {
         }
     }
 
+    // MARK: Leftovers
+
+    /// Deletes temporary files a quit or crash left behind (a 2-hour memo leaves about 230 MB).
+    /// Call at launch, when no job can be running. Returns how many were removed.
+    @discardableResult
+    public static func removeLeftovers(in directory: URL = FileManager.default.temporaryDirectory) -> Int {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
+        var removed = 0
+        for name in names where name.hasPrefix(tempPrefix) {
+            if (try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))) != nil { removed += 1 }
+        }
+        return removed
+    }
+
     // MARK: Audio only
 
     /// A video's audio track as a temporary m4a (about 1 MB per minute), so an upload never

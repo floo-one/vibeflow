@@ -4,6 +4,10 @@ import Foundation
 /// One non-streaming request; the reply is JSON that names speakers and lines by id. The job
 /// validates it against the transcript, so anything invented is dropped there.
 public struct ClaudeTranscriptSummarizer: TranscriptSummarizer {
+    /// A non-streaming reply to a 1 to 2 hour call (20 to 40k input tokens) sends no byte until
+    /// it is complete, which can take well over smart read's 25 s.
+    public static let timeout: TimeInterval = 120
+
     private let client: AnthropicClient
     private let model: @Sendable () -> String
 
@@ -16,7 +20,7 @@ public struct ClaudeTranscriptSummarizer: TranscriptSummarizer {
         let response = try await client.complete(
             system: SmartReadPrompts.callSummarySystem(),
             user: SmartReadPrompts.callSummaryUser(transcript),
-            model: model(), maxTokens: SmartReadPrompts.callSummaryMaxTokens)
+            model: model(), maxTokens: SmartReadPrompts.callSummaryMaxTokens, timeout: Self.timeout)
         guard response.stopReason != .maxTokens else { throw SmartReadFailure.other("the summary was cut off") }
         return try Self.parse(response.text)
     }

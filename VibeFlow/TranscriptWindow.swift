@@ -90,7 +90,7 @@ struct TranscriptView: View {
             }
         }
         .frame(minWidth: 820, minHeight: 520)
-        .task(id: container.files.openTranscriptID) { load() }
+        .task(id: LoadKey(id: container.files.openTranscriptID, revision: container.files.revision)) { load() }
         .onDisappear { player.stop() }
     }
 
@@ -289,9 +289,11 @@ struct TranscriptView: View {
         return Self.palette[index % Self.palette.count]
     }
 
-    /// Renames and merges are saved at once (D9); History's row follows.
+    /// Renames and merges are saved at once (D9); History's row follows. The change goes onto
+    /// the stored copy, so a summary saved since this window loaded is never overwritten.
     private func edit(_ change: (inout Transcript) -> Void) {
-        guard var t = transcript else { return }
+        guard let current = transcript else { return }
+        var t = (try? container.files.store.load(current.id)) ?? current
         change(&t)
         do {
             try container.files.store.save(t)
@@ -316,6 +318,11 @@ struct TranscriptView: View {
             saveError = "Not saved: \(error.localizedDescription)"
         }
     }
+}
+
+private struct LoadKey: Equatable {
+    var id: UUID?
+    var revision: Int
 }
 
 private struct SpeakerRow: View {

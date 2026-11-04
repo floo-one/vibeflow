@@ -231,6 +231,17 @@ final class FocusNotifications: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
+    /// No transcript category: a click on it has nothing to open.
+    func postTranscriptionFailed(file: String, message: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "Transcription failed"
+        content.body = "\(file): \(message)"
+        content.sound = nil
+        center.add(UNNotificationRequest(identifier: "one.floo.vibeflow.transcript.failed", content: content, trigger: nil)) { error in
+            if let error { log.notice("Transcript notification not posted: \(error.localizedDescription, privacy: .public)") }
+        }
+    }
+
     func postTranscriptReady(id: UUID, title: String, body: String) {
         let content = UNMutableNotificationContent()
         content.title = title
