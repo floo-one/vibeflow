@@ -280,6 +280,7 @@ const first = FLAT[0];
     active = i;
     const { step, sec } = flat[i];
     section.style.setProperty('--kt-active', `var(${sec.color})`);
+    pose(secIds.indexOf(sec.id));
     flat.forEach((f, n) => f.el.classList.toggle('on', n === i));
     secsEl.querySelectorAll<HTMLElement>('.kt-sec').forEach((el) => el.classList.toggle('on', el.dataset.sec === sec.id));
     groupsEl.querySelectorAll<HTMLElement>('button').forEach((b) => b.classList.toggle('on', b.dataset.g === sec.id));
@@ -290,6 +291,38 @@ const first = FLAT[0];
     now.textContent = `${step.name}: ${keys.map(nameOf).join(' + ')}`;
     play(step, sec.color);
   }
+
+  // Poses: on wide screens each section moves the keyboard somewhere new, so the long tour keeps
+  // changing shape. Dictation starts where the layout puts it; Smart read swaps the columns and
+  // drops the keyboard low; Read swaps back with it high; Paste again goes right and low again.
+  const secIds = [...new Set(flat.map((f) => f.sec.id))];
+  const body = section.querySelector<HTMLElement>('.kt-body')!;
+  const POSES = [{ side: 0, v: 0 }, { side: 1, v: 1 }, { side: 0, v: -1 }, { side: 1, v: 1 }];
+  let posing = false, posed = -1;
+  function pose(n: number, now = false) {
+    if (!posing || n === posed) return;
+    posed = n;
+    const p = POSES[n % POSES.length];
+    const gap = parseFloat(getComputedStyle(body).columnGap) || 0;
+    const top = snapTop();
+    // v: -1 tucks the keyboard under the menu bar, 1 rests it near the bottom, 0 leaves it level
+    // with the reading line.
+    const y = p.v < 0 ? 68 - top : p.v > 0 ? Math.max(0, innerHeight - 32 - top - stage.offsetHeight) : 0;
+    const vars = { duration: now || reduce ? 0 : 1, ease: 'power3.inOut', overwrite: true };
+    gsap.to(stage, { x: p.side ? secsEl.offsetWidth + gap : 0, y, ...vars });
+    gsap.to(secsEl, { x: p.side ? -(stage.offsetWidth + gap) : 0, ...vars });
+  }
+  gsap.matchMedia().add('(min-width: 901px)', () => {
+    posing = true;
+    if (active >= 0) pose(secIds.indexOf(flat[active].sec.id), true);
+    const onRefresh = () => { const n = posed; posed = -1; if (n >= 0) pose(n, true); };
+    ScrollTrigger.addEventListener('refresh', onRefresh);
+    return () => {
+      posing = false; posed = -1;
+      ScrollTrigger.removeEventListener('refresh', onRefresh);
+      gsap.set([stage, secsEl], { clearProps: 'transform' });
+    };
+  });
 
   // Key presses: modifiers go down one after another, then the action key taps, holds or toggles.
   async function play(s: (typeof FLAT)[number]['step'], c: string) {
