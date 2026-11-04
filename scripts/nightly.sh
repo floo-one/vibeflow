@@ -2,8 +2,8 @@
 # Keep the "nightly" pre-release at the newest main, built, signed and notarized on this Mac,
 # so a VibeFlow with Settings > General > Updates, Channel "Nightly", installs every new main.
 # A LaunchAgent runs it every 30 minutes; it builds only when origin/main moved and CI passed
-# on that commit, in its own clone under ~/Library/Caches (never ~/Documents, which macOS
-# keeps from background jobs), with scripts/release.sh --nightly --publish. Keys stay in the login keychain: the Mac has
+# on that commit, in its own clone under ~/Library/Application Support (never ~/Documents, which
+# macOS keeps from background jobs, nor ~/Library/Caches, which macOS and cleaner apps empty), with scripts/release.sh --nightly --publish. Keys stay in the login keychain: the Mac has
 # to be on, logged in and awake (it catches up after sleep).
 #
 # Usage:  scripts/nightly.sh              check once, build and publish if main moved
@@ -17,7 +17,9 @@
 set -euo pipefail
 
 LABEL="one.floo.vibeflow.nightly"
-STATE="$HOME/Library/Caches/$LABEL"
+STATE="$HOME/Library/Application Support/$LABEL"
+# Where it lived until 2026-11-04: emptied there, the job lost its own script and stopped.
+OLD_STATE="$HOME/Library/Caches/$LABEL"
 SRC="$STATE/src"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG="$HOME/Library/Logs/VibeFlow Nightly.log"
@@ -30,6 +32,18 @@ SELF="${0:A}"
 say() { print "$(date '+%F %T') $1"; }
 
 install() {
+  # Bring the clone and the published/failed marks over from ~/Library/Caches, unless a build
+  # is running there right now.
+  if [[ -d $OLD_STATE && ! -e $STATE ]]; then
+    if kill -0 "$(cat "$OLD_STATE/lock/pid" 2>/dev/null || print 0)" 2>/dev/null; then
+      print -u2 "A nightly build is running in $OLD_STATE; --install again once it is done."
+      exit 1
+    fi
+    rm -rf "$OLD_STATE/lock"
+    mkdir -p "${STATE:h}"
+    mv "$OLD_STATE" "$STATE"
+    print "Moved $OLD_STATE to $STATE."
+  fi
   mkdir -p "$STATE" "${PLIST:h}" "${LOG:h}"
   # A copy, so checking out a new main in $SRC never rewrites the script while it runs.
   cp "$SELF" "$STATE/nightly.sh"

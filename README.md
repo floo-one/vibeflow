@@ -81,6 +81,15 @@ With no keys at all you still get reading with an Apple voice, plus dictation on
   in memory on this Mac; the Google sign-in is kept in your Keychain. Sign Out in Settings >
   Meetings forgets the sign-in on this Mac only; to remove VibeFlow's access entirely, remove
   it at myaccount.google.com/permissions.
+- **Send Feedback** (menu, or the bottom of the Settings sidebar): your note, the VibeFlow
+  version and channel, macOS version, keyboard layout, permission status, your non-secret
+  settings (vocabulary and calendars only as counts) and the last 10 minutes of VibeFlow's own
+  log go to Sentry (EU). The form shows exactly this text before you send it. Keys, anything
+  key-shaped and your home folder name are removed; the log never contains the text you read
+  or dictate.
+- **Crash reports**: if VibeFlow crashes or freezes, Sentry receives the stack trace, version
+  and Mac model, with the same scrubbing and a random install id instead of your name. Like
+  any web request, Sentry sees the IP address a report arrives from.
 - **Stays local**: History (`~/Library/Application Support/VibeFlow/history.json`, cleared in
   Settings > General), recordings (in memory only; the last failed one is kept until the next
   dictation so you can retry it) and API keys (Keychain).

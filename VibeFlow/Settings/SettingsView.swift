@@ -61,6 +61,7 @@ enum FeatureColor {
 /// shortcuts of that feature. Nothing else.
 struct SettingsView: View {
     @Environment(AppContainer.self) private var container
+    @Environment(\.openWindow) private var openWindow
     /// Always .all: the sidebar is the only way to the other panes (SettingsWindow pins it too).
     @State private var columns = NavigationSplitViewVisibility.all
 
@@ -87,6 +88,19 @@ struct SettingsView: View {
             }
             .navigationSplitViewColumnWidth(SettingsWindow.sidebarWidth)
             .toolbar(removing: .sidebarToggle)
+            .safeAreaInset(edge: .bottom) {
+                if FeedbackSender.isEnabled {
+                    Button {
+                        FeedbackWindow.present(openWindow)
+                    } label: {
+                        Label("Send Feedback", systemImage: "bubble.left.and.exclamationmark.bubble.right")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.borderless)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                }
+            }
         } detail: {
             pane(container.settingsTab)
                 .navigationTitle(container.settingsTab.title)

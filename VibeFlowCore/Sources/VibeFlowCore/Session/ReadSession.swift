@@ -180,6 +180,8 @@ public final class ReadSession {
 
     private final class Current {
         let id = SessionID()
+        /// For the finish log line's duration only.
+        let started = ContinuousClock.now
         var attempt = 0
         let kind: ReadKind
         let origin: ReadOrigin
@@ -465,6 +467,7 @@ public final class ReadSession {
             fail("Smart read incomplete", actions: [.readOriginal])
             return
         }
+        log.notice("\(LogLine.smartReadAnswered(model: self.configuration.smartReadModel, characters: text.count, duration: ContinuousClock.now - session.started), privacy: .public)")
         lastAnswer = text
         if conversation?.document == session.text { conversation?.brief = text }
         session.smartSpeed = true
@@ -832,6 +835,7 @@ public final class ReadSession {
 
     /// D11: cancel the old provider, bump the attempt so its late callbacks are dropped, then start Apple.
     private func fallbackToApple(session: Current, text: String, from offset: Int) {
+        log.notice("\(LogLine.voiceFallback(status: self.status), privacy: .public)")
         session.task?.cancel()
         session.attempt += 1
         session.usingApple = true
@@ -847,13 +851,18 @@ public final class ReadSession {
     }
 
     private func finishIdle(status: String) {
+        let session = current
+        let line = LogLine.readFinished(status: status, kind: session?.kind, usingApple: session?.usingApple ?? false,
+                                        characters: (session?.spokenText ?? session?.text)?.count,
+                                        duration: session.map { ContinuousClock.now - $0.started })
+        log.notice("\(line, privacy: .public)")
         tearDown()
         state = .idle
         self.status = status
     }
 
     private func fail(_ message: String, actions: [ErrorAction] = []) {
-        log.notice("Read failed: \(message, privacy: .public)")
+        log.notice("Read failed: \(LogLine.providerMessage(message), privacy: .public)")
         tearDown()
         state = .idle
         lastError = LastError(message: message, actions: actions)

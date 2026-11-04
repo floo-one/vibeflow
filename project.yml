@@ -48,6 +48,10 @@ packages:
   Sparkle:
     url: https://github.com/sparkle-project/Sparkle
     from: 2.6.0
+  # Send Feedback and crash reports (docs/designs/feedback.md); started in FeedbackSender.
+  Sentry:
+    url: https://github.com/getsentry/sentry-cocoa
+    from: 9.32.0
 
 targets:
   VibeFlow:
@@ -62,6 +66,8 @@ targets:
       - package: KeyboardShortcuts
       - package: KeychainAccess
       - package: Sparkle
+      - package: Sentry
+        product: Sentry
     info:
       path: VibeFlow/Info.plist
       properties:
@@ -77,6 +83,8 @@ targets:
         # Upcoming meetings: the desktop OAuth client from Config/Google.xcconfig (gitignored).
         GoogleClientID: $(GOOGLE_CLIENT_ID)
         GoogleClientSecret: $(GOOGLE_CLIENT_SECRET)
+        # Sentry's send-only address from Config/VibeFlow.xcconfig; empty turns feedback off.
+        SentryDSN: $(SENTRY_DSN)
         # Sparkle: the release checks every 6 hours, downloads in the background and installs
         # when VibeFlow is idle (Updater.swift). VibeFlow Dev never creates an updater.
         # scripts/release.sh uploads appcast.xml with every release and refuses to sign with a

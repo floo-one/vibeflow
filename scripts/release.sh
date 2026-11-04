@@ -6,6 +6,13 @@
 # One-time setup (see docs/DEVELOPMENT.md "Release"):
 #   xcrun notarytool store-credentials VibeFlowNotary --team-id X7UXDLS9F7
 #   the Sparkle signing key in the login keychain, account "vibeflow" (generate_keys)
+#   brew install getsentry/tools/sentry-cli, and a Sentry organization token for floo-one in
+#   the login keychain: security add-generic-password -U -a vibeflow -s sentry-auth-token -w "$(pbpaste)"
+#
+# In GitHub Actions (.github/workflows/ship.yml) the same keys come from the environment
+# instead: NOTARY_KEY_PATH + NOTARY_KEY_ID + NOTARY_ISSUER_ID (App Store Connect API key),
+# SPARKLE_KEY_FILE (generate_keys -x), SENTRY_AUTH_TOKEN, and the Developer ID certificate in
+# a keychain the workflow sets up.
 #
 # Usage:  scripts/release.sh                 build build/release/VibeFlow-<version>.dmg
 #         scripts/release.sh --publish       same, from a clean main that matches origin, then
@@ -26,6 +33,16 @@
 set -euo pipefail
 
 PROFILE="${VIBEFLOW_NOTARY_PROFILE:-VibeFlowNotary}"
+# notarytool credentials: an App Store Connect API key when one is set (CI), else the profile.
+if [[ -n "${NOTARY_KEY_ID:-}" ]]; then
+  NOTARY_AUTH=(--key "${NOTARY_KEY_PATH:?}" --key-id "$NOTARY_KEY_ID" --issuer "${NOTARY_ISSUER_ID:?}")
+else
+  NOTARY_AUTH=(--keychain-profile "$PROFILE")
+fi
+SPARKLE_KEY_FILE="${SPARKLE_KEY_FILE:-}"
+IN_CI="${GITHUB_ACTIONS:-}"
+SENTRY_ORG=floo-one
+SENTRY_PROJECT=vibeflow
 NOTARIZE=1
 PUBLISH=0
 NIGHTLY=0
@@ -91,7 +108,8 @@ elif [[ $PUBLISH -eq 1 ]]; then
   step "Check that $TAG can be published"
   command -v gh >/dev/null || fail "gh is not installed"
   gh auth status >/dev/null 2>&1 || fail "gh is not logged in (gh auth login)"
-  [[ "$(git branch --show-current)" == "main" ]] || fail "releases are cut from main; this is $(git branch --show-current)"
+  # Actions checks out the commit detached; the origin/main check below covers it there.
+  [[ -n "$IN_CI" || "$(git branch --show-current)" == "main" ]] || fail "releases are cut from main; this is $(git branch --show-current)"
   [[ -z "$(git status --porcelain)" ]] || fail "working tree is not clean"
   git fetch --quiet origin main --tags
   [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || fail "main does not match origin/main; pull or push first"
@@ -113,7 +131,20 @@ if ! grep -qE '^GOOGLE_CLIENT_ID *= *[^ ]+' Config/Google.xcconfig 2>/dev/null \
   print -u2 "warning: no Google client in Config/Google.xcconfig; this build's Meetings tab will say 'Not configured in this build'"
 fi
 
-if [[ $NOTARIZE -eq 1 ]] && ! xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1; then
+# Crash reports are readable only with the build's dSYMs, and the next run deletes this
+# build's archive, so symbols go to Sentry in the same run (docs/designs/feedback.md, D10).
+# A published build must have them; a local one only warns.
+SENTRY_TOKEN="${SENTRY_AUTH_TOKEN:-$(security find-generic-password -a vibeflow -s sentry-auth-token -w 2>/dev/null || true)}"
+if ! command -v sentry-cli >/dev/null || [[ -z "$SENTRY_TOKEN" ]]; then
+  [[ $PUBLISH -eq 1 ]] && fail "no sentry-cli or no Sentry token (keychain: account vibeflow, service sentry-auth-token); crashes from this build would be unreadable"
+  print -u2 "warning: no sentry-cli or Sentry token; this build's debug symbols will not be uploaded"
+  SENTRY_TOKEN=""
+fi
+
+if [[ $NOTARIZE -eq 1 && -n "${NOTARY_KEY_ID:-}" ]] && ! xcrun notarytool history "${NOTARY_AUTH[@]}" >/dev/null 2>&1; then
+  fail "notarytool does not accept the App Store Connect API key (NOTARY_KEY_PATH, NOTARY_KEY_ID, NOTARY_ISSUER_ID)"
+fi
+if [[ $NOTARIZE -eq 1 && -z "${NOTARY_KEY_ID:-}" ]] && ! xcrun notarytool history "${NOTARY_AUTH[@]}" >/dev/null 2>&1; then
   print -u2 "No notarytool keychain profile '$PROFILE'. Create it once with:"
   print -u2 "  xcrun notarytool store-credentials $PROFILE --team-id X7UXDLS9F7"
   print -u2 "(Apple Account email of the developer team + an app-specific password from account.apple.com)"
@@ -132,8 +163,13 @@ if [[ $NOTARIZE -eq 1 ]]; then
   step "Check the Sparkle signing key"
   xcodebuild -resolvePackageDependencies -project VibeFlow.xcodeproj -scheme VibeFlow \
     -derivedDataPath build/DerivedData -quiet
-  [[ "$("$SPARKLE_BIN/generate_keys" --account vibeflow -p 2>/dev/null)" == "$UPDATE_KEY" ]] \
-    || fail "the login keychain has no Sparkle key (account vibeflow) matching SUPublicEDKey in project.yml; see docs/DEVELOPMENT.md, Release"
+  if [[ -n "$SPARKLE_KEY_FILE" ]]; then
+    [[ "$(swift scripts/sparkle-public-key.swift "$SPARKLE_KEY_FILE")" == "$UPDATE_KEY" ]] \
+      || fail "SPARKLE_KEY_FILE does not match SUPublicEDKey in project.yml"
+  else
+    [[ "$("$SPARKLE_BIN/generate_keys" --account vibeflow -p 2>/dev/null)" == "$UPDATE_KEY" ]] \
+      || fail "the login keychain has no Sparkle key (account vibeflow) matching SUPublicEDKey in project.yml; see docs/DEVELOPMENT.md, Release"
+  fi
 fi
 
 # A nightly carries its build number and, like VibeFlow Dev, the commit it came from
@@ -166,6 +202,12 @@ step "Verify the signature"
 codesign --verify --deep --strict --verbose=2 "$APP"
 codesign -dvv "$APP" 2>&1 | grep -E '^(Authority=Developer ID Application|TeamIdentifier=|Timestamp=)'
 
+if [[ -n "$SENTRY_TOKEN" ]]; then
+  step "Upload debug symbols to Sentry"
+  SENTRY_AUTH_TOKEN="$SENTRY_TOKEN" sentry-cli debug-files upload --org "$SENTRY_ORG" --project "$SENTRY_PROJECT" \
+    "$ARCHIVE/dSYMs"
+fi
+
 if [[ $NOTARIZE -eq 0 ]]; then
   print "Signed app at $APP (not notarized: --no-notarize)."
   exit 0
@@ -174,7 +216,7 @@ fi
 step "Notarize the app"
 ZIP="$OUT/VibeFlow-$VERSION.zip"
 ditto -c -k --keepParent "$APP" "$ZIP"
-xcrun notarytool submit "$ZIP" --keychain-profile "$PROFILE" --wait
+xcrun notarytool submit "$ZIP" "${NOTARY_AUTH[@]}" --wait
 xcrun stapler staple "$APP"
 rm -f "$ZIP"
 
@@ -189,7 +231,7 @@ rm -rf "$STAGE"
 
 step "Sign, notarize and staple the DMG"
 codesign --sign "Developer ID Application" --timestamp "$DMG"
-xcrun notarytool submit "$DMG" --keychain-profile "$PROFILE" --wait
+xcrun notarytool submit "$DMG" "${NOTARY_AUTH[@]}" --wait
 xcrun stapler staple "$DMG"
 
 step "Gatekeeper check"
@@ -204,9 +246,9 @@ if [[ $NIGHTLY -eq 1 ]]; then
   # Each nightly DMG keeps its own name, so the feed never points at a file that was
   # replaced under it.
   scripts/write-appcast.sh --url "https://github.com/floo-one/vibeflow/releases/download/nightly/${DMG:t}" \
-    "$DMG" "$VERSION-nightly+$COMMIT" "$BUILD" "$NOTES" > "$APPCAST"
+    "$DMG" "$VERSION-nightly+$COMMIT" "$BUILD" "$NOTES" ${SPARKLE_KEY_FILE:+"$SPARKLE_KEY_FILE"} > "$APPCAST"
 else
-  scripts/write-appcast.sh "$DMG" "$VERSION" "$BUILD" "$NOTES" > "$APPCAST"
+  scripts/write-appcast.sh "$DMG" "$VERSION" "$BUILD" "$NOTES" ${SPARKLE_KEY_FILE:+"$SPARKLE_KEY_FILE"} > "$APPCAST"
 fi
 xmllint --noout "$APPCAST"
 
@@ -246,4 +288,4 @@ fi
 # one.floo.vibeflow instead of /Applications/VibeFlow.app; the archive stays for its dSYMs.
 step "Drop the exported app"
 rm -rf "$APP"
-"$ROOT/scripts/dev.sh" --clean || print -u2 "warning: scripts/dev.sh --clean failed"
+[[ -n "$IN_CI" ]] || "$ROOT/scripts/dev.sh" --clean || print -u2 "warning: scripts/dev.sh --clean failed"

@@ -7,7 +7,10 @@ import Foundation
 public final class OpenAITranscriber: Transcriber {
     public static let groqBaseURL = URL(string: "https://api.groq.com/openai/v1")!
     public static let defaultModel = "whisper-large-v3"
+    /// Dictation: a clip of up to 2 minutes.
     public static let timeout: TimeInterval = 10
+    /// File transcription: a 10-minute, 19.2 MB piece (design D5).
+    public static let fileTimeout: TimeInterval = 60
 
     private let http: any HTTPClient
     private let baseURL: URL
@@ -15,20 +18,49 @@ public final class OpenAITranscriber: Transcriber {
     private let apiKey: @Sendable () -> String?
     /// Custom endpoints may run without a key (local servers); Groq always needs one.
     private let keyRequired: Bool
+    private let requestTimeout: TimeInterval
 
     public init(http: any HTTPClient, baseURL: URL = OpenAITranscriber.groqBaseURL, model: String = OpenAITranscriber.defaultModel,
-                keyRequired: Bool = true, apiKey: @escaping @Sendable () -> String?) {
+                keyRequired: Bool = true, timeout: TimeInterval = OpenAITranscriber.timeout,
+                apiKey: @escaping @Sendable () -> String?) {
         self.http = http
         self.baseURL = baseURL
         self.model = model
         self.keyRequired = keyRequired
+        self.requestTimeout = timeout
         self.apiKey = apiKey
     }
 
     public func transcribe(_ audio: RecordedAudio, language: String?) async throws -> Transcription {
+        let body = try await verboseJSON(audio, language: language)
+        guard let decoded = try? JSONDecoder().decode(VerboseJSON.self, from: body) else {
+            throw TranscriptionFailure.malformed
+        }
+        return Transcription(text: decoded.text.trimmingCharacters(in: .whitespacesAndNewlines),
+                             noSpeechProbabilities: decoded.segments?.compactMap(\.no_speech_prob) ?? [])
+    }
+
+    /// File transcription (design D5): every segment with its times (relative to `audio`), text
+    /// and no-speech probability, so the job can offset times by the piece's start and drop
+    /// silent segments. Same request, same failure mapping as `transcribe`.
+    public func transcribeSegments(_ audio: RecordedAudio, language: String?) async throws -> [WhisperSegment] {
+        let body = try await verboseJSON(audio, language: language)
+        guard let decoded = try? JSONDecoder().decode(VerboseJSON.self, from: body) else {
+            throw TranscriptionFailure.malformed
+        }
+        return (decoded.segments ?? []).map {
+            WhisperSegment(start: $0.start ?? 0, end: $0.end ?? 0,
+                           text: ($0.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
+                           noSpeechProbability: $0.no_speech_prob ?? 0)
+        }
+    }
+
+    /// Sends the request and returns the 200 body; every other outcome becomes a TranscriptionFailure.
+    private func verboseJSON(_ audio: RecordedAudio, language: String?) async throws -> Data {
         let key = apiKey()
         if keyRequired && key == nil { throw TranscriptionFailure.unauthorized }
-        let request = Self.buildRequest(audio: audio, language: language, model: model, baseURL: baseURL, apiKey: key)
+        let request = Self.buildRequest(audio: audio, language: language, model: model, baseURL: baseURL, apiKey: key,
+                                        timeout: requestTimeout)
 
         let response: HTTPResponse
         do {
@@ -44,11 +76,7 @@ public final class OpenAITranscriber: Transcriber {
 
         switch response.status {
         case 200:
-            guard let decoded = try? JSONDecoder().decode(VerboseJSON.self, from: response.body) else {
-                throw TranscriptionFailure.malformed
-            }
-            return Transcription(text: decoded.text.trimmingCharacters(in: .whitespacesAndNewlines),
-                                 noSpeechProbabilities: decoded.segments?.compactMap(\.no_speech_prob) ?? [])
+            return response.body
         case 401, 403:
             throw TranscriptionFailure.unauthorized
         case 429:
@@ -56,11 +84,14 @@ public final class OpenAITranscriber: Transcriber {
         case 500...599:
             throw TranscriptionFailure.serverError(response.status)
         default:
-            throw TranscriptionFailure.rejected(status: response.status, message: Self.message(from: response.body))
+            let json = Self.jsonMessage(from: response.body)
+            throw TranscriptionFailure.rejected(status: response.status, message: json ?? Self.message(from: response.body),
+                                                rawBodyBytes: json == nil ? response.body.count : nil)
         }
     }
 
-    static func buildRequest(audio: RecordedAudio, language: String?, model: String, baseURL: URL, apiKey: String?) -> URLRequest {
+    static func buildRequest(audio: RecordedAudio, language: String?, model: String, baseURL: URL, apiKey: String?,
+                             timeout: TimeInterval = OpenAITranscriber.timeout) -> URLRequest {
         let boundary = "vibeflow-\(UUID().uuidString)"
         var request = URLRequest(url: baseURL.appendingPathComponent("audio/transcriptions"))
         request.httpMethod = "POST"
@@ -90,13 +121,22 @@ public final class OpenAITranscriber: Transcriber {
     }
 
     static func message(from body: Data) -> String {
+        jsonMessage(from: body) ?? String(decoding: body.prefix(200), as: UTF8.self)
+    }
+
+    /// The provider's own `error.message`, nil when the body is not that JSON.
+    static func jsonMessage(from body: Data) -> String? {
         struct E: Decodable { struct Inner: Decodable { let message: String? }; let error: Inner? }
-        if let e = try? JSONDecoder().decode(E.self, from: body), let m = e.error?.message { return m }
-        return String(decoding: body.prefix(200), as: UTF8.self)
+        return (try? JSONDecoder().decode(E.self, from: body))?.error?.message
     }
 
     private struct VerboseJSON: Decodable {
-        struct Segment: Decodable { let no_speech_prob: Double? }
+        struct Segment: Decodable {
+            let start: Double?
+            let end: Double?
+            let text: String?
+            let no_speech_prob: Double?
+        }
         let text: String
         let segments: [Segment]?
     }

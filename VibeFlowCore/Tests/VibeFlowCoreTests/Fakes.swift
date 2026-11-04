@@ -262,6 +262,18 @@ final class FakeHTTPClient: HTTPClient, @unchecked Sendable {
         if let connectError { throw connectError }
         return HTTPResponse(status: status, body: body)
     }
+
+    /// Files sent through `upload`, and their size at the time (they are temporary).
+    private var _uploads: [(file: URL, bytes: Int)] = []
+    var uploads: [(file: URL, bytes: Int)] { lock.withLock { _uploads } }
+
+    func upload(_ request: URLRequest, fromFile file: URL) async throws -> HTTPResponse {
+        var request = request
+        request.httpBody = try Data(contentsOf: file)
+        let bytes = request.httpBody?.count ?? 0
+        lock.withLock { _uploads.append((file, bytes)) }
+        return try await send(request)
+    }
 }
 
 // MARK: - 6. SmartReadClient

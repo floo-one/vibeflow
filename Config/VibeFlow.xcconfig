@@ -4,4 +4,9 @@
 // and the Meetings tab says "Not configured in this build".
 GOOGLE_CLIENT_ID =
 GOOGLE_CLIENT_SECRET =
+
+// Sentry (Send Feedback and crash reports, docs/designs/feedback.md). A DSN is send-only and
+// readable from the shipped app anyway, so it is committed. xcconfig treats "//" as a
+// comment, hence "https:/$()/". Empty = feedback hidden and Sentry never started.
+SENTRY_DSN = https:/$()/d787911baff66567d2505520944ad17b@o4512361045819392.ingest.de.sentry.io/4512361050472528
 #include? "Google.xcconfig"
