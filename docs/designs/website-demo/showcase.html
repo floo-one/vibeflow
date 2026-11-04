@@ -216,10 +216,11 @@ body { padding-top: 44px; }
 .mb.cta .dlp { box-shadow: 0 0 0 4px rgba(107,112,255,.2), 0 8px 20px -8px rgba(64,48,199,.6); }
 
 /* ---------- Hero stub and download rows ---------- */
-.hero { max-width: 1120px; margin: 0 auto; padding: 96px 24px 40px; display: flex; flex-direction: column; gap: 20px; align-items: flex-start; }
+.hero { max-width: 1120px; margin: 0 auto; padding: 112px 24px 48px; display: flex; flex-direction: column; gap: 20px; align-items: center; text-align: center; }
+.hero-icon { width: 96px; height: 96px; margin-bottom: 8px; filter: drop-shadow(0 18px 28px rgba(64,48,199,.35)); }
 .hero h1 { margin: 0; font-weight: 800; letter-spacing: -.035em; line-height: 1; font-size: clamp(46px, 6.4vw, 80px); }
 .hero .lead { max-width: 34rem; font-size: 20px; }
-.ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; }
 .dl { display: inline-flex; align-items: center; gap: 9px; min-height: 52px; padding: 0 24px; border-radius: 999px; background: var(--dark); color: #fff;
   font-weight: 600; font-size: 17px; text-decoration: none; transition: transform .2s var(--ease), background .2s; }
 .dl:hover { background: #000; transform: translateY(-1px); }
@@ -295,6 +296,7 @@ body { padding-top: 44px; }
 </header>
 
 <section class="hero" id="top">
+  <svg class="hero-icon" viewBox="0 0 30 30" aria-hidden="true"><defs><linearGradient id="ic-hero" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6B70FF"/><stop offset="1" stop-color="#4030C7"/></linearGradient></defs><rect width="30" height="30" rx="7" fill="url(#ic-hero)"/><rect x="6.5" y="12" width="2.6" height="6" rx="1.3" fill="#fff"/><rect x="11.2" y="8" width="2.6" height="14" rx="1.3" fill="#fff"/><rect x="15.9" y="10" width="2.6" height="10" rx="1.3" fill="#fff"/><rect x="20.6" y="13" width="2.6" height="4" rx="1.3" fill="#fff"/></svg>
   <p class="eyebrow">Free and open source · macOS 15 or later</p>
   <h1>Everything your Mac <br />was missing.</h1>
   <p class="lead">Hear any text, ask it a question, dictate, transcribe a call, focus, keep awake. One small app, free and open source.</p>
