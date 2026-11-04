@@ -102,6 +102,11 @@ enum SettingsWindow {
         }
     }
 
+    /// Closes the Settings window if it is open.
+    static func close() {
+        NSApp.windows.first { isSettingsWindow($0) && $0.isVisible }?.performClose(nil)
+    }
+
     /// True while the Settings window is on screen (feedback reports name its pane).
     static var isVisible: Bool { NSApp.windows.contains { isSettingsWindow($0) && $0.isVisible } }
 
