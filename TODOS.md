@@ -259,3 +259,31 @@ Follow-ups to docs/designs/file-transcription.md (eng review 2026-11-04). Build 
 **Effort:** S
 **Priority:** P3
 **Depends on:** the feedback PR shipped; a visual bug that was hard to describe.
+
+## Website
+
+Follow-ups from the /design-review of docs/designs/website-demo/showcase.html (2026-11-05). The showcase waits for the new menu bar pop-up before the Astro port.
+
+### Headlines that say what the app does
+
+**What:** Make the hero and Voice headlines name the capabilities (read aloud, explain, dictate), or add a sub line that does, so the page reads from headlines alone.
+
+**Why:** The outside design review (Codex) failed the "understandable by scanning headlines only" check: "Everything your Mac was missing", "One menu. Everything in reach." and "Three keys. Every app." say breadth, not what happens.
+
+**Context:** Medium, deferred by design review because copy is the owner's call; "Everything your Mac was missing." was chosen on purpose. Report: ~/.gstack/projects/vibeflow/designs/design-audit-20261105/design-audit-showcase.md (FINDING-016).
+
+**Effort:** S
+**Priority:** P2
+**Depends on:** Owner's copy decision.
+
+### Spacing and colour tokens when porting the showcase to Astro
+
+**What:** Move the showcase's section padding, gaps, radii and recurring colours (menu blue, scene gradients, notch tints, shadow tint) into shared tokens in website/src/styles/global.css instead of literals.
+
+**Why:** The prototype is one file with hand-tuned values; both outside reviewers flagged that the systems are only partly tokenized.
+
+**Context:** Low, deferred to the port (FINDING-017). Keep literal values where they reproduce real macOS menu details.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** Astro port of the showcase.
