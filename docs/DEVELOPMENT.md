@@ -153,9 +153,10 @@ To publish:
 1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`. The build number
    must be higher than the last release's, or installed copies never see the update.
 2. Add a `## <version>` section to `CHANGELOG.md`.
-3. Merge to main, then on a clean, pushed main run `scripts/release.sh --publish`.
+3. Merge to main. GitHub Actions does the rest (below): CI passes, then the Ship workflow
+   sees a version without a tag and publishes it.
 
-It refuses to run anywhere else or with a build number that is not higher than the last
+By hand, on a clean, pushed main: `scripts/release.sh --publish`. It refuses to run anywhere else or with a build number that is not higher than the last
 tag's. It tags `v<version>` and creates the GitHub release with the changelog section as
 notes, the DMG as `VibeFlow.dmg` and the feed as `appcast.xml`. So the README download link
 always points at the newest version, and installed copies (which read
@@ -163,10 +164,41 @@ always points at the newest version, and installed copies (which read
 `scripts/ExportOptions.plist`, the team id in the commands above, and `SUFeedURL` and
 `SUPublicEDKey` in `project.yml` to yours.
 
+### Publishing from GitHub Actions
+
+`.github/workflows/ship.yml` runs after CI passed on a push to main, on a macOS runner:
+
+- `MARKETING_VERSION` has no `v<version>` tag yet: `release.sh --publish` (tag, release,
+  feed), then a nightly of the same commit so the Nightly channel moves past the release too.
+- Otherwise `release.sh --nightly --publish`, skipped when the commit is already the nightly,
+  only changes the website, or main has moved on (the newer run ships it).
+
+Actions > Ship > Run workflow rebuilds the nightly of the current main.
+
+The keys live in the GitHub environment `release` (Settings > Environments), with deployment
+branches limited to `main`, so pull requests and other branches never see them. Secrets are
+encrypted and write-only, also in a public repository. Set them once, from the main checkout
+(`--env release` on each; `gh` reads the value from stdin or the file):
+
+| Secret | What | How |
+|---|---|---|
+| `DEVELOPER_ID_P12`, `DEVELOPER_ID_P12_PASSWORD` | the Developer ID Application certificate with its private key | Keychain Access > My Certificates > "Developer ID Application: …" > Export as .p12 with a new password; `base64 -i cert.p12 \| gh secret set DEVELOPER_ID_P12 --env release`, then `gh secret set DEVELOPER_ID_P12_PASSWORD --env release` |
+| `ASC_KEY_P8`, `ASC_KEY_ID`, `ASC_ISSUER_ID` | App Store Connect API key for `notarytool` | App Store Connect > Users and Access > Integrations > Team Keys > +, role Developer; `gh secret set ASC_KEY_P8 --env release < AuthKey_<id>.p8`, the key id and issuer id from the same page |
+| `SPARKLE_PRIVATE_KEY` | the Sparkle EdDSA key (never a new one) | `$SPARKLE/generate_keys --account vibeflow -x sparkle.key`, `gh secret set SPARKLE_PRIVATE_KEY --env release < sparkle.key` |
+| `SENTRY_AUTH_TOKEN` | uploads dSYMs | `security find-generic-password -a vibeflow -s sentry-auth-token -w \| gh secret set SENTRY_AUTH_TOKEN --env release` |
+| `GOOGLE_XCCONFIG` | the Google client for Meetings | `gh secret set GOOGLE_XCCONFIG --env release < Config/Google.xcconfig` |
+
+Delete the exported `.p12`, `.p8` and `sparkle.key` files afterwards. `release.sh` reads these
+from the environment only in Actions (`NOTARY_KEY_*`, `SPARKLE_KEY_FILE`,
+`SENTRY_AUTH_TOKEN`); on a Mac it keeps using the login keychain. Before building it checks
+that the Sparkle key matches `SUPublicEDKey` (`scripts/sparkle-public-key.swift`).
+
 ### Nightly: follow main
 
 With Settings > General > Updates, Channel "Nightly", the installed VibeFlow updates to
-every new main instead of waiting for a release. Those builds come from this Mac:
+every new main instead of waiting for a release. The Ship workflow builds them (above). The
+LaunchAgent below did it from a Mac before that, and stays as a fallback; uninstall it once
+Actions publishes nightlies, so the two do not race:
 
 ```bash
 scripts/nightly.sh --install
