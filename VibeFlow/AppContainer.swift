@@ -40,6 +40,8 @@ final class AppContainer {
     let focus: FocusTimer
     /// Keeps the Mac awake (the Amphetamine replacement); its own menu bar item while on.
     let keepAwake: KeepAwake
+    /// Desktop Roles: the morning walk, the role tag and the desktop tints.
+    let desktops: DesktopsController
     /// Which settings tab is showing; "Add key" buttons jump to Keys.
     var settingsTab: SettingsTab = .general
     /// True after the record shortcut, false after a read: which session the menu's status
@@ -118,6 +120,11 @@ final class AppContainer {
             readIsCapturing: { session.state == .capturing },
             cue: { if preferences.dictationSounds { sounds.play($0) } }
         )
+        // The walk refuses to start while a read or dictation runs, since it changes which app is
+        // frontmost (eng review D8a); the other direction is blockedByDesktopWalk.
+        desktops = DesktopsController(preferences: preferences, isBusy: { [session, dictation] in
+            session.state != .idle || dictation.state.isBusy
+        })
         notch = NotchIndicator(dictation: dictation, reading: session, preferences: preferences, level: { [recorder] in recorder.level })
         onDeviceModel = OnDeviceModelStatus(store: LiveOnDeviceModelStore())
         onDeviceModel.prepare(language: presets.defaultPreset.languageOverride) // D9
@@ -145,6 +152,7 @@ final class AppContainer {
         KeyboardShortcuts.onKeyUp(for: .pasteLastDictation) { [weak self] in self?.pasteLastDictation() }
         KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in self?.pasteLastAnswer() }
         KeyboardShortcuts.onKeyUp(for: .focusToggle) { [weak self] in self?.focus.toggle() }
+        KeyboardShortcuts.onKeyUp(for: .setUpDesktops) { [weak self] in self?.desktops.setUpOrStop() }
 
         applyColorMode()
         refreshPermissions()
@@ -165,12 +173,14 @@ final class AppContainer {
     }
 
     private func recordKeyDown() {
+        if blockedByDesktopWalk() { return }
         showsDictation = true
         dictation.recordKeyDown()
     }
 
     /// Shortcut and menu "Start dictation".
     func toggleRecording() {
+        if blockedByDesktopWalk() { return }
         showsDictation = true
         dictation.toggleRecording()
     }
@@ -182,7 +192,7 @@ final class AppContainer {
     func pasteLastAnswer() { pasteAgain(session.lastAnswer) }
 
     private func pasteAgain(_ text: String?) {
-        guard let text else { return }
+        guard let text, !blockedByDesktopWalk() else { return }
         showsDictation = true
         Task { await dictation.pasteAgain(text) }
     }
@@ -191,7 +201,7 @@ final class AppContainer {
 
     /// Held past the threshold: stop any read (the dictation side does it, D3) and record.
     private func questionHoldStarted() {
-        if dictationCancelledByRead() { return }
+        if blockedByDesktopWalk() || dictationCancelledByRead() { return }
         applyReadSettings()
         showsDictation = true // microphone problems show as dictation errors
         dictation.startQuestion { [weak self] result in self?.questionTranscribed(result) }
@@ -216,7 +226,7 @@ final class AppContainer {
 
     /// History: read an entry aloud again (the answer, for a question).
     func readAgain(_ entry: HistoryEntry) {
-        if dictationCancelledByRead() { return }
+        if blockedByDesktopWalk() || dictationCancelledByRead() { return }
         applyReadSettings()
         session.readAgain(entry.text)
     }
@@ -240,6 +250,14 @@ final class AppContainer {
         guard let answer = session.lastExchange?.answer else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(answer, forType: .string)
+    }
+
+    /// While the desktop walk runs it brings apps to the front, so a read or a dictation could
+    /// capture from or paste into the wrong app: those keys only beep until it is done (D8a).
+    private func blockedByDesktopWalk() -> Bool {
+        guard desktops.isWalking else { return false }
+        NSSound.beep()
+        return true
     }
 
     /// A read shortcut while dictating cancels the dictation and does nothing else. While a
@@ -284,20 +302,20 @@ final class AppContainer {
     /// Shortcut and menu "Read selection": the menu does not take focus, so the selection
     /// is still the frontmost app's.
     func hotkey(_ kind: ReadKind) {
-        if dictationCancelledByRead() { return }
+        if blockedByDesktopWalk() || dictationCancelledByRead() { return }
         applyReadSettings()
         session.hotkey(kind)
     }
 
     private func clipboardHotkey(_ kind: ReadKind) {
-        if dictationCancelledByRead() { return }
+        if blockedByDesktopWalk() || dictationCancelledByRead() { return }
         applyReadSettings()
         session.clipboardHotkey(kind, text: NSPasteboard.general.string(forType: .string) ?? "")
     }
 
     /// Menu reads use the clipboard text and the default preset.
     func menuRead(_ kind: ReadKind) {
-        if dictationCancelledByRead() { return }
+        if blockedByDesktopWalk() || dictationCancelledByRead() { return }
         applyReadSettings()
         let text = NSPasteboard.general.string(forType: .string) ?? ""
         session.menuRead(kind, text: text)

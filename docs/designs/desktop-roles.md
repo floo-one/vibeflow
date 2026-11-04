@@ -755,18 +755,19 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
   - Files: VibeFlow/LiveDesktops.swift
   - Verify: xcodebuild Debug build; scripts/dev.sh and a morning walk on the real Mac
   - Done 2026-11-04 as VibeFlow/LiveDesktops.swift (+ ChromeProfiles for the Desktops tab), built from the spike's proven calls; Debug build passes. Not yet exercised in the app: nothing calls it until T5/T6 wire the menu item. Minimized windows are not reported as unplaced yet (spike open question).
-- [ ] **T4 (P1, human: ~2h / CC: ~10min)** — App — Busy exclusion between walk and dictation/smart read
+- [x] **T4 (P1, human: ~2h / CC: ~10min)** — App — Busy exclusion between walk and dictation/smart read
   - Surfaced by: Outside voice 1 (D8a-A)
   - Files: VibeFlow/AppContainer.swift, VibeFlowCore session entry points
   - Verify: unit tests both directions; dictate during a walk in VibeFlow Dev
-- [ ] **T5 (P2, human: ~3h / CC: ~15min)** — App — Role tag MenuBarExtra (colored image), retint observers, Dev pause while release runs
+- [x] **T5 (P2, human: ~3h / CC: ~15min)** — App — Role tag MenuBarExtra (colored image), retint observers, Dev pause while release runs
   - Surfaced by: Scope Challenge 2; D3-A; Architecture 2; D8d-A
   - Files: VibeFlow/VibeFlowApp.swift, VibeFlow/DesktopsViews.swift
   - Verify: switch desktops by hand in VibeFlow Dev; run release and Dev together
-- [ ] **T6 (P2, human: ~4h / CC: ~20min)** — App — Desktops Settings tab, setup check rows, "Set up desktops" shortcut and menu item, completion report
+- [x] **T6 (P2, human: ~4h / CC: ~20min)** — App — Desktops Settings tab, setup check rows, "Set up desktops" shortcut and menu item, completion report
   - Surfaced by: Code quality 2; Scope Challenge 1 (setup check values)
   - Files: VibeFlow/Settings/SettingsView.swift, VibeFlow/DesktopsViews.swift, VibeFlow/Shortcuts.swift, VibeFlow/MenuBarView.swift
   - Verify: xcodebuild Debug build; manual Settings check
+  - T4-T6 done 2026-11-04: DesktopsController.swift (walk, tag, retint on desktop/screen/wake changes, Dev pause, setup check, tag image) and DesktopsViews.swift (tag label, Desktops submenu with the last report, Settings > Desktops); AppContainer blocks reads and dictation with a beep during a walk. Debug build passes; not yet tried by the user on the real Mac.
 - [ ] **T7 (P2, human: ~15min / CC: n/a)** — QA — Manual regression checklist in VibeFlow Dev
   - Surfaced by: D6-A, D8d-A
   - Files: none

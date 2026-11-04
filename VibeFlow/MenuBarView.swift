@@ -6,7 +6,7 @@ import SwiftUI
 /// The menu (design: Menu bar status, D6 remedies): status line, Last error with up to two
 /// actions, then three sections like the Settings sidebar: Voice (Stop, Read anyway, every
 /// read, dictation and paste action with the shortcut it is currently set to, History),
-/// Focus & Time (Pomodoro, the next meeting) and Utilities (Keep Awake). Grant
+/// Focus & Time (Pomodoro, the next meeting) and Utilities (Keep Awake, Desktops). Grant
 /// Accessibility access, Settings, Quit.
 /// VibeFlow Dev starts with the branch and commit it was built from (BuildStamp); the release
 /// ends with its version and Check for Updates.
@@ -136,6 +136,11 @@ struct MenuBarView: View {
             } label: {
                 Label(keepAwakeTitle, systemImage: "cup.and.saucer")
             }
+            Menu {
+                DesktopsMenuItems()
+            } label: {
+                Label(desktopsTitle, systemImage: "rectangle.3.group")
+            }
         }
 
         Divider()
@@ -188,6 +193,13 @@ struct MenuBarView: View {
         guard awake.isActive else { return "Keep Awake · Off" }
         let remaining = KeepAwakeFormat.remaining(until: awake.endsAt, now: Date())
         return "Keep Awake · \(remaining.isEmpty ? "On" : remaining)"
+    }
+
+    /// "Desktops", "Desktops · Comms" on a role's desktop, "Desktops · Setting up…" during a walk.
+    private var desktopsTitle: String {
+        let desktops = container.desktops
+        if desktops.isWalking { return "Desktops · Setting up…" }
+        return desktops.currentRole.map { "Desktops · \($0.name)" } ?? "Desktops"
     }
 
     /// A dictation or a read's Copy owns the clipboard, so pasting again would collide with it.

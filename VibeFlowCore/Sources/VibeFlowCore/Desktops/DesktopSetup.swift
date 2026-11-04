@@ -41,8 +41,9 @@ public protocol DesktopControl: AnyObject {
     func layout() -> DesktopLayout?
     /// Posts Control+N. Confirmation comes from `layout()`, never from a notification alone.
     func switchTo(desktop: Int)
-    /// Sets the tint on the screen that is showing `desktop`.
-    func tint(desktop: Int, colorHex: String)
+    /// Sets the tint, with the role's name on it, on the screen that is showing `desktop`. The name
+    /// is on the wallpaper because a menu bar item looks the same on every screen.
+    func tint(desktop: Int, colorHex: String, name: String)
 }
 
 /// Windows as Accessibility and the window list see them.
@@ -185,7 +186,7 @@ public final class DesktopSetup {
                     role.items.forEach { record(role, $0, .unresolved(.switchFailed)) }
                     continue
                 }
-                control.tint(desktop: desktop, colorHex: role.colorHex)
+                control.tint(desktop: desktop, colorHex: role.colorHex, name: role.name)
                 for item in role.items {
                     if let stop {
                         record(role, item, .unresolved(stop))
@@ -219,7 +220,7 @@ public final class DesktopSetup {
     public func retintShowing(_ roles: [DesktopRole]) {
         guard let layout = control.layout() else { return }
         for role in roles where layout.isShowing(role.desktopNumber) {
-            control.tint(desktop: role.desktopNumber, colorHex: role.colorHex)
+            control.tint(desktop: role.desktopNumber, colorHex: role.colorHex, name: role.name)
         }
     }
 

@@ -69,6 +69,7 @@ public final class Preferences {
         static let focusCustomRounds = "focus.custom.rounds"
         static let keepAwakeDisplayOn = "keepAwake.displayOn"
         static let desktopRoles = "desktops.roles"
+        static let desktopRoleTag = "desktops.menuBarTag"
     }
 
     public var launchAtLogin: Bool {
@@ -173,6 +174,11 @@ public final class Preferences {
     public var desktopRoles: [DesktopRole] {
         didSet { defaults.set(try? JSONEncoder().encode(desktopRoles), forKey: Key.desktopRoles) }
     }
+    /// The focused desktop's role as a tag in the menu bar. Off by default: macOS shows a menu bar
+    /// item the same on every screen, so the wallpaper carries the name instead.
+    public var desktopRoleTag: Bool {
+        didSet { defaults.set(desktopRoleTag, forKey: Key.desktopRoleTag) }
+    }
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -209,6 +215,7 @@ public final class Preferences {
         keepAwakeDisplayOn = defaults.object(forKey: Key.keepAwakeDisplayOn) as? Bool ?? true
         desktopRoles = defaults.data(forKey: Key.desktopRoles)
             .flatMap { try? JSONDecoder().decode([DesktopRole].self, from: $0) } ?? []
+        desktopRoleTag = defaults.bool(forKey: Key.desktopRoleTag)
     }
 
     public var vocabularyTerms: [String] { Self.parseVocabulary(vocabulary) }

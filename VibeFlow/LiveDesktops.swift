@@ -82,13 +82,15 @@ final class LiveDesktops: DesktopControl, DesktopWindows, AppLauncher {
         }
     }
 
-    func tint(desktop: Int, colorHex: String) {
-        guard let image = try? Self.tintImage(colorHex) else { return }
+    func tint(desktop: Int, colorHex: String, name: String) {
         let options: [NSWorkspace.DesktopImageOptionKey: Any] = [
             .imageScaling: NSImageScaling.scaleAxesIndependently.rawValue,
             .allowClipping: true,
         ]
-        for screen in screens(showing: desktop) where NSWorkspace.shared.desktopImageURL(for: screen) != image {
+        for screen in screens(showing: desktop) {
+            guard let image = try? Self.tintImage(colorHex, name: name, for: screen),
+                  NSWorkspace.shared.desktopImageURL(for: screen) != image
+            else { continue }
             try? NSWorkspace.shared.setDesktopImageURL(image, for: screen, options: options)
         }
     }
@@ -280,28 +282,37 @@ final class LiveDesktops: DesktopControl, DesktopWindows, AppLauncher {
 
     // MARK: Tint
 
-    /// One solid PNG per color in Application Support; a new file name per color, since macOS
-    /// caches wallpapers by URL.
-    private static func tintImage(_ hex: String) throws -> URL {
+    /// The role color filling the screen, the role name large and faint in the bottom-left corner,
+    /// at the screen's own pixel size. Cached in Application Support, one file per color, name and
+    /// size: macOS caches wallpapers by URL, so a changed image needs a new name.
+    private static func tintImage(_ hex: String, name: String, for screen: NSScreen) throws -> URL {
         let clean = hex.replacingOccurrences(of: "#", with: "").uppercased()
-        guard clean.count == 6, let value = UInt32(clean, radix: 16) else { throw CocoaError(.formatting) }
+        guard clean.count == 6, UInt32(clean, radix: 16) != nil else { throw CocoaError(.formatting) }
+        let scale = screen.backingScaleFactor
+        let width = Int(screen.frame.width * scale), height = Int(screen.frame.height * scale)
+        let slug = String(name.lowercased().map { $0.isLetter || $0.isNumber ? $0 : "-" }.prefix(32))
         let folder = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             .appendingPathComponent(Bundle.main.bundleIdentifier ?? "one.floo.vibeflow", isDirectory: true)
             .appendingPathComponent("Tints", isDirectory: true)
-        let url = folder.appendingPathComponent("tint-\(clean).png")
+        let url = folder.appendingPathComponent("tint-\(clean)-\(slug)-\(width)x\(height).png")
         if FileManager.default.fileExists(atPath: url.path) { return url }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         guard let bitmap = NSBitmapImageRep(
-            bitmapDataPlanes: nil, pixelsWide: 64, pixelsHigh: 64, bitsPerSample: 8, samplesPerPixel: 4,
+            bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height, bitsPerSample: 8, samplesPerPixel: 4,
             hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)
         else { throw CocoaError(.fileWriteUnknown) }
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
-        NSColor(
-            srgbRed: CGFloat((value >> 16) & 0xFF) / 255, green: CGFloat((value >> 8) & 0xFF) / 255,
-            blue: CGFloat(value & 0xFF) / 255, alpha: 1
-        ).setFill()
-        NSRect(x: 0, y: 0, width: 64, height: 64).fill()
+        let canvas = NSRect(x: 0, y: 0, width: width, height: height)
+        NSColor(hex: hex).setFill()
+        canvas.fill()
+        // Large enough to read across the room, faint enough not to fight the windows on top.
+        let font = NSFont.systemFont(ofSize: CGFloat(height) * 0.09, weight: .bold)
+        let text = NSAttributedString(string: name, attributes: [
+            .font: font, .foregroundColor: NSColor.white.withAlphaComponent(0.28),
+        ])
+        let margin = CGFloat(height) * 0.05
+        text.draw(at: NSPoint(x: margin, y: margin))
         NSGraphicsContext.restoreGraphicsState()
         guard let png = bitmap.representation(using: .png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
         try png.write(to: url)

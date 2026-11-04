@@ -81,7 +81,7 @@ private final class FakeMac: DesktopControl, DesktopWindows, AppLauncher {
         if switchable.contains(desktop) { userShows(desktop) }
     }
 
-    func tint(desktop: Int, colorHex: String) { tints.append((desktop, colorHex)) }
+    func tint(desktop: Int, colorHex: String, name: String) { tints.append((desktop, colorHex)) }
 
     // DesktopWindows
 
