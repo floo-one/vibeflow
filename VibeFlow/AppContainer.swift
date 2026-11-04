@@ -22,6 +22,8 @@ final class AppContainer {
     let onDeviceModel: OnDeviceModelStatus
     /// Reads and answered questions, on this Mac only (Application Support/VibeFlow/history.json).
     let history: HistoryStore
+    /// What the paid APIs cost, per day and model (Settings > Usage); counts only, never text.
+    let usage: UsageLog
     /// The entry the History window shows; set by the menu's History submenu.
     var historySelection: HistoryEntry.ID?
     /// Transcribe File (docs/designs/file-transcription.md).
@@ -81,11 +83,22 @@ final class AppContainer {
 
         let clock = ContinuousSessionClock()
         let pasteboard = LivePasteboard()
-        let http = URLSessionHTTPClient()
+        // Every client that can reach a paid API goes through a meter (UsageMeter). VibeFlow
+        // Dev keeps its own file, like history-dev.json.
+        #if DEBUG
+        let usage = UsageLog(fileURL: UsageLog.defaultFileURL.deletingLastPathComponent().appending(path: "usage-dev.json"))
+        #else
+        let usage = UsageLog(fileURL: UsageLog.defaultFileURL)
+        #endif
+        self.usage = usage
+        let meter = usage.sink()
+        let http = MeteredHTTPClient(URLSessionHTTPClient(), record: meter)
+        let stream = MeteredByteStreamClient(URLSessionByteStreamClient(), record: meter)
         focus = FocusTimer(preferences: preferences)
         meetings = MeetingsStore(config: GoogleOAuthConfig(infoDictionary: Bundle.main.infoDictionary),
                                  secrets: secrets, preferences: preferences, http: http)
-        let elevenLabs = ElevenLabsProvider(client: URLSessionByteStreamClient(), player: player, secrets: secrets)
+        let elevenLabs = ElevenLabsProvider(client: stream, webSocket: MeteredWebSocketClient(URLSessionWebSocketClient(), record: meter),
+                                            player: player, secrets: secrets)
         self.elevenLabs = elevenLabs
         let session = ReadSession(
             accessibility: accessibility,
@@ -94,7 +107,7 @@ final class AppContainer {
             presets: presets,
             elevenLabs: elevenLabs,
             apple: AppleSpeechProvider(catalog: voices),
-            smartRead: AnthropicClient(http: http, secrets: secrets),
+            smartRead: AnthropicClient(http: http, stream: stream, secrets: secrets),
             secrets: secrets,
             clock: clock,
             configuration: preferences.sessionConfiguration,

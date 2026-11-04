@@ -37,7 +37,8 @@ Shift + Option + Command + V paste last smart read.
 Xcode 26.6 installed and selected (2026-10-01). The .xcodeproj is generated and gitignored; project.yml is the source of truth.
 
 - Regenerate the project after editing project.yml: `xcodegen generate`
-- Build: `xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug -derivedDataPath build/DerivedData build`
+- Build: `xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug -derivedDataPath build/DerivedData -clonedSourcePackagesDirPath ~/Library/Caches/VibeFlow/SourcePackages build`
+  (the shared package folder keeps worktrees from each holding their own 3.3 GB copy of sentry-cocoa; scripts/dev.sh uses it too. release.sh keeps packages in build/DerivedData, where it finds Sparkle's tools)
   (until a signing identity exists, append `CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=` for an ad-hoc build)
 - Core tests: `cd VibeFlowCore && swift test` (Swift Testing)
 - Two apps side by side: the installed release (Release config, "VibeFlow", one.floo.vibeflow, from the GitHub DMG in /Applications) is prod; the Debug build is "VibeFlow Dev" (one.floo.vibeflow.dev): own UserDefaults and TCC grants, own data files in the shared Application Support/VibeFlow folder (focus-dev.json, history-dev.json, Transcripts-dev/; an older release that meets a newer history row cannot read the file and empties it), DEV tag in the menu bar, Control added to default shortcuts via `#if DEBUG` in Shortcuts.swift. Keychain service "one.floo.vibeflow" is shared by both. Each runs once: a starting copy quits every older copy of itself from any path (AppDelegate.quitOlderCopies, called from VibeFlowApp.init).
