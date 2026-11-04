@@ -126,8 +126,10 @@ h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); li
 .book { transition: opacity .35s var(--ease); }
 .book.swap { opacity: 0; }
 .actl { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.apause { flex: none; width: 36px; height: 36px; border-radius: 18px; border: 1px solid var(--line-2); background: #fff; color: var(--text);
-  display: grid; place-items: center; cursor: pointer; transition: background .2s, border-color .2s, transform .15s; }
+.apause { flex: none; height: 36px; padding: 0 16px 0 12px; border-radius: 18px; border: 1px solid var(--line-2); background: #fff; color: var(--text);
+  display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s, transform .15s; }
+@media (pointer: coarse) { .apause { height: 44px; border-radius: 22px; } }
 .apause:hover { border-color: #A1A1A6; }
 .apause:active { transform: scale(.94); }
 .apause .i-play, .apause[aria-pressed="true"] .i-pause { display: none; }
@@ -468,9 +470,10 @@ body { padding-top: 44px; }
   </div>
 
   <div class="actl">
-    <button class="apause" id="apause" aria-pressed="false" aria-label="Pause">
+    <button class="apause" id="apause" aria-pressed="false">
       <svg class="i-pause" width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><rect x="2" y="1.5" width="3" height="9" rx="1"/><rect x="7" y="1.5" width="3" height="9" rx="1"/></svg>
       <svg class="i-play" width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M3 1.8v8.4a.6.6 0 0 0 .9.5l7-4.2a.6.6 0 0 0 0-1L3.9 1.3a.6.6 0 0 0-.9.5z"/></svg>
+      <span id="apause-t">Pause</span>
     </button>
   </div>
   <p class="visually-hidden" id="aread" aria-live="polite"></p>
@@ -554,7 +557,7 @@ body { padding-top: 44px; }
     paused = p;
     waiters.forEach(w => (p ? w.hold() : w.go()));
     btn.setAttribute('aria-pressed', String(p));
-    btn.setAttribute('aria-label', p ? 'Play' : 'Pause');
+    $('#apause-t').textContent = p ? 'Play' : 'Pause';
     scene.classList.toggle('paused', p);
     // Pausing mid-sentence shows the whole sentence, so it can be read.
     if (p && (phase === 'ask' || phase === 'answer')) {
