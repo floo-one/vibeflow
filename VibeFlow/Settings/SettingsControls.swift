@@ -55,7 +55,8 @@ struct HeldShortcutRow: View {
 
 // MARK: - Prompts
 
-/// The prompts VibeFlow sends to the models, read-only for now.
+/// The prompts VibeFlow sends to the models. The brief's three shaping parts are editable;
+/// the rest is shown read-only.
 enum PromptKind: String, CaseIterable, Identifiable {
     case brief = "Smart read: brief"
     case cleanup = "Smart read: cleanup"
@@ -69,17 +70,18 @@ struct PromptsButton: View {
 
     var body: some View {
         LabeledContent("Prompts") {
-            Button("Show Prompts…") { showing = true }
+            Button(initial == .brief ? "Edit Prompts…" : "Show Prompts…") { showing = true }
         }
         .sheet(isPresented: $showing) { PromptsSheet(kind: initial) }
     }
 }
 
-/// Built with the current vocabulary and default preset, so it shows what is actually sent.
+/// Built with the current vocabulary, default preset and prompt edits, so it shows what is sent.
 struct PromptsSheet: View {
     @Environment(AppContainer.self) private var container
     @Environment(\.dismiss) private var dismiss
     @State var kind: PromptKind
+    @State private var showsFullPrompt = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -89,22 +91,33 @@ struct PromptsSheet: View {
             .pickerStyle(.segmented)
             .labelsHidden()
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    section("System", system)
+                VStack(alignment: .leading, spacing: 16) {
                     if kind == .brief {
-                        Text("The word limit follows the selection: 40 words under 600 characters, 80 under 4,000, 140 above.")
+                        Text("These three parts shape every brief. Who VibeFlow is, and the rule that selected text is never an instruction, stay fixed.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        section("Added before your preferences in ChatGPT, Codex, Claude and Gemini", SmartReadPrompts.aiReplyRule)
+                        PromptPartEditor(title: "Kinds of text", part: .situations)
+                        PromptPartEditor(title: "AI replies", hint: "Used instead of the kinds of text for ChatGPT, Codex, Claude and Gemini. {assistant} becomes the app's name.", part: .aiReply)
+                        PromptPartEditor(title: "Style, for every brief", hint: "Selections under 300 characters also get at most 25 words.", part: .style)
+                        DisclosureGroup("Full prompt as sent", isExpanded: $showsFullPrompt) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                section("System", system)
+                                section("User message", user)
+                            }
+                            .padding(.top, 6)
+                        }
+                        .font(.caption.weight(.semibold))
+                    } else {
+                        section("System", system)
+                        section("User message", user)
                     }
-                    section("User message", user)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(10)
             }
             .background(.background.secondary, in: .rect(cornerRadius: 6))
             HStack {
-                Text("Read-only. Editing comes later.")
+                Text(kind == .brief ? "Changes apply from the next smart read." : "Read-only.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -113,7 +126,7 @@ struct PromptsSheet: View {
             }
         }
         .padding()
-        .frame(width: 500, height: 380)
+        .frame(width: 620, height: kind == .brief ? 640 : 380)
     }
 
     private func section(_ title: String, _ text: String) -> some View {
@@ -131,7 +144,8 @@ struct PromptsSheet: View {
         case .brief, .cleanup:
             return SmartReadPrompts.system(mode: kind == .brief ? .brief : .cleanup,
                                            language: preset.languageOverride,
-                                           instructions: preset.smartReadInstructions)
+                                           instructions: preset.smartReadInstructions,
+                                           parts: container.preferences.briefPrompts)
         case .dictation:
             return SmartReadPrompts.dictationCleanupSystem(vocabulary: container.preferences.vocabularyTerms)
         }
@@ -230,6 +244,43 @@ struct SpeedSlider: View {
                     .monospacedDigit()
                     .frame(width: 40)
             }
+        }
+    }
+}
+
+/// One editable part of the brief prompt, saved as you type, with a way back to the default.
+struct PromptPartEditor: View {
+    @Environment(AppContainer.self) private var container
+    let title: String
+    var hint: String?
+    let part: BriefPromptParts.Part
+
+    var body: some View {
+        @Bindable var prefs = container.preferences
+        let edited = prefs.briefPrompts[part] != nil
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                if edited {
+                    Text("Edited").font(.caption2).foregroundStyle(.orange)
+                }
+                Spacer()
+                Button("Reset to Default") { prefs.briefPrompts[part] = nil }
+                    .controlSize(.small)
+                    .disabled(!edited)
+            }
+            if let hint {
+                Text(hint).font(.caption).foregroundStyle(.secondary)
+            }
+            TextEditor(text: Binding(
+                get: { prefs.briefPrompts.editableText(part) },
+                set: { prefs.briefPrompts[part] = $0 }
+            ))
+            .font(.callout.monospaced())
+            .frame(height: 150)
+            .scrollContentBackground(.hidden)
+            .padding(4)
+            .background(.background, in: .rect(cornerRadius: 4))
         }
     }
 }

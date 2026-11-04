@@ -187,8 +187,8 @@ public final class ReadSession {
         let origin: ReadOrigin
         let app: FrontmostApp?
         var preset: AppPreset
-        /// The hotkey fired in an AI assistant app, so smart read speaks as that assistant.
-        var aiReply = false
+        /// The hotkey fired in an AI assistant app ("Claude"), so smart read relays it by name.
+        var assistant: String?
         var text: String?
         var spokenText: String?
         var usingApple = false
@@ -302,7 +302,7 @@ public final class ReadSession {
         // when it was copied there: an email copied in Mail is not ChatGPT's advice.
         if origin == .clipboardHotkey, let source = clipboardSource.clipboardSourceBundleID(),
            source == accessibility.frontmostApp()?.bundleID {
-            session.aiReply = SmartReadPrompts.isAIAssistant(bundleID: source)
+            session.assistant = SmartReadPrompts.assistantName(bundleID: source)
         }
         session.recordsHistory = recordsHistory
         current = session
@@ -348,7 +348,7 @@ public final class ReadSession {
         let app = accessibility.frontmostApp()
         let preset = presets.preset(for: app?.bundleID)
         let session = Current(kind: kind, origin: origin, app: app, preset: preset)
-        session.aiReply = SmartReadPrompts.isAIAssistant(bundleID: app?.bundleID)
+        session.assistant = SmartReadPrompts.assistantName(bundleID: app?.bundleID)
         current = session
         state = .capturing
         status = "Capturing selection"
@@ -443,7 +443,8 @@ public final class ReadSession {
             model: configuration.smartReadModel,
             maxTokens: configuration.maxTokens(for: preset.smartReadMode, inputCharacters: text.count),
             instructions: preset.smartReadInstructions,
-            aiReply: session.aiReply
+            assistant: session.assistant,
+            promptParts: configuration.briefPrompts
         )
         let token = session.token
         let client = smartRead

@@ -17,6 +17,8 @@ public struct SessionConfiguration: Sendable, Equatable {
     /// Speed for briefs and follow-up answers (Settings > Smart Read), nil = the read speed.
     public var smartReadSpeed: Double?
     public var briefMaxTokens: Int = 800
+    /// The listener's edits to the brief prompt (Settings > Smart Read > Prompts).
+    public var briefPrompts = BriefPromptParts()
 
     public init() {}
 

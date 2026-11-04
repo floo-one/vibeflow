@@ -21,7 +21,7 @@ public final class AnthropicClient: SmartReadClient {
 
     public func transform(_ request: SmartReadRequest) async throws -> SmartReadResponse {
         try await complete(
-            system: SmartReadPrompts.system(mode: request.mode, language: request.language, instructions: request.instructions, inputCharacters: request.text.count, aiReply: request.aiReply),
+            system: SmartReadPrompts.system(mode: request.mode, language: request.language, instructions: request.instructions, inputCharacters: request.text.count, assistant: request.assistant, parts: request.promptParts),
             user: SmartReadPrompts.user(text: request.text),
             model: request.model,
             maxTokens: request.maxTokens

@@ -267,15 +267,20 @@ public struct SmartReadRequest: Sendable, Equatable {
     public var maxTokens: Int
     /// Per-app guidance from the preset (trusted, user-authored), nil = none.
     public var instructions: String?
-    /// The text was copied from an AI assistant app, so the brief speaks as that assistant.
-    public var aiReply: Bool
+    /// The AI assistant app the text came from ("Claude"), so the brief relays it by name; nil = not an AI reply.
+    public var assistant: String?
+    public var aiReply: Bool { assistant != nil }
+    /// The listener's edits to the brief prompt (Settings), empty = the defaults.
+    public var promptParts: BriefPromptParts
 
-    public init(text: String, mode: SmartReadMode, language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil, aiReply: Bool = false) {
+    public init(text: String, mode: SmartReadMode, language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil, assistant: String? = nil,
+                promptParts: BriefPromptParts = BriefPromptParts()) {
         self.text = text
         self.mode = mode
         self.language = language
         self.instructions = instructions
-        self.aiReply = aiReply
+        self.assistant = assistant
+        self.promptParts = promptParts
         self.model = model
         self.maxTokens = maxTokens
     }

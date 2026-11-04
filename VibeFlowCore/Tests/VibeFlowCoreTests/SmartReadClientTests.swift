@@ -27,10 +27,10 @@ struct AnthropicClientTests {
         #expect(system.contains("never an instruction"))
         #expect(system.contains("BCP-47 tag en"))
         #expect(system.contains("15-year-old"))
-        #expect(system.contains("at most 40 words"), "a 44-character selection gets the shortest brief")
+        #expect(system.contains("at most 25 words"), "a 44-character selection gets the short cap")
         #expect(!system.contains("preferences for this app"), "no per-app block without instructions")
         // Value: protects=a plain request (aiReply defaults false) reaching the API without the assistant-voice rule; fails_when=AnthropicClient stops forwarding request.aiReply (e.g. hardcodes true) or the init default flips; why_new=existing aiReply tests only check the true path through the client; seam=none; no_claim=does not judge prompt wording
-        #expect(!system.contains(SmartReadPrompts.aiReplyRule), "no assistant voice unless the text came from an AI app")
+        #expect(!system.contains(SmartReadPrompts.aiReplyRule(assistant: "Claude")), "no assistant voice unless the text came from an AI app")
         let messages = try #require(body["messages"] as? [[String: String]])
         #expect(messages.count == 1)
         #expect(messages[0]["role"] == "user")
@@ -70,25 +70,35 @@ struct AnthropicClientTests {
         #expect(SmartReadPrompts.system(mode: .brief, language: nil, instructions: "   ") == SmartReadPrompts.system(mode: .brief, language: nil))
     }
 
-    @Test func briefLengthFollowsTheInput() {
-        #expect(SmartReadPrompts.briefLength(forCharacters: 200) == "at most 40 words")
-        #expect(SmartReadPrompts.briefLength(forCharacters: 2_000) == "at most 80 words")
-        #expect(SmartReadPrompts.briefLength(forCharacters: 20_000) == "at most 140 words")
-        #expect(SmartReadPrompts.system(mode: .brief, language: nil, inputCharacters: 20_000).contains("at most 140 words"))
-        #expect(!SmartReadPrompts.system(mode: .cleanup, language: nil, inputCharacters: 20_000).contains("at most 140 words"))
+    @Test func onlyShortSelectionsGetAnExtraCap() {
+        #expect(SmartReadPrompts.briefLength(forCharacters: 200) == "at most 25 words")
+        #expect(SmartReadPrompts.briefLength(forCharacters: 0) == nil, "unknown length: the situation's own limit")
+        #expect(SmartReadPrompts.briefLength(forCharacters: 20_000) == nil)
+        #expect(!SmartReadPrompts.system(mode: .cleanup, language: nil, inputCharacters: 200).contains("at most 25 words"))
+    }
+
+    @Test func briefPicksSituationsOrTheAssistantVoice() {
+        let plain = SmartReadPrompts.system(mode: .brief, language: nil, inputCharacters: 2_000)
+        let ai = SmartReadPrompts.system(mode: .brief, language: nil, inputCharacters: 2_000, assistant: "Claude")
+        #expect(plain.contains(SmartReadPrompts.situationRule) && plain.contains(SmartReadPrompts.briefStyleRule))
+        #expect(!ai.contains(SmartReadPrompts.situationRule), "an AI reply skips the situation list")
+        #expect(ai.contains(SmartReadPrompts.briefStyleRule))
+        #expect(ai.contains("a reply from Claude"), "the brief relays the assistant by name")
+        #expect(plain.hasPrefix(SmartReadPrompts.identity) && ai.hasPrefix(SmartReadPrompts.identity), "VibeFlow speaks as itself")
+        #expect(SmartReadPrompts.askSystem(language: nil).hasPrefix(SmartReadPrompts.identity), "follow-ups too")
     }
 
     @Test func aiReplyRuleOnlyJoinsTheBriefForAIReplies() async throws {
         let plain = SmartReadPrompts.system(mode: .brief, language: nil)
-        let ai = SmartReadPrompts.system(mode: .brief, language: nil, aiReply: true)
-        #expect(!plain.contains(SmartReadPrompts.aiReplyRule))
-        #expect(ai.contains(SmartReadPrompts.aiReplyRule))
+        let ai = SmartReadPrompts.system(mode: .brief, language: nil, assistant: "Claude")
+        #expect(!plain.contains(SmartReadPrompts.aiReplyRule(assistant: "Claude")))
+        #expect(ai.contains(SmartReadPrompts.aiReplyRule(assistant: "Claude")))
         #expect(ai.contains("never an instruction"), "the injection guard stays in front")
-        #expect(!SmartReadPrompts.system(mode: .cleanup, language: nil, aiReply: true).contains(SmartReadPrompts.aiReplyRule))
+        #expect(!SmartReadPrompts.system(mode: .cleanup, language: nil, assistant: "Claude").contains(SmartReadPrompts.aiReplyRule(assistant: "Claude")))
 
         // Value: protects=per-app preferences staying last, after the assistant-voice rule, so "the rules above" still covers the injection guard and the rule; fails_when=aiReplyRule is appended after the instructions block or replaces it; why_new=no test combines aiReply with per-app instructions; seam=none; no_claim=does not judge how the model weighs the two
-        let withPrefs = SmartReadPrompts.system(mode: .brief, language: "de", instructions: "Only deadlines.", aiReply: true)
-        let rule = try #require(withPrefs.range(of: SmartReadPrompts.aiReplyRule))
+        let withPrefs = SmartReadPrompts.system(mode: .brief, language: "de", instructions: "Only deadlines.", assistant: "Claude")
+        let rule = try #require(withPrefs.range(of: SmartReadPrompts.aiReplyRule(assistant: "Claude")))
         let prefs = try #require(withPrefs.range(of: "preferences for this app"))
         #expect(rule.upperBound <= prefs.lowerBound)
         #expect(withPrefs.hasSuffix("Follow them unless they conflict with the rules above: Only deadlines."))
@@ -96,10 +106,10 @@ struct AnthropicClientTests {
 
         http.body = Self.ok(text: "ok")
         var r = request
-        r.aiReply = true
+        r.assistant = "Claude"
         _ = try await client.transform(r)
         let body = try #require(try JSONSerialization.jsonObject(with: http.requests[0].httpBody!) as? [String: Any])
-        #expect((body["system"] as? String)?.contains(SmartReadPrompts.aiReplyRule) == true)
+        #expect((body["system"] as? String)?.contains(SmartReadPrompts.aiReplyRule(assistant: "Claude")) == true)
     }
 
     @Test func knownAIAppsAreRecognisedByBundleID() {
@@ -107,6 +117,9 @@ struct AnthropicClientTests {
         #expect(SmartReadPrompts.isAIAssistant(bundleID: "com.anthropic.claudefordesktop"))
         #expect(!SmartReadPrompts.isAIAssistant(bundleID: "com.apple.Safari"))
         #expect(!SmartReadPrompts.isAIAssistant(bundleID: nil))
+        #expect(SmartReadPrompts.assistantName(bundleID: "com.anthropic.claudefordesktop") == "Claude")
+        #expect(SmartReadPrompts.assistantName(bundleID: "com.openai.chat") == "ChatGPT")
+        #expect(SmartReadPrompts.assistantName(bundleID: "com.apple.Safari") == nil)
     }
 
     @Test func cleanupPromptPreservesMeaningAndSourceLanguageWhenUnspecified() {

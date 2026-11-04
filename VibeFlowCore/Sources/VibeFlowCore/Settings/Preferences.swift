@@ -47,6 +47,7 @@ public final class Preferences {
         static let voiceModel = "voiceModel"
         static let smartReadModel = "smartReadModel"
         static let smartReadSpeed = "smartRead.speed"
+        static let briefPrompts = "smartRead.briefPrompts"
         static let historyRetention = "history.retention"
         static let transcriptionModel = "dictation.transcriptionModel"
         static let cleanupModel = "dictation.cleanupModel"
@@ -91,6 +92,10 @@ public final class Preferences {
     /// Speed for briefs and follow-up answers, separate from the read speed (Settings > Smart Read).
     public var smartReadSpeed: Double {
         didSet { defaults.set(smartReadSpeed, forKey: Key.smartReadSpeed) }
+    }
+    /// Edits to the brief prompt; parts left alone follow the built-in defaults.
+    public var briefPrompts: BriefPromptParts {
+        didSet { defaults.set(try? JSONEncoder().encode(briefPrompts), forKey: Key.briefPrompts) }
     }
     /// Groq Whisper model for dictation.
     public var transcriptionModel: String {
@@ -176,6 +181,7 @@ public final class Preferences {
         voiceModel = defaults.string(forKey: Key.voiceModel) ?? ModelOptions.voice[0].id
         smartReadModel = defaults.string(forKey: Key.smartReadModel) ?? ModelOptions.smartRead[0].id
         smartReadSpeed = defaults.object(forKey: Key.smartReadSpeed) as? Double ?? 1.0
+        briefPrompts = Self.briefPrompts(in: defaults)
         historyRetention = defaults.string(forKey: Key.historyRetention).flatMap(HistoryRetention.init(storageValue:)) ?? .default
         transcriptionModel = defaults.string(forKey: Key.transcriptionModel) ?? ModelOptions.transcription[0].id
         cleanupModel = defaults.string(forKey: Key.cleanupModel) ?? ModelOptions.cleanup[0].id
@@ -218,6 +224,12 @@ public final class Preferences {
         var config = SessionConfiguration()
         config.smartReadModel = smartReadModel
         config.smartReadSpeed = smartReadSpeed
+        config.briefPrompts = briefPrompts
         return config
+    }
+
+    /// Also read by the vf-eval harness, so a prompt edit can be tried on the fixtures.
+    public nonisolated static func briefPrompts(in defaults: UserDefaults) -> BriefPromptParts {
+        defaults.data(forKey: Key.briefPrompts).flatMap { try? JSONDecoder().decode(BriefPromptParts.self, from: $0) } ?? BriefPromptParts()
     }
 }

@@ -16,6 +16,12 @@ let package = Package(
             resources: [.copy("Clock/Resources/time-zones.json")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
+        // Local prompt eval runner (evals/README.md); not part of the app.
+        .executableTarget(
+            name: "vf-eval",
+            dependencies: ["VibeFlowCore"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
         .testTarget(
             name: "VibeFlowCoreTests",
             dependencies: ["VibeFlowCore"],
