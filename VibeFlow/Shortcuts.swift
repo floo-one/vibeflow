@@ -38,6 +38,13 @@ extension KeyboardShortcuts.Name {
     static let pasteLastAnswer = Self("pasteLastAnswer", default: .init(.v, modifiers: pasteModifiers.union(.shift)))
     /// Start, pause or resume focus. No default: recorded in Settings > Focus.
     static let focusToggle = Self("focusToggle")
+    /// Escape cancels a running dictation. Not recordable, and registered only while a
+    /// dictation can be cancelled (AppContainer.escapeCancels), so Escape belongs to the
+    /// frontmost app the rest of the time.
+    static let cancelDictation = Self("cancelDictation", default: .init(.escape))
+    /// Escape with the push-to-talk modifiers still held (Option-Escape by default), set from
+    /// the record shortcut each time it is registered.
+    static let cancelDictationHeld = Self("cancelDictationHeld")
 }
 
 /// One-time move of the dictation shortcuts to the key right of "." (DictationKey). Earlier

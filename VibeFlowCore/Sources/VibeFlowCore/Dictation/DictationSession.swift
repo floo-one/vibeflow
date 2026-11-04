@@ -17,6 +17,8 @@ public enum DictationState: Sendable, Equatable {
     case pasting
 
     public var isBusy: Bool { self != .idle }
+    /// What `cancel()` can still stop: everything but idle and the short paste.
+    public var isCancellable: Bool { self != .idle && self != .pasting }
 }
 
 public enum DictationAction: Sendable, Hashable {
@@ -31,11 +33,13 @@ public enum DictationAction: Sendable, Hashable {
     case openMicrophoneSettings
 }
 
-/// The moments the app marks with a sound, like FreeFlow: the microphone opened, and it closed
-/// on key up, toggle or the 2-minute cap. A cancel or a failed start plays nothing.
+/// The moments the app marks with a sound, like FreeFlow: the microphone opened, it closed
+/// on key up, toggle or the 2-minute cap, and the dictation was cancelled (Escape, a read
+/// shortcut, menu Stop). A failed start plays nothing.
 public enum DictationCue: Sendable, Equatable {
     case recordingStarted
     case recordingStopped
+    case cancelled
 }
 
 /// What a recorded follow-up question became: its transcript, or why there is none. Failures
@@ -118,6 +122,11 @@ public final class DictationSession {
     /// The text of the last dictation that got as far as pasting, for "Paste last dictation".
     /// Kept in memory only.
     public private(set) var lastText: String?
+    /// True for `cancelledFlash` after a cancel, so the notch and the menu bar icon can show
+    /// that the dictation was dropped instead of just disappearing. Cleared by the next start.
+    public private(set) var justCancelled = false
+    public static let cancelledFlash: Duration = .milliseconds(1200)
+    private var cancelFlashTask: Task<Void, Never>?
 
     private let recorder: any AudioRecorder
     private let accessibility: any AccessibilityBridge
@@ -220,8 +229,9 @@ public final class DictationSession {
         }
     }
 
-    /// A read or smart read shortcut while dictating: drop everything, paste nothing. Pasting is
-    /// not interrupted (it takes under a second and owns the clipboard). Returns whether a
+    /// Escape, a read or smart read shortcut, or menu Stop while dictating: drop everything,
+    /// paste nothing, and say so with the cancel cue and `justCancelled`. Pasting is not
+    /// interrupted (it takes under a second and owns the clipboard). Returns whether a
     /// dictation was cancelled.
     @discardableResult
     public func cancel() -> Bool {
@@ -233,7 +243,26 @@ public final class DictationSession {
         tearDown()
         state = .idle
         status = "Dictation cancelled"
+        log.notice("Dictation cancelled")
+        cue(.cancelled)
+        flashCancelled()
         return true
+    }
+
+    private func flashCancelled() {
+        cancelFlashTask?.cancel()
+        justCancelled = true
+        cancelFlashTask = Task { [weak self, clock] in
+            try? await clock.sleep(for: Self.cancelledFlash)
+            guard let self, !Task.isCancelled else { return }
+            self.justCancelled = false
+        }
+    }
+
+    private func clearCancelledFlash() {
+        cancelFlashTask?.cancel()
+        cancelFlashTask = nil
+        justCancelled = false
     }
 
     /// Re-transcribe the kept recording with the current settings and paste into whatever has
@@ -304,6 +333,7 @@ public final class DictationSession {
     // MARK: Recording
 
     private func start(handsFree: Bool, question: (@MainActor (QuestionTranscript) -> Void)? = nil) {
+        clearCancelledFlash()
         stopReading()
         lastError = nil
         if question == nil { lastFailure = nil }

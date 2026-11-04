@@ -86,6 +86,8 @@ private enum NotchPhase: Equatable {
     case asking
     /// Dictation is transcribing, cleaning or pasting.
     case dictationWorking
+    /// A dictation was just cancelled: a short flash instead of the wings simply vanishing.
+    case cancelled
     /// A read is capturing the selection or waiting for the first audio.
     case preparing
     /// Smart read is waiting for the model.
@@ -97,6 +99,7 @@ private enum NotchPhase: Equatable {
         case .hidden: return nil
         case .listening, .dictationWorking: return "mic.fill"
         case .asking: return "questionmark.bubble.fill"
+        case .cancelled: return "mic.slash.fill"
         case .preparing, .speaking: return "speaker.wave.2.fill"
         case .thinking: return "sparkles"
         }
@@ -117,7 +120,7 @@ private struct NotchIndicatorView: View {
         switch dictation.state {
         case .recording: return dictation.isAskingQuestion ? .asking : .listening
         case .transcribing, .cleaning, .pasting: return dictation.isAskingQuestion ? .thinking : .dictationWorking
-        case .idle: break
+        case .idle: if dictation.justCancelled { return .cancelled }
         }
         switch reading.state {
         case .idle, .awaitingConfirm: return .hidden
@@ -137,7 +140,7 @@ private struct NotchIndicatorView: View {
                 if let symbol = phase.symbol {
                     Image(systemName: symbol)
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(phase == .listening || phase == .asking || phase == .speaking ? 1 : 0.7))
+                        .foregroundStyle(.white.opacity(phase == .listening || phase == .asking || phase == .speaking || phase == .cancelled ? 1 : 0.7))
                         .contentTransition(.symbolEffect(.replace))
                 }
             }
@@ -147,6 +150,11 @@ private struct NotchIndicatorView: View {
                 switch phase {
                 case .listening, .asking: ListeningIndicator(style: preferences.listeningStyle, level: level)
                 case .dictationWorking, .preparing, .thinking: ProgressView().controlSize(.mini)
+                case .cancelled:
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white, .red)
+                        .transition(.scale.combined(with: .opacity))
                 case .speaking:
                     Image(systemName: "waveform")
                         .font(.system(size: 11, weight: .semibold))
