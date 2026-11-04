@@ -5,6 +5,7 @@ import Observation
 import VibeFlowCore
 import ServiceManagement
 import OSLog
+import SwiftUI
 
 private let log = Logger(subsystem: "one.floo.vibeflow", category: "shortcuts")
 
@@ -23,6 +24,11 @@ final class AppContainer {
     let history: HistoryStore
     /// The entry the History window shows; set by the menu's History submenu.
     var historySelection: HistoryEntry.ID?
+    /// Transcribe File (docs/designs/file-transcription.md).
+    let files: FileTranscriptions
+    /// SwiftUI's window opener, handed over by the always-visible menu bar label, so a
+    /// notification click can open a window while no menu is showing.
+    @ObservationIgnored var openWindow: OpenWindowAction?
     @ObservationIgnored private var appNames: [String: String] = [:]
     let accessibility = LiveAccessibility()
     private let clipboardSource = LiveClipboardSource()
@@ -88,10 +94,25 @@ final class AppContainer {
             configuration: preferences.sessionConfiguration,
             answerVoice: elevenLabs
         )
-        let history = HistoryStore(fileURL: HistoryStore.defaultFileURL, retention: preferences.historyRetention)
+        // VibeFlow Dev shares Application Support with the release, so it keeps its own History
+        // and transcripts, like focus-dev.json: an older release that meets a transcription row
+        // in history.json cannot read the file and would empty it on its next save.
+        #if DEBUG
+        let historyURL = HistoryStore.defaultFileURL.deletingLastPathComponent().appending(path: "history-dev.json")
+        let transcripts = TranscriptStore(directory: TranscriptStore.defaultDirectory.deletingLastPathComponent()
+            .appending(path: "Transcripts-dev"))
+        #else
+        let historyURL = HistoryStore.defaultFileURL
+        let transcripts = TranscriptStore()
+        #endif
+        let history = HistoryStore(fileURL: historyURL, retention: preferences.historyRetention,
+                                   transcripts: transcripts)
+        history.adoptOrphanTranscripts() // eng review R5
         session.onRecord = { history.add($0) }
         self.history = history
         self.session = session
+        files = FileTranscriptions(secrets: secrets, preferences: preferences, history: history, store: transcripts,
+                                   http: http, awake: LivePowerAssertion(name: "VibeFlow file transcription"))
 
         let onDevice: (any Transcriber)? = AppleTranscriber.isAvailable ? AppleTranscriber() : nil
         let sounds = DictationSounds()
@@ -146,6 +167,7 @@ final class AppContainer {
         KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in self?.pasteLastAnswer() }
         KeyboardShortcuts.onKeyUp(for: .focusToggle) { [weak self] in self?.focus.toggle() }
 
+        wireFileTranscription()
         applyColorMode()
         refreshPermissions()
         // Every menu that opens re-checks, so a grant taken away later shows up as well.
@@ -162,6 +184,42 @@ final class AppContainer {
 
         warmConnections()
         meetings.start()
+    }
+
+    // MARK: File transcription (D10)
+
+    private func wireFileTranscription() {
+        let notifications = focus.notifications
+        files.onStarted = { notifications.requestPermissionForTranscripts() }
+        // The user started the job, so the result opens by itself (a notification may be off or
+        // missed); a failure says why in a dialog. The notification is an extra.
+        files.onFinished = { [weak self] state in
+            switch state {
+            case .finished(let f):
+                let t = f.transcript
+                var body = "\(t.sourceFileName) · \(Transcript.clock(t.duration))"
+                if !t.speakers.isEmpty { body += " · \(t.speakers.count) speaker\(t.speakers.count == 1 ? "" : "s")" }
+                if let note = t.completion.note { body += "\n\(note)" } else if let error = f.summaryError { body += "\n\(error)" }
+                notifications.postTranscriptReady(id: t.id, title: t.completion == .complete ? "Transcript ready" : "Transcript partly ready", body: body)
+                self?.openTranscript(t.id)
+            case .failed(let file, let message):
+                notifications.postTranscriptReady(id: UUID(), title: "Transcription failed", body: "\(file): \(message)")
+                NSApp.activate()
+                let alert = NSAlert()
+                alert.messageText = "Couldn't transcribe \(file)"
+                alert.informativeText = message
+                alert.runModal()
+            default:
+                break
+            }
+        }
+        notifications.onOpenTranscript = { [weak self] id in self?.openTranscript(id) }
+    }
+
+    /// Opens a transcript from anywhere (a notification click).
+    func openTranscript(_ id: UUID) {
+        guard let openWindow else { return }
+        TranscriptWindow.present(openWindow, container: self, transcript: id)
     }
 
     private func recordKeyDown() {
@@ -265,6 +323,8 @@ final class AppContainer {
         case .idle: break
         }
         if showsDictation, session.state == .idle, dictation.lastError != nil { return IconState.error.symbolName }
+        // A file being transcribed shows in the menu bar the whole time, not only in the menu.
+        if files.job.isRunning, session.state == .idle { return "ellipsis.circle" }
         return session.iconState.symbolName
     }
 

@@ -20,7 +20,8 @@ final class FocusTimer {
 
     @ObservationIgnored private let store: FocusLog
     @ObservationIgnored private let preferences: Preferences
-    @ObservationIgnored private let notifications = FocusNotifications()
+    /// Also serves "Transcript ready" (file transcription D10): one delegate per app.
+    @ObservationIgnored let notifications = FocusNotifications()
     @ObservationIgnored private let chime = NSSound(named: "Glass")
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private var wakeObserver: NSObjectProtocol?
@@ -143,7 +144,7 @@ final class FocusTimer {
 // MARK: - Notifications
 
 private let requestID = "one.floo.vibeflow.focus.phase-ended"
-private let startAction = "one.floo.vibeflow.focus.start"
+private let startAction = NotificationRoute.focusStartAction
 private let breakCategory = "one.floo.vibeflow.focus.break"
 private let focusCategory = "one.floo.vibeflow.focus.focus"
 
@@ -204,13 +205,41 @@ final class FocusNotifications: NSObject, UNUserNotificationCenterDelegate {
         [.banner, .list]
     }
 
+    /// Routes every click through NotificationRoute (file transcription eng review R4).
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
                                             didReceive response: UNNotificationResponse) async {
-        guard response.actionIdentifier == startAction else { return }
-        let info = response.notification.request.content.userInfo
-        guard let sessionID = (info["session"] as? String).flatMap(UUID.init(uuidString:)),
-              let blockIndex = info["block"] as? Int,
-              let phase = (info["phase"] as? String).flatMap(FocusPhase.init(rawValue:)) else { return }
-        await MainActor.run { self.onStart?(sessionID, blockIndex, phase) }
+        let content = response.notification.request.content
+        let route = NotificationRoute.from(category: content.categoryIdentifier, action: response.actionIdentifier,
+                                           userInfo: content.userInfo)
+        await MainActor.run {
+            switch route {
+            case .startFocusPhase(let session, let block, let phase): self.onStart?(session, block, phase)
+            case .openTranscript(let id): self.onOpenTranscript?(id)
+            case .none: break
+            }
+        }
+    }
+
+    // MARK: Transcript ready (file transcription D10)
+
+    var onOpenTranscript: ((UUID) -> Void)?
+
+    /// Asked the first time a file is transcribed (eng review D1); Focus asks on its first Start.
+    func requestPermissionForTranscripts() {
+        center.requestAuthorization(options: [.alert]) { granted, _ in
+            log.notice("Transcript notifications allowed=\(granted, privacy: .public)")
+        }
+    }
+
+    func postTranscriptReady(id: UUID, title: String, body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.categoryIdentifier = NotificationRoute.transcriptCategory
+        content.userInfo = [NotificationRoute.transcriptKey: id.uuidString]
+        content.sound = nil
+        center.add(UNNotificationRequest(identifier: "one.floo.vibeflow.transcript.\(id.uuidString)", content: content, trigger: nil)) { error in
+            if let error { log.notice("Transcript notification not posted: \(error.localizedDescription, privacy: .public)") }
+        }
     }
 }

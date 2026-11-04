@@ -190,13 +190,19 @@ final class DictationSounds {
 @MainActor
 final class LivePowerAssertion: PowerAssertion {
     private var id: IOPMAssertionID?
+    /// What `pmset -g assertions` shows.
+    private let name: String
+
+    init(name: String = "VibeFlow Keep Awake") {
+        self.name = name
+    }
 
     func begin(keepsDisplayOn: Bool) -> Bool {
         end()
         let type = keepsDisplayOn ? kIOPMAssertionTypePreventUserIdleDisplaySleep : kIOPMAssertionTypePreventUserIdleSystemSleep
         var newID = IOPMAssertionID(0)
         let result = IOPMAssertionCreateWithName(type as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn),
-                                                 "VibeFlow Keep Awake" as CFString, &newID)
+                                                 name as CFString, &newID)
         guard result == kIOReturnSuccess else { return false }
         id = newID
         return true

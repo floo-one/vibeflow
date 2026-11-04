@@ -97,6 +97,8 @@ struct MenuBarView: View {
                 .globalKeyboardShortcut(.pasteLastAnswer)
                 .disabled(session.lastAnswer == nil || clipboardBusy)
 
+            fileTranscription
+
             Menu("History") {
                 let recent = container.history.entries.prefix(10)
                 if recent.isEmpty {
@@ -104,11 +106,13 @@ struct MenuBarView: View {
                 }
                 ForEach(recent) { entry in
                     Button(HistoryFormat.menuTitle(entry)) {
-                        // A read plays again; a question opens so the full answer can be seen.
-                        if entry.kind == .read {
-                            container.readAgain(entry)
-                        } else {
-                            HistoryWindow.present(openWindow, container: container, select: entry.id)
+                        // A read plays again; a question opens so the full answer can be seen;
+                        // a transcript opens in its own window.
+                        switch entry.kind {
+                        case .read: container.readAgain(entry)
+                        case .question: HistoryWindow.present(openWindow, container: container, select: entry.id)
+                        case .transcription:
+                            if let id = entry.transcriptID { TranscriptWindow.present(openWindow, container: container, transcript: id) }
                         }
                     }
                 }
@@ -159,6 +163,27 @@ struct MenuBarView: View {
 
         Button("Quit \(appName)") { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
+    }
+
+    /// Transcribe File (file transcription D1): the item, or while a file runs its progress and
+    /// Stop; afterwards the result line and Open Transcript until the next file.
+    @ViewBuilder
+    private var fileTranscription: some View {
+        let files = container.files
+        if let line = files.statusLine(now: Date()) {
+            Text(line)
+            ForEach(files.detailLines, id: \.self) { Text($0) }
+        }
+        if files.job.isRunning {
+            Button(files.stopTitle) { files.stop() }
+        } else {
+            Button("Transcribe File…") {
+                files.chooseFile { TranscribeFileWindow.present(openWindow) }
+            }
+            if let id = files.finishedTranscriptID {
+                Button("Open Transcript") { TranscriptWindow.present(openWindow, container: container, transcript: id) }
+            }
+        }
     }
 
     /// "VibeFlow" or "VibeFlow Dev", so Quit says which of the two it closes.

@@ -17,14 +17,8 @@ struct VibeFlowApp: App {
             MenuBarView()
                 .environment(container)
         } label: {
-            #if DEBUG
-            HStack(spacing: 2) {
-                Image(systemName: container.iconSymbol)
-                Text("DEV")
-            }
-            #else
-            Image(systemName: container.iconSymbol)
-            #endif
+            MenuBarIcon()
+                .environment(container)
         }
         MenuBarExtra(isInserted: clocksInserted) {
             ClocksMenuView(now: clock.now)
@@ -64,6 +58,17 @@ struct VibeFlowApp: App {
         }
         .windowResizability(.contentMinSize)
         .defaultSize(width: 640, height: 440)
+        Window("Transcribe File", id: TranscribeFileWindow.id) {
+            TranscribeFileView()
+                .environment(container)
+        }
+        .windowResizability(.contentSize)
+        Window("Transcript", id: TranscriptWindow.id) {
+            TranscriptView()
+                .environment(container)
+        }
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 1080, height: 700)
     }
 
     /// Shown from the lead time until 5 minutes after a meeting starts (M2); re-evaluated on
@@ -86,5 +91,27 @@ struct VibeFlowApp: App {
     /// Shown while there is at least one clock; the Clocks tab is the only way to change that.
     private var clocksInserted: Binding<Bool> {
         Binding(get: { !container.preferences.worldClocks.isEmpty }, set: { _ in })
+    }
+}
+
+/// The VibeFlow icon (with DEV in the dev build). It is always on screen, so it also hands
+/// SwiftUI's window opener to the container for notification clicks (file transcription D10).
+private struct MenuBarIcon: View {
+    @Environment(AppContainer.self) private var container
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        icon.onAppear { container.openWindow = openWindow }
+    }
+
+    @ViewBuilder private var icon: some View {
+        #if DEBUG
+        HStack(spacing: 2) {
+            Image(systemName: container.iconSymbol)
+            Text("DEV")
+        }
+        #else
+        Image(systemName: container.iconSymbol)
+        #endif
     }
 }

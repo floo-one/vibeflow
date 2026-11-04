@@ -183,6 +183,13 @@ atomic; a transcript file is written before its History entry, and on launch any
 with no History entry is re-added (outside voice 4); a failed write is shown, not only logged. Old History JSON still
 decodes (new fields optional).
 
+Forward compatibility (found while building, 2026-11-04): a release from before this feature
+cannot decode a `transcription` row, starts with an empty History and overwrites history.json on
+its next save. So VibeFlow Dev, which shares Application Support with the release, writes
+history-dev.json and Transcripts-dev/ (like focus-dev.json), and HistoryStore now skips rows it
+cannot decode instead of dropping the whole file, so the next new row type is safe. Once the
+first release with file transcription ships, every later version reads these rows.
+
 ### D9. The transcript window
 
 A new window like History (brought to the front explicitly, VibeFlow has no Dock icon).
