@@ -31,6 +31,16 @@ final class AppContainer {
     /// SwiftUI's window opener, handed over by the always-visible menu bar label, so a
     /// notification click can open a window while no menu is showing.
     @ObservationIgnored var openWindow: OpenWindowAction?
+    /// SwiftUI's Settings opener, handed over by SceneAnchor at launch: the menu bar panel is
+    /// AppKit-hosted and cannot rely on its own environment for it.
+    @ObservationIgnored var openSettings: OpenSettingsAction?
+    /// Closes the menu bar panel (StatusItemController); every shortcut calls it first (D13).
+    @ObservationIgnored var closePanel: (() -> Void)?
+    /// The version Sparkle downloaded and holds until idle, for the panel's update pill (D7).
+    var updateWaiting: String?
+    /// The "hold to ask" tip under the notch on the first smart read taps (D17).
+    let holdTip = HoldTipModel()
+    @ObservationIgnored private var holdTipClear: Task<Void, Never>?
     @ObservationIgnored private var appNames: [String: String] = [:]
     let accessibility = LiveAccessibility()
     private let clipboardSource = LiveClipboardSource()
@@ -159,7 +169,8 @@ final class AppContainer {
             readIsCapturing: { session.state == .capturing },
             cue: { if preferences.dictationSounds { sounds.play($0) } }
         )
-        notch = NotchIndicator(dictation: dictation, reading: session, preferences: preferences, level: { [recorder] in recorder.level })
+        notch = NotchIndicator(dictation: dictation, reading: session, preferences: preferences, holdTip: holdTip,
+                               level: { [recorder] in recorder.level })
         onDeviceModel = OnDeviceModelStatus(store: LiveOnDeviceModelStore())
         onDeviceModel.prepare(language: presets.defaultPreset.languageOverride) // D9
 
@@ -169,29 +180,42 @@ final class AppContainer {
             onTap: { [weak self] in
                 log.notice("Smart read shortcut: tap")
                 self?.hotkey(.smartRead)
+                self?.showHoldTipIfDue()
             },
             onHoldStart: { [weak self] in
                 log.notice("Smart read shortcut: hold")
+                self?.preferences.holdTipHeld = true
+                self?.holdTip.text = nil
                 self?.questionHoldStarted()
             },
             onHoldEnd: { [weak self] in self?.questionHoldEnded() }
         )
-        KeyboardShortcuts.onKeyDown(for: .smartRead) { [weak self] in self?.smartReadPress?.keyDown() }
+        KeyboardShortcuts.onKeyDown(for: .smartRead) { [weak self] in
+            self?.closePanel?()
+            self?.smartReadPress?.keyDown()
+        }
         KeyboardShortcuts.onKeyUp(for: .smartRead) { [weak self] in self?.smartReadPress?.keyUp() }
         KeyboardShortcuts.onKeyUp(for: .readClipboard) { [weak self] in self?.clipboardHotkey(.read) }
         KeyboardShortcuts.onKeyUp(for: .smartReadClipboard) { [weak self] in self?.clipboardHotkey(.smartRead) }
         KeyboardShortcuts.onKeyDown(for: .record) { [weak self] in self?.recordKeyDown() }
         KeyboardShortcuts.onKeyUp(for: .record) { [weak self] in self?.dictation.recordKeyUp() }
         KeyboardShortcuts.onKeyDown(for: .recordToggle) { [weak self] in self?.toggleRecording() }
-        KeyboardShortcuts.onKeyUp(for: .pasteLastDictation) { [weak self] in self?.pasteLastDictation() }
-        KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in self?.pasteLastAnswer() }
+        KeyboardShortcuts.onKeyUp(for: .pasteLastDictation) { [weak self] in
+            self?.closePanel?()
+            self?.pasteLastDictation()
+        }
+        KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in
+            self?.closePanel?()
+            self?.pasteLastAnswer()
+        }
         KeyboardShortcuts.onKeyUp(for: .focusToggle) { [weak self] in self?.focus.toggle() }
         watchDictationForEscape()
 
         wireFileTranscription()
         applyColorMode()
         refreshPermissions()
-        // Every menu that opens re-checks, so a grant taken away later shows up as well.
+        // Every menu that opens re-checks, so a grant taken away later shows up as well (the
+        // menu bar panel calls refreshPermissions itself when it opens).
         _ = NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshPermissions() }
         }
@@ -201,6 +225,7 @@ final class AppContainer {
             isBusy: { [weak self] in self?.isRunning ?? false },
             followsMain: { [weak self] in self?.preferences.updateToNewestMain ?? false }
         )
+        updater?.onUpdateWaiting = { [weak self] version in self?.updateWaiting = version }
         #endif
 
         warmConnections()
@@ -244,12 +269,14 @@ final class AppContainer {
     }
 
     private func recordKeyDown() {
+        closePanel?()
         showsDictation = true
         dictation.recordKeyDown()
     }
 
     /// Shortcut and menu "Start dictation".
     func toggleRecording() {
+        closePanel?()
         showsDictation = true
         dictation.toggleRecording()
     }
@@ -315,12 +342,6 @@ final class AppContainer {
         return name
     }
 
-    func copyLastAnswer() {
-        guard let answer = session.lastExchange?.answer else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(answer, forType: .string)
-    }
-
     /// A read shortcut while dictating cancels the dictation and does nothing else. While a
     /// paste owns the clipboard it is ignored, so a read's Copy cannot snapshot the pasted text.
     private func dictationCancelledByRead() -> Bool {
@@ -333,6 +354,61 @@ final class AppContainer {
     /// Menu "Stop": whichever session is running.
     func stopAll() {
         if !cancelDictation() { session.stop() }
+    }
+
+    // MARK: Menu bar panel
+
+    /// Everything PanelState decides from (docs/designs/menu-bar-popover.md, R2).
+    var panelInput: PanelState.Input {
+        // One short label that never truncates: a release shows its version, a nightly or Dev
+        // build only the commit it was built from (the full line is in Settings > General).
+        let stamp = BuildStamp(info: Bundle.main.infoDictionary ?? [:])
+        #if DEBUG
+        let build = PanelState.Build.debug
+        let version = stamp?.commit ?? "Dev"
+        #else
+        let build: PanelState.Build = Updater.isNightly ? .nightly : .release
+        let release = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let version = stamp?.commit ?? "VibeFlow \(release)"
+        #endif
+        return PanelState.Input(
+            readState: session.state, readStatus: session.status, readError: session.lastError,
+            dictationState: dictation.state, dictationStatus: dictation.status, dictationError: dictation.lastError,
+            showsDictation: showsDictation,
+            accessibilityTrusted: session.accessibilityTrusted,
+            microphoneDenied: microphonePermission == .denied,
+            feedbackEnabled: FeedbackSender.isEnabled,
+            updateWaiting: updateWaiting, build: build, version: version)
+    }
+
+    /// Opens Settings (optionally on a tab) with the opener SceneAnchor handed over.
+    func presentSettings(tab: SettingsTab?) {
+        log.notice("Settings requested, tab=\(tab.map { "\($0)" } ?? "last", privacy: .public)")
+        guard let openSettings else { return }
+        SettingsWindow.present(openSettings, container: self, tab: tab)
+    }
+
+    /// Right-click on a menu bar item: Settings opens, or closes when it is already open (R3).
+    func toggleSettings(tab: SettingsTab?) {
+        if SettingsWindow.isVisible {
+            SettingsWindow.close()
+        } else {
+            presentSettings(tab: tab)
+        }
+    }
+
+    /// D17: the first three smart read taps teach that holding the key asks a question.
+    private func showHoldTipIfDue() {
+        guard HoldTip.shows(tapsSoFar: preferences.holdTipTaps, hasHeld: preferences.holdTipHeld) else { return }
+        preferences.holdTipTaps += 1
+        let key = KeyboardShortcuts.getShortcut(for: .smartRead).map { "\($0)" } ?? "the Smart read key"
+        holdTip.text = "Hold \(key) next time to ask a question"
+        holdTipClear?.cancel()
+        holdTipClear = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard !Task.isCancelled else { return }
+            self?.holdTip.text = nil
+        }
     }
 
     /// Escape and menu Stop. A follow-up question still being transcribed also drops the smart
@@ -411,12 +487,14 @@ final class AppContainer {
     /// Shortcut and menu "Read selection": the menu does not take focus, so the selection
     /// is still the frontmost app's.
     func hotkey(_ kind: ReadKind) {
+        closePanel?()
         if dictationCancelledByRead() { return }
         applyReadSettings(smart: kind == .smartRead)
         session.hotkey(kind)
     }
 
     private func clipboardHotkey(_ kind: ReadKind) {
+        closePanel?()
         if dictationCancelledByRead() { return }
         applyReadSettings(smart: kind == .smartRead)
         session.clipboardHotkey(kind, text: NSPasteboard.general.string(forType: .string) ?? "")

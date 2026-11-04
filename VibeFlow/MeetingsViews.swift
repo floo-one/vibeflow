@@ -56,28 +56,6 @@ struct MeetingsMenuView: View {
     }
 }
 
-/// The VibeFlow menu's next meeting: the first one still ahead today, to join or open.
-struct NextMeetingMenu: View {
-    @Environment(AppContainer.self) private var container
-
-    var body: some View {
-        if container.preferences.meetingsEnabled,
-           let next = MeetingSchedule.restOfToday(container.meetings.state.meetings, at: Date()).first {
-            Menu {
-                Text(MeetingsMenuView.details(next))
-                if let joinURL = next.joinURL {
-                    Button("Join") { NSWorkspace.shared.open(joinURL) }
-                }
-                if let link = next.htmlLink {
-                    Button("Open in Google Calendar") { NSWorkspace.shared.open(link) }
-                }
-            } label: {
-                Label("\(ClockFormat.time(next.start, in: .current))  \(next.title)", systemImage: "calendar")
-            }
-        }
-    }
-}
-
 /// Google Calendar sign-in with its status line, shown in Settings > Accounts.
 struct GoogleAccountSection: View {
     @Environment(AppContainer.self) private var container
