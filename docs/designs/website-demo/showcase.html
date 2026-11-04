@@ -160,12 +160,7 @@ ol.feats { counter-reset: s; }
   .show { grid-template-columns: 1fr; gap: 32px; padding: 64px 20px; }
   .show.flip { grid-template-columns: 1fr; padding-top: 24px; }
   .scene, .ask-vis { order: -1; }
-  .menu { right: 50%; transform: translateX(50%); transform-origin: top center; }
-  .in .menu { transform: translateX(50%); }
-}
-/* Phones: the scenes hug their content instead of keeping a fixed shape. */
-@media (max-width: 600px) {
-  #clock { display: none; }
+  /* Single column: the scenes hug their content instead of keeping a fixed shape. */
   .scene { aspect-ratio: auto; height: auto; padding: 46px 12px 14px; }
   .menu, .in .menu { position: relative; right: auto; top: auto; width: auto; max-width: 330px; margin: 0 auto; transform: none; }
   .vscene { padding: 50px 12px 12px; }
@@ -174,6 +169,7 @@ ol.feats { counter-reset: s; }
   #ascene { aspect-ratio: auto; }
   #ascene .pill { position: relative; left: auto; right: auto; bottom: auto; margin-top: 12px; min-height: 120px; }
 }
+@media (max-width: 600px) { #clock { display: none; } }
 @media (max-width: 420px) { .menu { font-size: 12.5px; } }
 @media (prefers-reduced-motion: reduce) { .menu, .mi, .feat h3::before { transition: none; } .bi.status { animation: none; } }
 </style>
