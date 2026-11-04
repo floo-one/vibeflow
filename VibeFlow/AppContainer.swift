@@ -37,6 +37,8 @@ final class AppContainer {
     @ObservationIgnored private var notch: NotchIndicator?
     /// Tap the smart read shortcut to smart read, hold it to ask a follow-up question.
     @ObservationIgnored private var smartReadPress: PressClassifier?
+    /// Shift + smart read: tap reads the clipboard, hold asks a question about it.
+    @ObservationIgnored private var smartReadClipboardPress: PressClassifier?
     /// The question being answered, from the release of a hold until its transcript arrives.
     @ObservationIgnored private var pendingQuestion: SessionID?
     private let elevenLabs: ElevenLabsProvider
@@ -158,10 +160,20 @@ final class AppContainer {
             },
             onHoldEnd: { [weak self] in self?.questionHoldEnded() }
         )
+        smartReadClipboardPress = PressClassifier(
+            clock: clock,
+            onTap: { [weak self] in self?.clipboardHotkey(.smartRead) },
+            onHoldStart: { [weak self] in
+                log.notice("Smart read clipboard shortcut: hold")
+                self?.questionHoldStarted()
+            },
+            onHoldEnd: { [weak self] in self?.questionHoldEnded(aboutClipboard: true) }
+        )
         KeyboardShortcuts.onKeyDown(for: .smartRead) { [weak self] in self?.smartReadPress?.keyDown() }
         KeyboardShortcuts.onKeyUp(for: .smartRead) { [weak self] in self?.smartReadPress?.keyUp() }
         KeyboardShortcuts.onKeyUp(for: .readClipboard) { [weak self] in self?.clipboardHotkey(.read) }
-        KeyboardShortcuts.onKeyUp(for: .smartReadClipboard) { [weak self] in self?.clipboardHotkey(.smartRead) }
+        KeyboardShortcuts.onKeyDown(for: .smartReadClipboard) { [weak self] in self?.smartReadClipboardPress?.keyDown() }
+        KeyboardShortcuts.onKeyUp(for: .smartReadClipboard) { [weak self] in self?.smartReadClipboardPress?.keyUp() }
         KeyboardShortcuts.onKeyDown(for: .record) { [weak self] in self?.recordKeyDown() }
         KeyboardShortcuts.onKeyUp(for: .record) { [weak self] in self?.dictation.recordKeyUp() }
         KeyboardShortcuts.onKeyDown(for: .recordToggle) { [weak self] in self?.toggleRecording() }
@@ -257,11 +269,14 @@ final class AppContainer {
         dictation.startQuestion { [weak self] result in self?.questionTranscribed(result) }
     }
 
-    /// Released: the read session captures the selection while the question is transcribed.
-    private func questionHoldEnded() {
+    /// Released: the read session captures the selection (or takes the clipboard) while the
+    /// question is transcribed.
+    private func questionHoldEnded(aboutClipboard: Bool = false) {
         guard dictation.isAskingQuestion else { return }
         showsDictation = false
-        pendingQuestion = session.beginQuestion()
+        pendingQuestion = aboutClipboard
+            ? session.beginQuestion(clipboard: NSPasteboard.general.string(forType: .string) ?? "")
+            : session.beginQuestion()
         dictation.finishQuestion()
     }
 

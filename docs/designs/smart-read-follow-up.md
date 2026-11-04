@@ -25,6 +25,12 @@ Variants that fall out of the same rules:
 - Select text and hold without smart reading first: skips the brief and answers the question
   about the selection directly ("select, hold, ask").
 - Works after a plain read (Option + .) too; the text that was read is the context.
+- Ask about the clipboard (added 2026-11-05): **hold Shift + Option + ,** (the smart read
+  clipboard key; a tap still smart reads the clipboard). The question is about the clipboard
+  text, no selection is captured and no Accessibility grant is needed. The same text as the
+  current context continues it (so after a clipboard brief, the hold follows up); other text
+  starts a new context; an empty clipboard says "Copy text to ask about" and never falls back
+  to the old text.
 
 ## Key decisions
 
