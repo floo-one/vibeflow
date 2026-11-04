@@ -1,5 +1,53 @@
 # Changelog
 
+## 1.5.0
+
+Transcribe any audio or video file, a Pomodoro timer and Keep Awake built in, Send Feedback,
+and a calmer menu bar.
+
+### New
+- **Transcribe File.** Voice > Transcribe File… turns an audio or video file into a
+  transcript. Calls and meetings get speaker labels (ElevenLabs Scribe); memos and talks get
+  timestamped text (Groq Whisper, or Apple on-device when offline). Optionally, Claude writes
+  a summary with action items, each linked to the moment it was said.
+- **Transcript window.** Click a turn to play it, rename or merge speakers, search, Copy or
+  Save as Text. It opens by itself when a file is done. Transcripts have their own filter in
+  History and stay until you delete them. The Mac stays awake while a file runs.
+- **Pomodoro.** Focus and break rounds in four rhythms: Classic 25/5, Long 50/10, Deep 90/20
+  or Custom. Start it from Focus & Time in the menu or Settings > Pomodoro. VibeFlow chimes
+  between phases and waits for you, unless "Start the next phase on its own" is on. Stats for
+  today, this week, your streak and the last 30 days, and a history of rounds.
+- **Keep Awake**, in place of Amphetamine. Keep the Mac awake indefinitely or for 15 minutes
+  to 8 hours, with or without the display. From Utilities in the menu or Settings > Keep
+  Awake; while it runs, the menu bar shows a cup and the time left.
+- **Send Feedback.** From the menu or the bottom of the Settings sidebar: Bug, Idea or Love
+  it, with a note. You see exactly what gets sent before you send it. Crashes and hangs are
+  reported too. Nothing you read, dictate or transcribe is ever included.
+
+### Changed
+- **Grouped by job.** The menu and Settings now have three parts: Voice, Focus & Time
+  (Clocks, Meetings, Pomodoro) and Utilities (Keep Awake). The menu bar keeps the VibeFlow
+  icon and the clock; Pomodoro, Meetings and Keep Awake show up there only while active.
+- **Settings panes** open with a card that says what the feature does, its state and its main
+  action. Google sign-in moved to Accounts, where each key says which feature uses it. The
+  dictation sound moved to Dictation; the version and Check for Updates… sit at the top of
+  General.
+- **Nightly builds** carry their own version, like 1.5.0-nightly.80, so the update window no
+  longer says "1.5.0" on a build that isn't the release.
+
+### Fixed
+- VibeFlow could hang at launch while macOS loaded its audio components; the audio engine now
+  starts in the background.
+- The Settings sidebar could still be dragged closed and then stayed closed.
+- Nightly updates failed with "An error occurred in retrieving update information" from
+  November 2: the nightly feed was gone. It is back, and built in a way that cannot vanish
+  like that again.
+
+### Behind the scenes
+- Releases and nightlies are built, signed, notarized and published by GitHub Actions instead
+  of on the author's Mac, so nightlies arrive even while that Mac sleeps.
+- Each build's debug symbols go to Sentry, so crash reports point at the right line.
+
 ## 1.4.0
 
 The new Settings, a one-click way back from a nightly, and the dictation key in the same row
