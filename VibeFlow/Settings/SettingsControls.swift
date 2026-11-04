@@ -55,13 +55,15 @@ struct HeldShortcutRow: View {
 
 // MARK: - Prompts
 
-/// Opens Settings > Prompts, where every prompt is shown and edited.
+/// Opens the Context window, where every prompt and what VibeFlow knows about you are edited.
 struct PromptsLink: View {
     @Environment(AppContainer.self) private var container
+    @Environment(\.openWindow) private var openWindow
+    let page: ContextPage
 
     var body: some View {
-        LabeledContent("Prompts") {
-            Button("Open Prompts") { container.settingsTab = .prompts }
+        LabeledContent("Prompts and context") {
+            Button("Open Context…") { ContextWindow.present(openWindow, container: container, page: page) }
                 .buttonStyle(.link)
         }
     }

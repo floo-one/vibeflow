@@ -24,7 +24,7 @@ struct DictationPane: View {
             Section("Transcription") {
                 ModelPicker(title: "Transcription model", options: ModelOptions.transcription, selection: $prefs.transcriptionModel)
                 ModelPicker(title: "Cleanup model", options: ModelOptions.cleanup, selection: $prefs.cleanupModel)
-                PromptsLink()
+                PromptsLink(page: .feature(.dictation))
             }
             Section("Input") {
                 DevicePicker(title: "Microphone", automaticLabel: "Automatic", devices: microphones, selection: $prefs.microphoneUID)

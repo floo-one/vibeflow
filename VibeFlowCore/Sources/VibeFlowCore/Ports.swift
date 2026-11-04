@@ -272,9 +272,12 @@ public struct SmartReadRequest: Sendable, Equatable {
     public var aiReply: Bool { assistant != nil }
     /// The listener's prompt edits (Settings > Prompts), empty = the defaults.
     public var prompts: PromptLibrary
+    /// The listener's names and terms (Dictation > Vocabulary).
+    public var terms: [String]
 
     public init(text: String, mode: SmartReadMode, language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil, assistant: String? = nil,
-                prompts: PromptLibrary = PromptLibrary()) {
+                prompts: PromptLibrary = PromptLibrary(), terms: [String] = []) {
+        self.terms = terms
         self.text = text
         self.mode = mode
         self.language = language
@@ -334,11 +337,14 @@ public struct AskRequest: Sendable, Equatable {
     public var instructions: String?
     /// The listener's prompt edits (Settings > Prompts), empty = the defaults.
     public var prompts: PromptLibrary
+    /// The listener's names and terms (Dictation > Vocabulary).
+    public var terms: [String]
 
     public init(document: String, brief: String? = nil, turns: [ConversationTurn] = [], question: String,
                 language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil,
-                prompts: PromptLibrary = PromptLibrary()) {
+                prompts: PromptLibrary = PromptLibrary(), terms: [String] = []) {
         self.prompts = prompts
+        self.terms = terms
         self.document = document
         self.brief = brief
         self.turns = turns

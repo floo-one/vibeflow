@@ -48,6 +48,8 @@ final class AppContainer {
     let keepAwake: KeepAwake
     /// Which settings tab is showing; "Add key" buttons jump to Keys.
     var settingsTab: SettingsTab = .general
+    /// The page the Context window shows.
+    var contextPage: ContextPage = .feature(.brief)
     /// True after the record shortcut, false after a read: which session the menu's status
     /// line and icon describe.
     private(set) var showsDictation = false

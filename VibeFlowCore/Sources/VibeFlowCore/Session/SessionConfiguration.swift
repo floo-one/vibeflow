@@ -21,6 +21,8 @@ public struct SessionConfiguration: Sendable, Equatable {
     public var smartReadVoiceID: String?
     /// The listener's prompt edits (Settings > Prompts).
     public var prompts = PromptLibrary()
+    /// The listener's names and terms (Dictation > Vocabulary), for briefs and answers.
+    public var terms: [String] = []
 
     public init() {}
 

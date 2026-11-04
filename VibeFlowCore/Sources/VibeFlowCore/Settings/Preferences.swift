@@ -251,6 +251,7 @@ public final class Preferences {
         config.smartReadModel = smartReadModel
         config.smartReadSpeed = smartReadSpeed
         config.prompts = prompts
+        config.terms = vocabularyTerms
         config.smartReadVoiceID = smartReadVoiceID
         return config
     }

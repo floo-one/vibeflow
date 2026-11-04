@@ -147,6 +147,7 @@ struct MenuBarView: View {
         if FeedbackSender.isEnabled {
             Button("Send Feedback…") { FeedbackWindow.present(openWindow) }
         }
+        Button("Context and Prompts…") { ContextWindow.present(openWindow, container: container) }
         Button("Settings…") { SettingsWindow.present(openSettings, container: container) }
             .keyboardShortcut(",")
 

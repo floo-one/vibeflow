@@ -23,11 +23,12 @@ public struct PromptLibrary: Sendable, Equatable, Codable {
 
     /// Where a part sits in the Prompts tree.
     public enum Group: String, CaseIterable, Sendable, Identifiable {
-        case shared, smartRead, dictation, transcription
+        case context, shared, smartRead, dictation, transcription
         public var id: Self { self }
 
         public var title: String {
             switch self {
+            case .context: "Context"
             case .shared: "Shared"
             case .smartRead: "Smart Read"
             case .dictation: "Dictation"
@@ -40,6 +41,7 @@ public struct PromptLibrary: Sendable, Equatable, Codable {
 
     /// One editable text.
     public enum Part: String, CaseIterable, Codable, Sendable, Identifiable {
+        case aboutYou
         case identity, spokenStyle, customRules
         case briefKinds, briefAIReply, briefOpening, cleanup, followUp
         case dictationCleanup
@@ -48,6 +50,7 @@ public struct PromptLibrary: Sendable, Equatable, Codable {
 
         public var title: String {
             switch self {
+            case .aboutYou: "About you"
             case .identity: "Who VibeFlow is"
             case .spokenStyle: "Spoken style"
             case .customRules: "Your rules"
@@ -63,6 +66,7 @@ public struct PromptLibrary: Sendable, Equatable, Codable {
 
         public var group: Group {
             switch self {
+            case .aboutYou: .context
             case .identity, .spokenStyle, .customRules: .shared
             case .briefKinds, .briefAIReply, .briefOpening, .cleanup, .followUp: .smartRead
             case .dictationCleanup: .dictation
@@ -73,6 +77,7 @@ public struct PromptLibrary: Sendable, Equatable, Codable {
         /// The features that include this part; `customRules` follows the listener's choice.
         public var defaultUsedBy: [Feature] {
             switch self {
+            case .aboutYou: [.brief, .followUp]
             case .identity: [.brief, .cleanup, .followUp]
             case .spokenStyle: [.brief, .followUp]
             case .customRules: PromptLibrary.defaultCustomRulesFeatures.sorted { $0.order < $1.order }
@@ -86,6 +91,7 @@ public struct PromptLibrary: Sendable, Equatable, Codable {
 
         public var hint: String {
             switch self {
+            case .aboutYou: "Who you are, so briefs and answers can say \"your email to Charlotte\" instead of naming you. Name, role, company, languages. Empty = none."
             case .identity: "Opens every Smart Read prompt. \"I\" is VibeFlow; everyone else is named."
             case .spokenStyle: "How answers sound when spoken: sentences, terms, numbers."
             case .customRules: "Your own instructions, added to the features you tick. Empty = none."
@@ -101,6 +107,7 @@ public struct PromptLibrary: Sendable, Equatable, Codable {
 
         public var defaultText: String {
             switch self {
+            case .aboutYou: ""
             case .identity: SmartReadPrompts.identity
             case .spokenStyle: SmartReadPrompts.spokenStyleRule
             case .customRules: ""

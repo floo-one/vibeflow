@@ -20,7 +20,7 @@ struct SmartReadPane: View {
             }
             Section("Thinking") {
                 ModelPicker(title: "Model", options: ModelOptions.smartRead, selection: $prefs.smartReadModel)
-                PromptsLink()
+                PromptsLink(page: .feature(.brief))
             }
             Section {
                 InheritingVoicePicker(voiceID: $prefs.smartReadVoiceID, readVoiceID: container.presets.defaultPreset.elevenLabsVoiceID)

@@ -444,7 +444,8 @@ public final class ReadSession {
             maxTokens: configuration.maxTokens(for: preset.smartReadMode, inputCharacters: text.count),
             instructions: preset.smartReadInstructions,
             assistant: session.assistant,
-            prompts: configuration.prompts
+            prompts: configuration.prompts,
+            terms: configuration.terms
         )
         let token = session.token
         let client = smartRead
@@ -575,7 +576,8 @@ public final class ReadSession {
             model: configuration.smartReadModel,
             maxTokens: SmartReadPrompts.answerMaxTokens,
             instructions: context.preset.smartReadInstructions,
-            prompts: configuration.prompts
+            prompts: configuration.prompts,
+            terms: configuration.terms
         )
         session.smartSpeed = true
         if !useApple(session), let answerVoice {
