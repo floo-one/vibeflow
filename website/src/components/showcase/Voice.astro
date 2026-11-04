@@ -35,6 +35,7 @@ const feats = [
     <Get note="Works without any keys · no account" />
   </div>
 
+  <div class="vstage" id="vstage">
   <div class="scene vscene" id="vscene" role="img" aria-label="An email in a Mac window: Read highlights it word by word, Smart read speaks a one-line brief, Dictation types a reply">
     <div class="bar" aria-hidden="true">
       <span class="bar-app">Mail</span>
@@ -53,7 +54,23 @@ const feats = [
       <span id="vbrief">Lena needs three answers by Friday: when you land, what you eat, and yes or no to the boat.</span>
     </div>
   </div>
+  </div>
 </section>
+
+<style>
+  /* Phones, scroll-driven: headline first, then the Mail scene with the three features right under
+     it, so scene and features fit one screen while the section is pinned. */
+  @media (max-width: 900px) {
+    #voice.scrub-phone { row-gap: 0; }
+    #voice.scrub-phone .copy { display: contents; }
+    #voice.scrub-phone .eyebrow { order: 1; }
+    #voice.scrub-phone h2 { order: 2; }
+    #voice.scrub-phone .lead { order: 3; }
+    #voice.scrub-phone .vstage { order: 4; margin: 28px 0 8px; }
+    #voice.scrub-phone .feats { order: 5; margin-top: 0; }
+    #voice.scrub-phone .get { order: 6; }
+  }
+</style>
 
 <script>
   import { gsap, ScrollTrigger, MOTION } from '../../scripts/motion';
@@ -220,7 +237,7 @@ const feats = [
         snap: {
           // Resting on a point stays there; any scroll moves one point in its direction.
           snapTo: (v: number, self?: ScrollTrigger) => {
-            if (jumping) return v;
+            if (jumping) return self ? self.progress : v; // where the click landed, not where momentum would carry it
             const near = POINTS.find((q) => Math.abs(q - v) < 0.01);
             return near ?? nextPoint(v, self?.direction ?? 1);
           },
@@ -235,6 +252,34 @@ const feats = [
     return () => {
       scrubbing = false; st = null; current = null;
       section.classList.remove('scrub');
+      feats.forEach((x) => x.style.removeProperty('--p'));
+      reset(); shown = '';
+      if (visible) startCycle();
+    };
+  });
+
+  // Phones: the headline scrolls away, then the scene and the features under it hold still (pinned)
+  // while the scroll plays the beats. No snap: after a flick it would fight the finger.
+  gsap.matchMedia().add(`${MOTION} and (max-width: 900px)`, () => {
+    const stage = $('vstage');
+    scrubbing = true; cycling = false; run++; reset(); shown = '';
+    section.classList.add('scrub', 'scrub-phone');
+    const proxy = { p: 0 };
+    const tween = gsap.to(proxy, {
+      p: 1, ease: 'none',
+      onUpdate: () => render(proxy.p),
+      scrollTrigger: {
+        trigger: section, pin: true, anticipatePin: 1,
+        start: () => `top+=${Math.round(stage.getBoundingClientRect().top - section.getBoundingClientRect().top - BAR - 8)} top`,
+        end: () => `+=${Math.round(innerHeight * 1.8)}`,
+        scrub: 0.4, invalidateOnRefresh: true,
+      },
+    });
+    st = tween.scrollTrigger!;
+    render(0);
+    return () => {
+      scrubbing = false; st = null; current = null;
+      section.classList.remove('scrub', 'scrub-phone');
       feats.forEach((x) => x.style.removeProperty('--p'));
       reset(); shown = '';
       if (visible) startCycle();

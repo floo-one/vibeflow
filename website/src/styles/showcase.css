@@ -203,7 +203,7 @@
 @media (max-width: 900px) {
   .show { grid-template-columns: 1fr; gap: 32px; padding: 64px 20px; }
   .show.flip { grid-template-columns: 1fr; }
-  .show .scene, .ask-vis { order: -1; }
+  .show .scene, .ask-vis, .vstage { order: -1; }
   /* Single column: the scenes hug their content instead of keeping a fixed shape. */
   .scene { aspect-ratio: auto; height: auto; padding: 46px 12px 14px; }
   .menu, .js .scene:not(.in) .menu { position: relative; right: auto; top: auto; width: auto; max-width: 330px; margin: 0 auto; transform: none; }
