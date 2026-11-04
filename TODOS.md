@@ -14,6 +14,52 @@
 **Priority:** P3
 **Depends on:** v1 shipped and in daily use; evidence of >40k selections being attempted.
 
+## File transcription
+
+Follow-ups to docs/designs/file-transcription.md (eng review 2026-11-04). Build v1 first.
+
+### Open With → VibeFlow for audio and video files
+
+**What:** Register VibeFlow for audio and movie files (role Viewer, rank Alternate in project.yml `CFBundleDocumentTypes`) and handle `application(_:open:)` by opening the Transcribe File window with that file.
+
+**Why:** A second way in from Finder, without going through the menu and the open panel.
+
+**Pros:** Small; feels native. **Cons:** VibeFlow appears in every audio file's Open With list.
+
+**Context:** Deferred in the design until v1 has been used for a week. Rank Alternate keeps VibeFlow from becoming the default app. Start in AppDelegate and project.yml.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** file transcription v1 shipped.
+
+### Ask about this call
+
+**What:** Follow-up questions on a transcript, the way smart read's hold-to-ask works on a selection ("what did we agree on the budget?").
+
+**Why:** The summary answers the common questions; follow-ups answer the rest without rereading 40 minutes of text.
+
+**Pros:** Reuses the follow-up pipeline and the Claude client. **Cons:** The smart read document cap is 40,000 characters (`SessionConfiguration.hardMax`), about 45 minutes of talk, so long calls need chunking, retrieval or a bigger cap first.
+
+**Context:** Shown on the design canvas (https://claude.ai/artifact/55Sq6xJC5bDbAhr4wQCqZe, transcript window) and cut from v1 in the 2026-11-04 eng review. Start with the cap problem, not the UI.
+
+**Effort:** M
+**Priority:** P3
+**Depends on:** file transcription v1 shipped.
+
+### Recognise voices across calls
+
+**What:** Speaker names carry over between transcripts by matching voices (speaker embeddings), so "Florian" is named automatically next time.
+
+**Why:** Renaming speakers on every call gets old for recurring calls.
+
+**Pros:** Removes a repeated chore. **Cons:** Needs voice fingerprints stored locally, a matching threshold and a correction flow; much bigger than v1's per-file names.
+
+**Context:** v1 keeps names per file (design O4). Check first whether the chosen call engine (T1 bake-off) offers speaker identification before building anything.
+
+**Effort:** L
+**Priority:** P4
+**Depends on:** file transcription v1 shipped and the call engine chosen.
+
 ## Interaction
 
 ### Conversational mode: talk with an AI through VibeFlow and Flow
