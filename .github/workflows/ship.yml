@@ -102,8 +102,20 @@ jobs:
           rm "$RUNNER_TEMP/cert.p12"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$pw" "$kc" >/dev/null
           security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
-          security find-identity -v -p codesigning "$kc" | grep -q "Developer ID Application" \
-            || { echo "::error::DEVELOPER_ID_P12 has no Developer ID Application identity"; exit 1; }
+          # A Developer ID identity is only valid with Apple's intermediate, which the runner
+          # may lack: both generations, so either certificate chains.
+          for ca in DeveloperIDG2CA DeveloperIDCA; do
+            curl -fsSL "https://www.apple.com/certificateauthority/$ca.cer" -o "$RUNNER_TEMP/$ca.cer"
+            security import "$RUNNER_TEMP/$ca.cer" -k "$kc" >/dev/null 2>&1 || true
+          done
+          if ! security find-identity -v -p codesigning "$kc" | grep -q "Developer ID Application"; then
+            echo "Identities in the signing keychain (valid or not):"
+            security find-identity -p codesigning "$kc" | sed -E 's/[0-9A-F]{40}/<sha1>/'
+            echo "Certificates in it:"
+            security find-certificate -a "$kc" | grep '"labl"' || true
+            echo "::error::DEVELOPER_ID_P12 has no valid Developer ID Application identity (no private key in the .p12, or no chain to Apple)"
+            exit 1
+          fi
 
           printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/notary.p8"
           printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle.key"
