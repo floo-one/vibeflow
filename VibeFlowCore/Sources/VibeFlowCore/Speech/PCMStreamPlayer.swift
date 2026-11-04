@@ -10,15 +10,32 @@ import Foundation
 /// - Every buffer is scheduled with a `.dataPlayedBack` completion so memory is released
 ///   and `waitUntilDone` can resolve exactly when the last sample has rendered.
 /// - The engine stays warm between reads and stops itself after 60 s idle.
+/// - The graph is built off the main thread after launch (Sentry VIBEFLOW-1): creating
+///   AVAudioPlayerNode calls AudioComponentFindNext, which waits on a synchronous XPC reply
+///   from the audio component registrar and froze the main thread for 2 s+ at startup.
 @MainActor
 public final class PCMStreamPlayer: AudioPlayer {
     public static let sampleRate = 24_000.0
     public static let idleStopDelay: Duration = .seconds(60)
 
-    private let engine = AVAudioEngine()
-    private let node = AVAudioPlayerNode()
-    private let timePitch = AVAudioUnitTimePitch()
+    /// Engine, player node and time-pitch unit, connected. Built on a background thread,
+    /// then only touched on the main actor once handed over (hence the unchecked Sendable).
+    private final class Graph: @unchecked Sendable {
+        let engine = AVAudioEngine()
+        let node = AVAudioPlayerNode()
+        let timePitch = AVAudioUnitTimePitch()
+
+        init(format: AVAudioFormat) {
+            engine.attach(node)
+            engine.attach(timePitch)
+            engine.connect(node, to: timePitch, format: format)
+            engine.connect(timePitch, to: engine.mainMixerNode, format: format)
+        }
+    }
+
     private let format = AVAudioFormat(standardFormatWithSampleRate: PCMStreamPlayer.sampleRate, channels: 1)!
+    private var builtGraph: Graph?
+    private var rate: Float = 1
 
     /// Buffers scheduled but not yet fully rendered.
     private var pending = 0
@@ -33,30 +50,47 @@ public final class PCMStreamPlayer: AudioPlayer {
     /// Applied when the engine starts; a change while idle restarts it on the next read.
     public var outputDeviceUID: String? {
         didSet {
-            guard outputDeviceUID != oldValue, engine.isRunning, pending == 0 else { return }
-            engine.stop()
+            guard outputDeviceUID != oldValue, let builtGraph, builtGraph.engine.isRunning, pending == 0 else { return }
+            builtGraph.engine.stop()
         }
     }
     /// What the engine's output unit is set to; nil = never touched, follows the system output.
     private var appliedDeviceUID: String?
 
     public init() {
-        engine.attach(node)
-        engine.attach(timePitch)
-        engine.connect(node, to: timePitch, format: format)
-        engine.connect(timePitch, to: engine.mainMixerNode, format: format)
+        let format = format
+        Task { [weak self] in
+            let graph = await Task.detached(priority: .utility) { Graph(format: format) }.value
+            self?.adopt(graph)
+        }
+    }
+
+    /// Takes the background-built graph unless a read already needed one first.
+    private func adopt(_ graph: Graph) {
+        guard builtGraph == nil else { return }
+        graph.timePitch.rate = rate
+        builtGraph = graph
+    }
+
+    /// The graph, built here on the main thread only when a read beats the background build.
+    private var graph: Graph {
+        if let builtGraph { return builtGraph }
+        let graph = Graph(format: format)
+        adopt(graph)
+        return graph
     }
 
     public func prepare() throws {
         idleStop?.cancel()
+        let engine = graph.engine
         if !engine.isRunning {
-            applyOutputDevice()
+            applyOutputDevice(engine)
             engine.prepare()
             try engine.start()
         }
     }
 
-    private func applyOutputDevice() {
+    private func applyOutputDevice(_ engine: AVAudioEngine) {
         guard outputDeviceUID != appliedDeviceUID else { return }
         // Back to the system output: point the unit at the current default device.
         guard let unit = engine.outputNode.audioUnit,
@@ -99,9 +133,10 @@ public final class PCMStreamPlayer: AudioPlayer {
                 out[i] = Float(Int16(littleEndian: samples[i])) / 32768.0
             }
         }
-        if !engine.isRunning { try? prepare() }
+        if !graph.engine.isRunning { try? prepare() }
         pending += 1
         let gen = generation
+        let node = graph.node
         node.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
             Task { @MainActor in self?.bufferFinished(generation: gen) }
         }
@@ -115,15 +150,17 @@ public final class PCMStreamPlayer: AudioPlayer {
     }
 
     public func setRate(_ rate: Double) {
-        timePitch.rate = Float(min(max(rate, 0.25), 4.0))
+        self.rate = Float(min(max(rate, 0.25), 4.0))
+        builtGraph?.timePitch.rate = self.rate
     }
 
     public var playedSeconds: Double {
-        guard let nodeTime = node.lastRenderTime, let time = node.playerTime(forNodeTime: nodeTime) else { return 0 }
+        guard let node = builtGraph?.node, let nodeTime = node.lastRenderTime,
+              let time = node.playerTime(forNodeTime: nodeTime) else { return 0 }
         return Double(time.sampleTime) / time.sampleRate
     }
 
-    public var isPlaying: Bool { node.isPlaying && pending > 0 }
+    public var isPlaying: Bool { (builtGraph?.node.isPlaying ?? false) && pending > 0 }
 
     public func waitUntilDone() async {
         streamEnded = true
@@ -133,8 +170,8 @@ public final class PCMStreamPlayer: AudioPlayer {
 
     public func stop() {
         generation += 1
-        node.stop()
-        node.reset()
+        builtGraph?.node.stop()
+        builtGraph?.node.reset()
         pending = 0
         streamEnded = false
         resumeWaiters()
@@ -155,7 +192,7 @@ public final class PCMStreamPlayer: AudioPlayer {
         idleStop = Task { [weak self] in
             try? await Task.sleep(for: PCMStreamPlayer.idleStopDelay)
             guard let self, !Task.isCancelled, self.pending == 0 else { return }
-            self.engine.stop()
+            self.builtGraph?.engine.stop()
         }
     }
 }

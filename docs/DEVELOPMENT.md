@@ -101,6 +101,20 @@ It asks for the Apple Account email of the team and an app-specific password (cr
 account.apple.com > Sign-In and Security > App-Specific Passwords; the account password does
 not work). Both go into the login keychain, nothing into the repo.
 
+Crash reports and Send Feedback go to Sentry (organization `floo-one`, project `vibeflow`,
+EU region; docs/designs/feedback.md). The app only carries the send-only DSN, committed in
+`Config/VibeFlow.xcconfig`. `release.sh` uploads each build's debug symbols so crash stack
+traces are readable; that needs `sentry-cli` and an organization auth token
+(floo-one.sentry.io/settings/auth-tokens/) in the login keychain:
+
+```bash
+brew install getsentry/tools/sentry-cli
+security add-generic-password -U -a vibeflow -s sentry-auth-token -w "$(pbpaste)"
+```
+
+Clear the clipboard afterwards (`pbcopy < /dev/null`). Without the token a local build only
+warns; `--publish` (releases and nightlies) refuses to run.
+
 Installed copies update themselves with [Sparkle](https://sparkle-project.org): every
 release is signed with a private EdDSA key, and the app checks it against its public key,
 `SUPublicEDKey` in `project.yml`. The private key lives in the login keychain under the

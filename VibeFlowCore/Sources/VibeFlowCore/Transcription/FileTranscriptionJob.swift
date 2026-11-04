@@ -294,7 +294,7 @@ public final class FileTranscriptionJob {
         case let failure as TranscriptionFailure:
             switch failure {
             case .unauthorized: return "Key rejected or missing"
-            case .rejected(let status, let message): return status == 401 || status == 403 ? message : "Error \(status): \(message)"
+            case .rejected(let status, let message, _): return status == 401 || status == 403 ? message : "Error \(status): \(message)"
             case .rateLimited: return "Rate limited"
             case .serverError(let code): return "Service unavailable (HTTP \(code))"
             case .offline: return "Offline"

@@ -9,6 +9,7 @@ struct VibeFlowApp: App {
 
     init() {
         AppDelegate.quitOlderCopies()
+        FeedbackSender.start()
         _container = State(initialValue: AppContainer())
     }
 
@@ -69,6 +70,11 @@ struct VibeFlowApp: App {
         }
         .windowResizability(.contentMinSize)
         .defaultSize(width: 1080, height: 700)
+        Window("Send Feedback", id: FeedbackWindow.id) {
+            FeedbackView()
+                .environment(container)
+        }
+        .windowResizability(.contentSize)
     }
 
     /// Shown from the lead time until 5 minutes after a meeting starts (M2); re-evaluated on

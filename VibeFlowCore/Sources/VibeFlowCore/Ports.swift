@@ -504,7 +504,8 @@ public enum TranscriptionFailure: Error, Equatable, Sendable {
     /// 401 or 403. Surfaces with the Keys action; never falls back silently.
     case unauthorized
     /// Any other 4xx (400, 404, 413, ...). Surfaces with the status and message.
-    case rejected(status: Int, message: String)
+    /// `rawBodyBytes` is set when the message is the start of a non-JSON body: shown, never logged.
+    case rejected(status: Int, message: String, rawBodyBytes: Int? = nil)
     /// 429.
     case rateLimited
     /// 5xx.

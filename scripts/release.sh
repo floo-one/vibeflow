@@ -6,6 +6,8 @@
 # One-time setup (see docs/DEVELOPMENT.md "Release"):
 #   xcrun notarytool store-credentials VibeFlowNotary --team-id X7UXDLS9F7
 #   the Sparkle signing key in the login keychain, account "vibeflow" (generate_keys)
+#   brew install getsentry/tools/sentry-cli, and a Sentry organization token for floo-one in
+#   the login keychain: security add-generic-password -U -a vibeflow -s sentry-auth-token -w "$(pbpaste)"
 #
 # Usage:  scripts/release.sh                 build build/release/VibeFlow-<version>.dmg
 #         scripts/release.sh --publish       same, from a clean main that matches origin, then
@@ -26,6 +28,8 @@
 set -euo pipefail
 
 PROFILE="${VIBEFLOW_NOTARY_PROFILE:-VibeFlowNotary}"
+SENTRY_ORG=floo-one
+SENTRY_PROJECT=vibeflow
 NOTARIZE=1
 PUBLISH=0
 NIGHTLY=0
@@ -113,6 +117,16 @@ if ! grep -qE '^GOOGLE_CLIENT_ID *= *[^ ]+' Config/Google.xcconfig 2>/dev/null \
   print -u2 "warning: no Google client in Config/Google.xcconfig; this build's Meetings tab will say 'Not configured in this build'"
 fi
 
+# Crash reports are readable only with the build's dSYMs, and the next run deletes this
+# build's archive, so symbols go to Sentry in the same run (docs/designs/feedback.md, D10).
+# A published build must have them; a local one only warns.
+SENTRY_TOKEN="$(security find-generic-password -a vibeflow -s sentry-auth-token -w 2>/dev/null || true)"
+if ! command -v sentry-cli >/dev/null || [[ -z "$SENTRY_TOKEN" ]]; then
+  [[ $PUBLISH -eq 1 ]] && fail "no sentry-cli or no Sentry token (keychain: account vibeflow, service sentry-auth-token); crashes from this build would be unreadable"
+  print -u2 "warning: no sentry-cli or Sentry token; this build's debug symbols will not be uploaded"
+  SENTRY_TOKEN=""
+fi
+
 if [[ $NOTARIZE -eq 1 ]] && ! xcrun notarytool history --keychain-profile "$PROFILE" >/dev/null 2>&1; then
   print -u2 "No notarytool keychain profile '$PROFILE'. Create it once with:"
   print -u2 "  xcrun notarytool store-credentials $PROFILE --team-id X7UXDLS9F7"
@@ -165,6 +179,12 @@ print "VibeFlow $VERSION ($BUILD)"
 step "Verify the signature"
 codesign --verify --deep --strict --verbose=2 "$APP"
 codesign -dvv "$APP" 2>&1 | grep -E '^(Authority=Developer ID Application|TeamIdentifier=|Timestamp=)'
+
+if [[ -n "$SENTRY_TOKEN" ]]; then
+  step "Upload debug symbols to Sentry"
+  SENTRY_AUTH_TOKEN="$SENTRY_TOKEN" sentry-cli debug-files upload --org "$SENTRY_ORG" --project "$SENTRY_PROJECT" \
+    "$ARCHIVE/dSYMs"
+fi
 
 if [[ $NOTARIZE -eq 0 ]]; then
   print "Signed app at $APP (not notarized: --no-notarize)."
