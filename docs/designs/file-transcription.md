@@ -235,7 +235,8 @@ say so ("Stopped at 30:00: Groq hourly limit").
 - `History/HistoryStore.swift`: `.transcription` kind, `sourceFileName`, `transcriptID`, deleting
   the transcript file on prune.
 - `Ports.swift`: `FileTranscriber` protocol for the whole-file engines (Scribe, Apple);
-  `TranscriptionFailure` gains `noAudio`, `unreadable`, `tooLong(Duration)`.
+  file-level errors are a separate `AudioFileError` (`noAudio`, `unreadable`, `tooLong`), so
+  dictation's exhaustive switches over `TranscriptionFailure` stay untouched (changed in T2).
 
 **VibeFlow (app)**
 

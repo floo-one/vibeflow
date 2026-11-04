@@ -26,6 +26,31 @@ public final class OpenAITranscriber: Transcriber {
     }
 
     public func transcribe(_ audio: RecordedAudio, language: String?) async throws -> Transcription {
+        let body = try await verboseJSON(audio, language: language)
+        guard let decoded = try? JSONDecoder().decode(VerboseJSON.self, from: body) else {
+            throw TranscriptionFailure.malformed
+        }
+        return Transcription(text: decoded.text.trimmingCharacters(in: .whitespacesAndNewlines),
+                             noSpeechProbabilities: decoded.segments?.compactMap(\.no_speech_prob) ?? [])
+    }
+
+    /// File transcription (design D5): every segment with its times (relative to `audio`), text
+    /// and no-speech probability, so the job can offset times by the piece's start and drop
+    /// silent segments. Same request, same failure mapping as `transcribe`.
+    public func transcribeSegments(_ audio: RecordedAudio, language: String?) async throws -> [WhisperSegment] {
+        let body = try await verboseJSON(audio, language: language)
+        guard let decoded = try? JSONDecoder().decode(VerboseJSON.self, from: body) else {
+            throw TranscriptionFailure.malformed
+        }
+        return (decoded.segments ?? []).map {
+            WhisperSegment(start: $0.start ?? 0, end: $0.end ?? 0,
+                           text: ($0.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
+                           noSpeechProbability: $0.no_speech_prob ?? 0)
+        }
+    }
+
+    /// Sends the request and returns the 200 body; every other outcome becomes a TranscriptionFailure.
+    private func verboseJSON(_ audio: RecordedAudio, language: String?) async throws -> Data {
         let key = apiKey()
         if keyRequired && key == nil { throw TranscriptionFailure.unauthorized }
         let request = Self.buildRequest(audio: audio, language: language, model: model, baseURL: baseURL, apiKey: key)
@@ -44,11 +69,7 @@ public final class OpenAITranscriber: Transcriber {
 
         switch response.status {
         case 200:
-            guard let decoded = try? JSONDecoder().decode(VerboseJSON.self, from: response.body) else {
-                throw TranscriptionFailure.malformed
-            }
-            return Transcription(text: decoded.text.trimmingCharacters(in: .whitespacesAndNewlines),
-                                 noSpeechProbabilities: decoded.segments?.compactMap(\.no_speech_prob) ?? [])
+            return response.body
         case 401, 403:
             throw TranscriptionFailure.unauthorized
         case 429:
@@ -96,7 +117,12 @@ public final class OpenAITranscriber: Transcriber {
     }
 
     private struct VerboseJSON: Decodable {
-        struct Segment: Decodable { let no_speech_prob: Double? }
+        struct Segment: Decodable {
+            let start: Double?
+            let end: Double?
+            let text: String?
+            let no_speech_prob: Double?
+        }
         let text: String
         let segments: [Segment]?
     }

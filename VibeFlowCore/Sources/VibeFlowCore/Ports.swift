@@ -421,6 +421,22 @@ public struct Transcription: Sendable, Equatable {
     }
 }
 
+/// One Whisper segment of a file transcription: times in seconds from the start of the audio
+/// that was sent.
+public struct WhisperSegment: Sendable, Equatable {
+    public var start: Double
+    public var end: Double
+    public var text: String
+    public var noSpeechProbability: Double
+
+    public init(start: Double, end: Double, text: String, noSpeechProbability: Double) {
+        self.start = start
+        self.end = end
+        self.text = text
+        self.noSpeechProbability = noSpeechProbability
+    }
+}
+
 /// Transcription failures, classified for the fallback table in the design.
 public enum TranscriptionFailure: Error, Equatable, Sendable {
     /// 401 or 403. Surfaces with the Keys action; never falls back silently.

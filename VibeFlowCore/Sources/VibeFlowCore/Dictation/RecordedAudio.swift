@@ -31,13 +31,21 @@ public struct RecordedAudio: Sendable, Equatable {
 
     /// A complete WAV file (RIFF header + data) for upload.
     public var wav: Data {
-        var d = Data(capacity: 44 + pcm16.count)
+        var d = Self.wavHeader(pcmBytes: pcm16.count)
+        d.append(pcm16)
+        return d
+    }
+
+    /// The 44-byte RIFF header for `pcmBytes` of 16 kHz mono 16-bit PCM. Shared with the file
+    /// decoder, which writes the header last once it knows the size.
+    public static func wavHeader(pcmBytes: Int) -> Data {
+        var d = Data(capacity: 44)
         func u32(_ v: UInt32) { withUnsafeBytes(of: v.littleEndian) { d.append(contentsOf: $0) } }
         func u16(_ v: UInt16) { withUnsafeBytes(of: v.littleEndian) { d.append(contentsOf: $0) } }
-        let rate = UInt32(Self.sampleRate)
-        d.append(contentsOf: Array("RIFF".utf8)); u32(36 + UInt32(pcm16.count)); d.append(contentsOf: Array("WAVE".utf8))
+        let rate = UInt32(sampleRate)
+        d.append(contentsOf: Array("RIFF".utf8)); u32(36 + UInt32(pcmBytes)); d.append(contentsOf: Array("WAVE".utf8))
         d.append(contentsOf: Array("fmt ".utf8)); u32(16); u16(1); u16(1); u32(rate); u32(rate * 2); u16(2); u16(16)
-        d.append(contentsOf: Array("data".utf8)); u32(UInt32(pcm16.count)); d.append(pcm16)
+        d.append(contentsOf: Array("data".utf8)); u32(UInt32(pcmBytes))
         return d
     }
 }

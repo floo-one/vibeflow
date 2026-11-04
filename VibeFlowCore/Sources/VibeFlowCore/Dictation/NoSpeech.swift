@@ -21,6 +21,21 @@ public enum NoSpeech {
         "vielen dank", "vielen dank.", "danke", "danke.", "tschüss",
     ]
 
+    /// File transcription (eng review R2): drops the segments of a long recording that are
+    /// probably silence, with the same thresholds as `isSilence`: a segment whose no_speech_prob
+    /// is above 0.6, an empty one, or a known hallucination whose prob is above 0.3. A spoken
+    /// "Thank you." with a low probability stays.
+    public static func keptSegments(_ segments: [WhisperSegment]) -> [WhisperSegment] {
+        segments.filter { segment in
+            let text = segment.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if text.isEmpty || segment.noSpeechProbability > allSegmentsThreshold { return false }
+            let normalized = text.lowercased()
+            let stripped = normalized.trimmingCharacters(in: CharacterSet(charactersIn: ".!?, "))
+            let isHallucination = hallucinations.contains(normalized) || hallucinations.contains(stripped)
+            return !(isHallucination && segment.noSpeechProbability > corroborationThreshold)
+        }
+    }
+
     public static func isSilence(_ transcription: Transcription, audio: RecordedAudio) -> Bool {
         let text = transcription.text.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.isEmpty { return true }
