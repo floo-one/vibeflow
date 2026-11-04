@@ -56,9 +56,10 @@ jobs:
             echo "Release v$version (no tag yet)."
             echo "kind=release" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          # The commit of the current nightly, from its feed: 1.4.0-nightly+8cd0a1b.
-          last=$(curl -fsSL https://github.com/floo-one/vibeflow/releases/download/nightly/appcast.xml 2>/dev/null \
-            | sed -nE 's/.*<sparkle:shortVersionString>[^+]*\+([0-9a-f]+)<.*/\1/p' | head -1 || true)
+          # The commit of the current nightly, from the end of its release title:
+          # "VibeFlow 1.4.0-nightly.71 (8cd0a1b)" (older ones: "… (5.69, 8cd0a1b)").
+          last=$(gh release view nightly --json name -q .name 2>/dev/null \
+            | sed -nE 's/.*[ (]([0-9a-f]{7,40})\)$/\1/p' || true)
           if [ "${{ github.event_name }}" != workflow_dispatch ] && [ -n "$last" ] && git cat-file -e "$last^{commit}" 2>/dev/null; then
             if [ "$(git rev-parse "$last")" = "$(git rev-parse HEAD)" ]; then
               echo "The nightly is already $last."; echo "kind=none" >> "$GITHUB_OUTPUT"; exit 0

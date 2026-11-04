@@ -61,7 +61,21 @@ cert() {
   p12="${${p12## }%% }"; p12="${(Q)p12}"
   [[ -f $p12 ]] || { print -u2 "   No file at $p12"; exit 1; }
   local pw; read -rs "pw?   The password you gave the .p12: "; print
-  # The Ship workflow checks that it holds a Developer ID Application identity.
+  # Open it in a throwaway keychain first: Keychain Access exports the row that was selected,
+  # not the one right-clicked, so an "Apple Development" certificate slips in easily.
+  local kc="$TMP/check.keychain-db"
+  security create-keychain -p check "$kc" >/dev/null
+  security import "$p12" -k "$kc" -P "$pw" -f pkcs12 >/dev/null 2>&1 \
+    || { security delete-keychain "$kc"; print -u2 "   Could not open the .p12 (wrong password?)."; exit 1; }
+  local found="$(security find-identity -p codesigning "$kc" | grep -oE '"[^"]+"' | sort -u)"
+  security delete-keychain "$kc"
+  if ! print -r -- "$found" | grep -q '"Developer ID Application'; then
+    print -u2 "   This .p12 holds ${found:-no signing identity}, not \"Developer ID Application: …\"."
+    print -u2 "   In Keychain Access, first click the Developer ID row once so it alone is selected,"
+    print -u2 "   then right-click it > Export. Nothing was uploaded."
+    rm -f "$p12"; exit 1
+  fi
+  print "   Holds: ${(j:, :)${(f)found}}"
   base64 -i "$p12" | put DEVELOPER_ID_P12
   print -rn -- "$pw" | put DEVELOPER_ID_P12_PASSWORD
   rm -f "$p12"; print "   Deleted $p12."
