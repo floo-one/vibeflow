@@ -78,6 +78,9 @@ VIBEFLOW_RUN_EVALS=1 ANTHROPIC_API_KEY=... swift test --filter LiveEvalTests
 The dictation cleanup golden (a dictated question is cleaned, never answered) runs the same
 way with `GROQ_API_KEY` set and `--filter CleanupEvals`.
 
+For tuning the smart read prompts on real selections, `swift run vf-eval` runs local fixtures
+through the brief and prints length and first sentence per answer (evals/README.md).
+
 `Spike/elevenlabs-spike.swift` measures ElevenLabs first-audio and stop latency and
 `Spike/dictation-spike.swift` measures Groq transcription and cleanup on your machine; run
 them with `swift Spike/<name>.swift` and keys in a local `.env`.

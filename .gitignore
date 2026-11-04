@@ -31,3 +31,6 @@ VibeFlow.xcodeproj/
 website/node_modules/
 website/dist/
 website/.astro/
+
+# Prompt evals: real selections and runs stay local
+evals/local/

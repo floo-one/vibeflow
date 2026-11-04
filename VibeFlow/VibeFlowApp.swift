@@ -77,6 +77,12 @@ struct VibeFlowApp: App {
         }
         .windowResizability(.contentMinSize)
         .defaultSize(width: 1080, height: 700)
+        Window("Context", id: ContextWindow.id) {
+            ContextView()
+                .environment(container)
+        }
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 860, height: 620)
         Window("Send Feedback", id: FeedbackWindow.id) {
             FeedbackView()
                 .environment(container)

@@ -3,15 +3,18 @@ import KeyboardShortcuts
 import OSLog
 import VibeFlowCore
 
-/// VibeFlow Dev (the Debug build) adds Control to every default, and Command to the paste
-/// shortcuts that already use Control, so it can run next to the installed release without
-/// both apps grabbing the same keys.
+/// VibeFlow Dev (the Debug build) adds Control to every default, so it can run next to the
+/// installed release without both apps grabbing the same keys.
 #if DEBUG
 private let defaultModifiers: NSEvent.ModifierFlags = [.option, .control]
 private let pasteModifiers: NSEvent.ModifierFlags = [.control, .option, .command]
+/// The paste default before Option-Command-V; the Dev build's never changed.
+private let oldPasteModifiers: NSEvent.ModifierFlags = pasteModifiers
 #else
 private let defaultModifiers: NSEvent.ModifierFlags = [.option]
-private let pasteModifiers: NSEvent.ModifierFlags = [.control, .option]
+private let pasteModifiers: NSEvent.ModifierFlags = [.option, .command]
+/// The paste default up to 1.5.0: Control-Option-V.
+private let oldPasteModifiers: NSEvent.ModifierFlags = [.control, .option]
 #endif
 
 extension KeyboardShortcuts.Name {
@@ -30,10 +33,12 @@ extension KeyboardShortcuts.Name {
     /// Dictate, toggle: press to start recording hands-free, press again to stop. Default:
     /// Shift-Option and the key right of ".".
     static let recordToggle = Self("recordToggle", default: .init(.slash, modifiers: defaultModifiers.union(.shift)))
-    /// Paste the last dictation again. Default: Control-Option-V, which types no character, so
-    /// typing can never paste by accident.
+    /// Paste the last dictation again. Default: Option-Command-V, a left-hand chord (Option and
+    /// Command sit side by side) that types no character, so typing can never paste by accident.
+    /// It shadows Finder's "Move Item Here" while VibeFlow runs; the user chose that trade-off.
     static let pasteLastDictation = Self("pasteLastDictation", default: .init(.v, modifiers: pasteModifiers))
-    /// Paste the last smart read result. Default: Shift-Control-Option-V. Not "pasteAnswer": an
+    /// Paste the last smart read result. Default: Shift-Option-Command-V, which shadows "Paste and
+    /// Match Style" in Mail, Pages, Safari and TextEdit while VibeFlow runs. Not "pasteAnswer": an
     /// old build stored that name on Option-Minus, the push-to-talk key.
     static let pasteLastAnswer = Self("pasteLastAnswer", default: .init(.v, modifiers: pasteModifiers.union(.shift)))
     /// Start, pause or resume focus. No default: recorded in Settings > Focus.
@@ -63,6 +68,7 @@ enum ShortcutMigration {
     private static let log = Logger(subsystem: "one.floo.vibeflow", category: "migration")
 
     static func runIfNeeded(defaults: UserDefaults = .standard) {
+        movePasteToOptionCommand(defaults: defaults)
         guard !defaults.bool(forKey: markerKey) else { return }
         defaults.set(true, forKey: markerKey)
         for (name, modifiers) in [(KeyboardShortcuts.Name.record, defaultModifiers), (.recordToggle, defaultModifiers.union(.shift))] {
@@ -76,6 +82,23 @@ enum ShortcutMigration {
             else { continue }
             KeyboardShortcuts.setShortcut(newDefault, for: name)
             log.notice("shortcut migration: moved \(name.rawValue, privacy: .public) to key code \(newDefault.carbonKeyCode, privacy: .public)")
+        }
+    }
+
+    private static let pasteMarkerKey = "migratedPasteToOptionCommand"
+
+    /// One-time move of the paste shortcuts from Control-Option-V to Option-Command-V (and the
+    /// Shift variants). Same rule as above: only a stored shortcut that is exactly the old
+    /// default moves; one the user recorded stays.
+    private static func movePasteToOptionCommand(defaults: UserDefaults) {
+        guard !defaults.bool(forKey: pasteMarkerKey) else { return }
+        defaults.set(true, forKey: pasteMarkerKey)
+        guard oldPasteModifiers != pasteModifiers else { return }
+        for (name, extra) in [(KeyboardShortcuts.Name.pasteLastDictation, NSEvent.ModifierFlags()), (.pasteLastAnswer, .shift)] {
+            let old = KeyboardShortcuts.Shortcut(.v, modifiers: oldPasteModifiers.union(extra))
+            guard KeyboardShortcuts.getShortcut(for: name) == old else { continue }
+            KeyboardShortcuts.setShortcut(.init(.v, modifiers: pasteModifiers.union(extra)), for: name)
+            log.notice("shortcut migration: moved \(name.rawValue, privacy: .public) to Option-Command")
         }
     }
 }

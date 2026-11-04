@@ -92,9 +92,12 @@ public final class ChatCompletionsCleaner: DictationCleaner {
     private let baseURL: URL
     private let model: String
     private let apiKey: @Sendable () -> String?
+    /// The listener's prompt edits, captured when the dictation starts.
+    private let prompts: PromptLibrary
 
     public init(http: any HTTPClient, baseURL: URL = ChatCompletionsCleaner.groqBaseURL, model: String = ChatCompletionsCleaner.defaultModel,
-                apiKey: @escaping @Sendable () -> String?) {
+                apiKey: @escaping @Sendable () -> String?, prompts: PromptLibrary = PromptLibrary()) {
+        self.prompts = prompts
         self.http = http
         self.baseURL = baseURL
         self.model = model
@@ -105,7 +108,7 @@ public final class ChatCompletionsCleaner: DictationCleaner {
         guard let key = apiKey() else { throw CleanupFailure.noKey }
         let response: HTTPResponse
         do {
-            response = try await http.send(Self.buildRequest(transcript, vocabulary: vocabulary, model: model, baseURL: baseURL, apiKey: key))
+            response = try await http.send(Self.buildRequest(transcript, vocabulary: vocabulary, model: model, baseURL: baseURL, apiKey: key, prompts: prompts))
         } catch let error as URLError {
             throw error.code == .timedOut ? CleanupFailure.timeout : CleanupFailure.offline
         }
@@ -130,7 +133,8 @@ public final class ChatCompletionsCleaner: DictationCleaner {
         return CleanupResponse(text: choice.message.content ?? "", complete: choice.finish_reason == "stop")
     }
 
-    static func buildRequest(_ transcript: String, vocabulary: [String], model: String, baseURL: URL, apiKey: String) -> URLRequest {
+    static func buildRequest(_ transcript: String, vocabulary: [String], model: String, baseURL: URL, apiKey: String,
+                             prompts: PromptLibrary = PromptLibrary()) -> URLRequest {
         var request = URLRequest(url: baseURL.appendingPathComponent("chat/completions"))
         request.httpMethod = "POST"
         request.timeoutInterval = 5
@@ -140,7 +144,7 @@ public final class ChatCompletionsCleaner: DictationCleaner {
             "model": model,
             "temperature": 0,
             "messages": [
-                ["role": "system", "content": SmartReadPrompts.dictationCleanupSystem(vocabulary: vocabulary)],
+                ["role": "system", "content": SmartReadPrompts.dictationCleanupSystem(vocabulary: vocabulary, prompts: prompts)],
                 ["role": "user", "content": SmartReadPrompts.dictationUser(transcript)],
             ],
         ]

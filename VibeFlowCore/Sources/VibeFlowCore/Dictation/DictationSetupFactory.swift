@@ -16,7 +16,8 @@ public enum DictationSetupFactory {
         secrets: any SecretsStore,
         http: any HTTPClient,
         onDevice: (any Transcriber)?,
-        microphoneUID: String?
+        microphoneUID: String?,
+        prompts: PromptLibrary = PromptLibrary()
     ) -> DictationSetup {
         let hasKey = secrets.read(.groq) != nil
         if !hasKey, let onDevice {
@@ -30,7 +31,7 @@ public enum DictationSetupFactory {
             transcriber: FallbackTranscriber(primary: groq, fallback: onDevice, primaryName: "Groq"),
             onDevice: onDevice,
             cleaner: hasKey && cleanupModel != ModelOptions.cleanupOff
-                ? ChatCompletionsCleaner(http: http, model: cleanupModel, apiKey: { secrets.read(.groq) }) : nil,
+                ? ChatCompletionsCleaner(http: http, model: cleanupModel, apiKey: { secrets.read(.groq) }, prompts: prompts) : nil,
             vocabulary: vocabulary, microphoneUID: microphoneUID)
     }
 }

@@ -32,8 +32,8 @@ the app.
 | Hold Option + - | **Dictate**: talk, release, and the text is pasted where you were typing |
 | Shift + Option + - | **Dictate hands-free**: press once to start, again to stop |
 | Add Shift to a read | Read or smart read the **clipboard** instead of the selection |
-| Control + Option + V | **Paste last dictation** again |
-| Shift + Control + Option + V | **Paste last smart read** |
+| Option + Command + V | **Paste last dictation** again |
+| Shift + Option + Command + V | **Paste last smart read** |
 
 The voice shortcuts are the three keys right above Option: `,` `.` `-` on a German keyboard,
 `,` `.` `/` on a US one (the table shows the German keys). Press a read shortcut again to stop. Every shortcut can be changed in Settings, and the menu
