@@ -10,8 +10,9 @@ Shift + Option + Command + V paste last smart read.
 
 ## Stack and decisions
 
-- Swift 6 / SwiftUI, `MenuBarExtra` for the menu bar UI, a Settings window for voice,
+- Swift 6 / SwiftUI, a Settings window for voice,
   speed and shortcuts. No Electron, no Tauri, no server, no database.
+- Menu bar: the VibeFlow icon is an own NSStatusItem with a non-activating panel (VibeFlow/Popover, docs/designs/menu-bar-popover.md); its rules live in VibeFlowCore PanelState. Clocks, Meetings, Pomodoro and Keep Awake stay `MenuBarExtra`s. SwiftUI's openWindow/openSettings come from SceneAnchor (an invisible window in VibeFlowApp), because AppKit-hosted views cannot rely on them. The icon's autosaveName "vibeflow-icon" keeps it from inheriting a hidden MenuBarExtra slot ("NSStatusItem VisibleCC Item-N" = 0).
 - Xcode project generated from `project.yml` via XcodeGen so it stays text-reviewable.
 - Selection capture: Accessibility API first, simulated Cmd+C + pasteboard as fallback.
   Needs the Accessibility permission; sign with a stable identity so TCC keeps the grant

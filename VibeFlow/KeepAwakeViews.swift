@@ -5,7 +5,6 @@ import VibeFlowCore
 /// item: a duration starts (or replaces) a session, End Session stops it.
 struct KeepAwakeMenuItems: View {
     @Environment(AppContainer.self) private var container
-    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         let awake = container.keepAwake
@@ -15,14 +14,21 @@ struct KeepAwakeMenuItems: View {
         }
         Divider()
         ForEach(KeepAwakeDuration.presets, id: \.self) { duration in
-            Button(duration.title) { awake.start(duration) }
+            Button(duration.title) {
+                awake.start(duration)
+                // The panel's Keep Awake tile starts this duration next time (D11).
+                container.preferences.keepAwakeLastMinutes = KeepAwakeTile.minutes(of: duration)
+            }
         }
         Divider()
         Toggle("Allow Display Sleep", isOn: Binding(
             get: { !container.preferences.keepAwakeDisplayOn },
             set: { container.setKeepAwakeDisplayOn(!$0) }
         ))
-        Button("Keep Awake Settings…") { SettingsWindow.present(openSettings, container: container, tab: .keepAwake) }
+        Button("Keep Awake Settings…") {
+            container.closePanel?()
+            container.presentSettings(tab: .keepAwake)
+        }
     }
 }
 

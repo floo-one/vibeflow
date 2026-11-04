@@ -72,6 +72,9 @@ public final class Preferences {
         static let focusCustomLongBreak = "focus.custom.longBreak"
         static let focusCustomRounds = "focus.custom.rounds"
         static let keepAwakeDisplayOn = "keepAwake.displayOn"
+        static let keepAwakeLastMinutes = "keepAwake.lastMinutes"
+        static let holdTipTaps = "smartRead.holdTipTaps"
+        static let holdTipHeld = "smartRead.holdTipHeld"
     }
 
     public var launchAtLogin: Bool {
@@ -197,6 +200,21 @@ public final class Preferences {
         didSet { defaults.set(keepAwakeDisplayOn, forKey: Key.keepAwakeDisplayOn) }
     }
 
+    /// The Keep Awake duration picked last, in minutes (0 = Indefinitely, nil = never picked);
+    /// a click on the panel's Keep Awake tile starts it again (KeepAwakeTile, D11).
+    public var keepAwakeLastMinutes: Int? {
+        didSet { defaults.set(keepAwakeLastMinutes, forKey: Key.keepAwakeLastMinutes) }
+    }
+
+    /// Smart read taps that showed the "hold to ask" notch tip, and whether the user ever held
+    /// the key (HoldTip, D17).
+    public var holdTipTaps: Int {
+        didSet { defaults.set(holdTipTaps, forKey: Key.holdTipTaps) }
+    }
+    public var holdTipHeld: Bool {
+        didSet { defaults.set(holdTipHeld, forKey: Key.holdTipHeld) }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         launchAtLogin = defaults.bool(forKey: Key.launchAtLogin)
@@ -234,6 +252,9 @@ public final class Preferences {
             rounds: defaults.object(forKey: Key.focusCustomRounds) as? Int ?? classic.rounds
         ).clamped
         keepAwakeDisplayOn = defaults.object(forKey: Key.keepAwakeDisplayOn) as? Bool ?? true
+        keepAwakeLastMinutes = defaults.object(forKey: Key.keepAwakeLastMinutes) as? Int
+        holdTipTaps = defaults.integer(forKey: Key.holdTipTaps)
+        holdTipHeld = defaults.bool(forKey: Key.holdTipHeld)
     }
 
     public var vocabularyTerms: [String] { Self.parseVocabulary(vocabulary) }
