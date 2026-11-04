@@ -99,7 +99,13 @@ const first = FLAT[0];
     --kt-page: color-mix(in srgb, var(--kt-active, var(--dictation)) 6%, var(--ground));
     --kt-alu: #C9CACF; --kt-cap: #1C1C1E; --kt-cap-fg: #F5F5F7;
     background: var(--kt-page); transition: background-color 0.6s var(--ease);
+    position: relative; isolation: isolate;
   }
+  /* No hard edges: the tour's tint fades in from the page ground above it (the hero) and back out
+     into the ground below (the next section), whatever colour that is at the moment. */
+  #keys::before, #keys::after { content: ""; position: absolute; left: 0; right: 0; height: 220px; z-index: -1; pointer-events: none; }
+  #keys::before { top: 0; background: linear-gradient(to bottom, var(--page), color-mix(in srgb, var(--page) 0%, transparent)); }
+  #keys::after { bottom: 0; background: linear-gradient(to top, var(--page), color-mix(in srgb, var(--page) 0%, transparent)); }
   .kt-wrap { max-width: 1120px; margin: 0 auto; padding: 88px 24px 40px; }
   .kt-h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); line-height: 1.04; letter-spacing: -0.03em; }
   .kt-head .lead { margin-top: 16px; max-width: 30rem; }
