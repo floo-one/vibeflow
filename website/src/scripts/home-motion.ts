@@ -90,8 +90,9 @@ gsap.matchMedia().add(MOTION, () => {
     // appear, and only what is in view rises in.
     onEnter: (batch) => {
       const passed = batch.filter((el) => el.getBoundingClientRect().bottom < 0);
-      gsap.set(passed, { clearProps: 'transform,opacity,visibility' });
-      gsap.to(batch.filter((el) => !passed.includes(el)), { autoAlpha: 1, y: 0, duration: 0.9, ease: EASE, stagger: 0.08, overwrite: true, clearProps: 'transform,opacity,visibility' });
+      const rising = batch.filter((el) => !passed.includes(el));
+      if (passed.length) gsap.set(passed, { clearProps: 'transform,opacity,visibility' });
+      if (rising.length) gsap.to(rising, { autoAlpha: 1, y: 0, duration: 0.9, ease: EASE, stagger: 0.08, overwrite: true, clearProps: 'transform,opacity,visibility' });
     },
   });
 });
