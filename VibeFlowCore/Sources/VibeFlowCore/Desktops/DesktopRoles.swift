@@ -71,16 +71,29 @@ public enum RoleBackground: Codable, Hashable, Sendable {
     }
 }
 
-/// Wallpapers drawn from the role color alone, so changing the color recolors them.
+/// Wallpapers drawn from the role color alone, so changing the color recolors them. All but
+/// Solid are Apple wallpapers with their hue turned to the role color.
 public enum BackgroundStyle: String, Codable, CaseIterable, Hashable, Sendable {
-    /// Apple's Radial wallpaper (macOS ships Radial Sky Blue), turned to the role color.
+    /// Apple's Radial (macOS ships Radial Sky Blue).
     case radial
+    /// Apple's Motion: flowing streaks on dark. Downloads from System Settings.
+    case motion
+    /// Apple's iMac: soft bright letters (macOS ships iMac Blue).
+    case imac
+    /// Apple's hello, dark: thin glowing arcs. Downloads from System Settings.
+    case hello
+    /// Apple's Chroma, dark: glossy curves on black. Downloads from System Settings.
+    case chroma
     /// The color, flat.
     case solid
 
     public var title: String {
         switch self {
         case .radial: return "Radial"
+        case .motion: return "Motion"
+        case .imac: return "iMac"
+        case .hello: return "hello"
+        case .chroma: return "Chroma"
         case .solid: return "Solid"
         }
     }

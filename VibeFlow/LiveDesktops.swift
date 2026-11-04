@@ -82,19 +82,48 @@ final class LiveDesktops: DesktopControl, DesktopWindows, AppLauncher {
         }
     }
 
+    /// Bumped on every tint per desktop, so a slow render that finishes after a newer one (quick
+    /// color clicks in Settings) does not put the older look back.
+    private var tintGeneration: [Int: Int] = [:]
+
+    /// A wallpaper drawn before is set at once; a new one renders in the background (0.5 s or so at
+    /// 5K) and is set when done, if that desktop is still showing then. A desktop the walk left
+    /// before then gets it from the next retint, when it shows again.
     func tint(desktop: Int, role: DesktopRole) {
+        let generation = (tintGeneration[desktop] ?? 0) + 1
+        tintGeneration[desktop] = generation
+        for screen in screens(showing: desktop) {
+            let pixels = NSSize(width: screen.frame.width * screen.backingScaleFactor,
+                                height: screen.frame.height * screen.backingScaleFactor)
+            guard let url = try? RoleWallpaper.url(for: role, pixels: pixels) else { continue }
+            if FileManager.default.fileExists(atPath: url.path) {
+                setWallpaper(url, on: screen)
+                continue
+            }
+            let display = Self.displayNumber(of: screen)
+            Task { [weak self] in
+                let rendered = await Task.detached(priority: .userInitiated) {
+                    (try? RoleWallpaper.render(role, pixels: pixels, to: url)) != nil
+                }.value
+                guard rendered, let self, tintGeneration[desktop] == generation else { return }
+                for screen in screens(showing: desktop) where Self.displayNumber(of: screen) == display {
+                    setWallpaper(url, on: screen)
+                }
+            }
+        }
+    }
+
+    private func setWallpaper(_ url: URL, on screen: NSScreen) {
+        guard NSWorkspace.shared.desktopImageURL(for: screen) != url else { return }
         let options: [NSWorkspace.DesktopImageOptionKey: Any] = [
             .imageScaling: NSImageScaling.scaleAxesIndependently.rawValue,
             .allowClipping: true,
         ]
-        for screen in screens(showing: desktop) {
-            let pixels = NSSize(width: screen.frame.width * screen.backingScaleFactor,
-                                height: screen.frame.height * screen.backingScaleFactor)
-            guard let image = try? RoleWallpaper.file(for: role, pixels: pixels),
-                  NSWorkspace.shared.desktopImageURL(for: screen) != image
-            else { continue }
-            try? NSWorkspace.shared.setDesktopImageURL(image, for: screen, options: options)
-        }
+        try? NSWorkspace.shared.setDesktopImageURL(url, for: screen, options: options)
+    }
+
+    private static func displayNumber(of screen: NSScreen) -> UInt32? {
+        (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
     }
 
     // MARK: DesktopWindows

@@ -29,6 +29,16 @@ final class DesktopsController {
         setup = DesktopSetup(control: live, windows: live, launcher: live, isBusy: isBusy)
         observe()
         refresh()
+        // Core Image takes half a second to start: pay it now, off the main thread, so
+        // Settings > Desktops opens at once.
+        let roles = preferences.desktopRoles
+        Task.detached(priority: .utility) {
+            for role in roles {
+                for background in [role.background] + BackgroundPicker.offered.map(RoleBackground.colored) {
+                    _ = RoleWallpaper.thumbnail(background, colorHex: role.colorHex, size: BackgroundPicker.thumbnailSize)
+                }
+            }
+        }
     }
 
     var roles: [DesktopRole] { preferences.desktopRoles }
