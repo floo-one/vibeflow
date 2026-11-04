@@ -47,14 +47,44 @@ gsap.matchMedia().add(MOTION, () => {
     }
   }
 
+  // Bookend: at the end of the page a copy of the menu bar icon drops out of the bar and lands
+  // as the big icon above the final download, tied to the scroll like the hero's dock.
+  const finalIcon = document.querySelector<SVGElement>('.final-inner > svg');
+  const barIcon = document.querySelector<SVGElement>('#mb .mt.app svg');
+  if (finalIcon && barIcon && barIcon.getBoundingClientRect().width > 0) {
+    const holder = finalIcon.parentElement!;
+    // Measured live on every update, so pins and late layout shifts above cannot skew it. The
+    // icon stays hidden until the flight starts, so it never doubles the bar's icon up top.
+    const ease = gsap.parseEase('power2.inOut');
+    const k = Number(barIcon.getAttribute('width')) / Number(finalIcon.getAttribute('width'));
+    const half = Number(finalIcon.getAttribute('height')) / 2;
+    const render = (p: number) => {
+      const e = ease(p), h = holder.getBoundingClientRect(), b = barIcon.getBoundingClientRect();
+      const nx = h.left + h.width / 2, ny = h.top + half;
+      gsap.set(finalIcon, {
+        x: (b.left + b.width / 2 - nx) * (1 - e), y: (b.top + b.height / 2 - ny) * (1 - e),
+        scale: k + (1 - k) * e, autoAlpha: p > 0 ? 1 : 0,
+      });
+    };
+    ScrollTrigger.create({
+      trigger: holder, start: 'top bottom', end: 'clamp(top 40%)',
+      onUpdate: (self) => render(self.progress), onRefresh: (self) => render(self.progress),
+    });
+  }
+
   const items = gsap.utils.toArray<HTMLElement>(
-    '.kt-head, .show .copy, .show .scene, .ask-vis, .section-head, .cards > *, .extra, .table-box, .privacy-table, .faq, .final-inner',
+    '.kt-head, .show .copy, .show .scene, .ask-vis, .section-head, .cards > *, .extra, .table-box, .privacy-table, .faq, .final-inner > :not(svg)',
   );
   gsap.set(items, { autoAlpha: 0, y: 36 });
   ScrollTrigger.batch(items, {
     start: 'top 88%',
     once: true,
-    onEnter: (batch) =>
-      gsap.to(batch, { autoAlpha: 1, y: 0, duration: 0.9, ease: EASE, stagger: 0.08, overwrite: true, clearProps: 'transform,opacity,visibility' }),
+    // A jump (End key, a menu link) passes many at once: the ones already above the screen just
+    // appear, and only what is in view rises in.
+    onEnter: (batch) => {
+      const passed = batch.filter((el) => el.getBoundingClientRect().bottom < 0);
+      gsap.set(passed, { clearProps: 'transform,opacity,visibility' });
+      gsap.to(batch.filter((el) => !passed.includes(el)), { autoAlpha: 1, y: 0, duration: 0.9, ease: EASE, stagger: 0.08, overwrite: true, clearProps: 'transform,opacity,visibility' });
+    },
   });
 });

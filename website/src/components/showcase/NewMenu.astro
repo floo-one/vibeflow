@@ -1,6 +1,8 @@
 ---
-// New in 1.5: the VibeFlow menu as the hero of the section. Hover or focus a feature and its
-// row lights up, and its menu bar item appears; until then the features take turns.
+// New in 1.5: the VibeFlow menu as the hero of the section. On the way in the clocks arrive in
+// the bar, the VibeFlow item is clicked and the menu drops open from it, row by row, with the
+// New badges last. Hover or focus a feature and its row lights up, and its menu bar item
+// appears; until then the features take turns.
 // The menu itself is the part to replace when the new pop-up menu bar design exists.
 import Flag from '../Flag.astro';
 import Glyph from './Glyph.astro';
@@ -73,6 +75,8 @@ const timer = '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/>';
 </section>
 
 <script>
+  import { gsap, ScrollTrigger, MOTION } from '../../scripts/motion';
+
   const section = document.getElementById('show')!;
   const scene = document.getElementById('scene')!;
   const feats = [...section.querySelectorAll<HTMLElement>('.feat')];
@@ -104,10 +108,35 @@ const timer = '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/>';
     setTimeout(() => { if (!section.querySelector('.feat:hover')) startCycle(); }, 1200);
   });
 
+  // The menu opens once, the first time the scene is well on screen; after that the features
+  // cycle whenever the section is in view. Reduced motion keeps the plain CSS fade.
+  let opened = false;
+  gsap.matchMedia().add(MOTION, () => {
+    scene.classList.add('in'); // GSAP owns the entrance, so the CSS one stands down
+    gsap.set(scene.querySelector('.menu'), { transition: 'none' });
+    const menu = scene.querySelector<HTMLElement>('.menu')!;
+    const open = scene.querySelector<HTMLElement>('.bi.open')!;
+    const clocks = [...scene.querySelectorAll<HTMLElement>('.clk')];
+    const lines = [...menu.querySelectorAll<HTMLElement>('.mh, .mi, .sep')];
+    const badges = [...menu.querySelectorAll<HTMLElement>('.new')];
+    const tl = gsap.timeline({ paused: true, onComplete: () => { opened = true; if (visible) startCycle(); } })
+      .from(clocks, { x: 18, autoAlpha: 0, duration: 0.5, ease: 'power3.out', stagger: 0.08 })
+      .from(open, { backgroundColor: 'rgba(0, 0, 0, 0)', duration: 0.18, ease: 'none' }, '+=0.1')
+      .fromTo(menu, { clipPath: 'inset(0% 0% 100% 0% round 12px)', autoAlpha: 0, y: -8 },
+        { clipPath: 'inset(0% 0% 0% 0% round 12px)', autoAlpha: 1, y: 0, duration: 0.6, ease: 'power3.out' }, '<0.05')
+      .from(lines, { autoAlpha: 0, y: -6, duration: 0.35, ease: 'power2.out', stagger: 0.03 }, '<0.12')
+      .from(badges, { scale: 0.4, autoAlpha: 0, duration: 0.45, ease: 'back.out(2.4)', stagger: 0.07 }, '-=0.15');
+    ScrollTrigger.create({ trigger: scene, start: 'top 70%', once: true, onEnter: () => tl.play() });
+    return () => { tl.progress(1).kill(); opened = true; };
+  });
+  gsap.matchMedia().add('(prefers-reduced-motion: reduce)', () => { opened = true; });
+
+  let visible = false;
   new IntersectionObserver(([e]) => {
-    if (e.intersectionRatio >= 0.35) { scene.classList.add('in'); setTimeout(startCycle, 700); }
+    visible = e.intersectionRatio >= 0.35;
+    if (visible) { scene.classList.add('in'); if (opened) setTimeout(startCycle, 700); }
     else stopCycle();
-  }, { threshold: [0, 0.35] }).observe(section);
+  }, { threshold: [0, 0.35] }).observe(scene); // the scene, not the section: on phones the section is taller than the screen
 
   // The clocks and the date, in German like the app's menu bar
   const date = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });

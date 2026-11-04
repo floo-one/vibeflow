@@ -7,6 +7,8 @@
    fades its shadow on the way. */
 .hero-icon { position: relative; z-index: 101; margin-bottom: 8px; filter: drop-shadow(0 18px 28px rgb(64 48 199 / calc(0.35 * var(--glow, 1)))); }
 .hero-icon svg { display: block; }
+/* The final icon flies down from the menu bar (home-motion.ts), so it passes above the bar. */
+.final-inner > svg { position: relative; z-index: 101; filter: drop-shadow(0 18px 28px rgba(64, 48, 199, 0.35)); }
 .hero h1 { font-weight: 800; letter-spacing: -0.035em; line-height: 1; font-size: clamp(46px, 6.4vw, 80px); }
 .hero .lead { max-width: 34rem; font-size: 20px; }
 /* Hidden only while the GSAP entrance is known to run (scripts on, motion allowed); it fades them in. */
