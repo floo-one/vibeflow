@@ -19,6 +19,12 @@ final class DesktopsController {
     @ObservationIgnored private var walk: Task<Void, Never>?
     @ObservationIgnored private let live: LiveDesktops
     @ObservationIgnored private let preferences: Preferences
+    /// The menu bar tag. An own NSStatusItem set straight from `refresh()`: a SwiftUI
+    /// MenuBarExtra followed a desktop switch only when SwiftUI re-evaluated the scene, visibly late.
+    @ObservationIgnored private lazy var tag = RoleTagItem(controller: self)
+    /// Set by AppContainer: opens Settings > Desktops, and names apps for the tag's report lines.
+    @ObservationIgnored var openSettings: () -> Void = {}
+    @ObservationIgnored var appName: (String?) -> String = { $0 ?? "" }
 
     static let releaseBundleID = "one.floo.vibeflow"
 
@@ -29,6 +35,7 @@ final class DesktopsController {
         setup = DesktopSetup(control: live, windows: live, launcher: live, isBusy: isBusy)
         observe()
         refresh()
+        watchForReorders()
         // Core Image takes half a second to start: pay it now, off the main thread, so
         // Settings > Desktops opens at once.
         let roles = preferences.desktopRoles
@@ -76,12 +83,39 @@ final class DesktopsController {
         #endif
         guard !isPaused, !roles.isEmpty, let layout = live.layout() else {
             currentRole = nil
+            tag.show(nil)
             return
         }
-        let focused = layout.focusedScreen.flatMap { layout.screens.indices.contains($0) ? layout.screens[$0].showing : nil }
-        currentRole = roles.first { $0.desktopNumber == focused }
+        // Roles follow their desktops: a reorder in Mission Control moves the numbers along.
+        let bound = DesktopBinding.reconcile(roles, ids: layout.desktopIDs)
+        if bound != roles { preferences.desktopRoles = bound }
+        let focused = layout.focusedDesktop
+        currentRole = bound.first { $0.desktopNumber == focused }
+        // The tag first: it is what you look at right after switching.
+        tag.show(preferences.desktopRoleTag ? currentRole : nil)
         if !setup.isRunning { setup.retintShowing(roles) }
     }
+
+    /// Dragging desktops around in Mission Control posts no notification, so the layout is read
+    /// again every 2 s (one SkyLight call, microseconds) and refreshed only when the order changed.
+    private func watchForReorders() {
+        Task { [weak self] in
+            var last = self?.live.layout()?.desktopIDs
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self else { return }
+                guard !roles.isEmpty, !isWalking else { continue }
+                let now = live.layout()?.desktopIDs
+                if now != last {
+                    last = now
+                    refresh()
+                }
+            }
+        }
+    }
+
+    /// The desktop ID at `number` now, for Settings when a role is moved by hand.
+    func desktopID(at number: Int) -> String? { live.layout()?.desktopIDs[number] }
 
     private func observe() {
         let workspace = NSWorkspace.shared.notificationCenter
@@ -159,6 +193,86 @@ enum DesktopsCheck {
 }
 
 // MARK: - Role tag (menu bar)
+
+/// The role tag in the menu bar, shown when turned on in Settings > Desktops while the focused
+/// screen shows a role's desktop. Its menu is built each time it opens (the Desktops menu:
+/// set up all or one role, the last report, Desktops Settings).
+@MainActor
+final class RoleTagItem: NSObject, NSMenuDelegate {
+    private unowned let controller: DesktopsController
+    private var item: NSStatusItem?
+    private var shown: (name: String, color: String)?
+
+    init(controller: DesktopsController) {
+        self.controller = controller
+    }
+
+    func show(_ role: DesktopRole?) {
+        guard let role else {
+            item?.isVisible = false
+            shown = nil
+            return
+        }
+        let item = item ?? makeItem()
+        if shown?.name != role.name || shown?.color != role.colorHex {
+            item.button?.image = RoleTag.image(name: role.name, colorHex: role.colorHex)
+            item.button?.setAccessibilityLabel("Desktop role: \(role.name)")
+            shown = (role.name, role.colorHex)
+        }
+        item.isVisible = true
+    }
+
+    private func makeItem() -> NSStatusItem {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.autosaveName = "VibeFlowDesktopRole"
+        let menu = NSMenu()
+        menu.delegate = self
+        item.menu = menu
+        self.item = item
+        return item
+    }
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        menu.removeAllItems()
+        let desktops = controller
+        if desktops.isPaused {
+            menu.addItem(withTitle: "Paused: the installed VibeFlow handles desktops", action: nil, keyEquivalent: "").isEnabled = false
+        }
+        let all = ActionMenuItem(desktops.isWalking ? "Stop Setting Up" : "Set Up All") { desktops.setUpOrStop() }
+        all.isEnabled = !desktops.roles.isEmpty && !desktops.isPaused
+        menu.addItem(all)
+        for role in desktops.roles {
+            let one = ActionMenuItem("Set Up \(role.name) · Desktop \(role.desktopNumber)") { desktops.setUp([role]) }
+            one.isEnabled = !desktops.isWalking && !desktops.isPaused
+            menu.addItem(one)
+        }
+        if let report = desktops.setup.lastReport {
+            menu.addItem(.separator())
+            menu.addItem(withTitle: DesktopReportFormat.summary(report), action: nil, keyEquivalent: "").isEnabled = false
+            for entry in report.unresolved {
+                menu.addItem(withTitle: DesktopReportFormat.line(entry, appName: desktops.appName), action: nil, keyEquivalent: "").isEnabled = false
+            }
+        }
+        menu.addItem(.separator())
+        menu.addItem(ActionMenuItem("Desktops Settings…") { desktops.openSettings() })
+    }
+}
+
+/// A menu item that runs a closure.
+final class ActionMenuItem: NSMenuItem {
+    private let run: () -> Void
+
+    init(_ title: String, run: @escaping () -> Void) {
+        self.run = run
+        super.init(title: title, action: #selector(fire), keyEquivalent: "")
+        target = self
+    }
+
+    @available(*, unavailable)
+    required init(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    @objc private func fire() { run() }
+}
 
 /// The menu bar tag: the role name in white on a rounded rectangle of the role color. A drawn,
 /// non-template image, because menu bar labels drop text color (eng review D3).

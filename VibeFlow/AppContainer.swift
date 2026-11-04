@@ -217,6 +217,8 @@ final class AppContainer {
         }
         KeyboardShortcuts.onKeyUp(for: .focusToggle) { [weak self] in self?.focus.toggle() }
         KeyboardShortcuts.onKeyUp(for: .setUpDesktops) { [weak self] in self?.desktops.setUpOrStop() }
+        desktops.openSettings = { [weak self] in self?.presentSettings(tab: .desktops) }
+        desktops.appName = { [weak self] in self?.appName(for: $0) ?? ($0 ?? "") }
         watchDictationForEscape()
 
         wireFileTranscription()

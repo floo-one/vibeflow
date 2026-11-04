@@ -10,23 +10,27 @@ public struct DesktopRole: Codable, Hashable, Sendable, Identifiable {
     public var colorHex: String
     /// What the desktop's wallpaper shows under the role name.
     public var background: RoleBackground
-    /// 1...9, the Switch to Desktop N shortcuts macOS offers.
+    /// 1...9, the Switch to Desktop N shortcuts macOS offers. Follows the desktop: when Mission
+    /// Control reorders desktops, DesktopBinding moves the number along (see `desktopID`).
     public var desktopNumber: Int
+    /// The desktop the role is bound to (macOS's Space uuid); nil until first seen.
+    public var desktopID: String?
     public var items: [RoleItem]
 
     public static let desktopNumbers = 1...9
 
     public init(id: UUID = UUID(), name: String, colorHex: String, background: RoleBackground = .colored(.radial),
-                desktopNumber: Int, items: [RoleItem] = []) {
+                desktopNumber: Int, desktopID: String? = nil, items: [RoleItem] = []) {
         self.id = id
         self.name = name
         self.colorHex = colorHex
         self.background = background
         self.desktopNumber = desktopNumber
+        self.desktopID = desktopID
         self.items = items
     }
 
-    private enum CodingKeys: String, CodingKey { case id, name, colorHex, background, desktopNumber, items }
+    private enum CodingKeys: String, CodingKey { case id, name, colorHex, background, desktopNumber, desktopID, items }
 
     /// Roles saved before backgrounds existed get Apple's Radial in their color.
     public init(from decoder: Decoder) throws {
@@ -36,6 +40,7 @@ public struct DesktopRole: Codable, Hashable, Sendable, Identifiable {
         colorHex = try c.decode(String.self, forKey: .colorHex)
         background = try c.decodeIfPresent(RoleBackground.self, forKey: .background) ?? .colored(.radial)
         desktopNumber = try c.decode(Int.self, forKey: .desktopNumber)
+        desktopID = try c.decodeIfPresent(String.self, forKey: .desktopID)
         items = try c.decode([RoleItem].self, forKey: .items)
     }
 
@@ -49,6 +54,46 @@ public struct DesktopRole: Codable, Hashable, Sendable, Identifiable {
             }
         }
         return invalid
+    }
+}
+
+/// Keeps roles on their desktops when Mission Control reorders them (user, 2026-11-05: "roles
+/// follow desktops"). A role remembers its desktop's ID; each time the desktops are read, its
+/// number moves to wherever that desktop now is.
+public enum DesktopBinding {
+    /// The roles with numbers and IDs brought up to date with `ids` (number → desktop ID).
+    /// - A bound role whose desktop moved takes the new number.
+    /// - A bound role whose desktop is gone (deleted in Mission Control) lets go of it and
+    ///   binds again by number, like a new role.
+    /// - An unbound role binds to the desktop at its number, unless a bound role has that
+    ///   desktop now; then it moves to the first free number.
+    /// Unreadable desktops (`ids` empty) change nothing.
+    public static func reconcile(_ roles: [DesktopRole], ids: [Int: String]) -> [DesktopRole] {
+        guard !ids.isEmpty else { return roles }
+        let numberOfID = Dictionary(ids.map { ($0.value, $0.key) }, uniquingKeysWith: { first, _ in first })
+        var result = roles
+        var taken: Set<Int> = []
+        var pending: [Int] = []
+        for index in result.indices {
+            if let id = result[index].desktopID, let number = numberOfID[id] {
+                result[index].desktopNumber = number
+                taken.insert(number)
+            } else {
+                result[index].desktopID = nil
+                pending.append(index)
+            }
+        }
+        for index in pending {
+            var number = result[index].desktopNumber
+            if taken.contains(number) {
+                guard let free = DesktopRole.desktopNumbers.first(where: { !taken.contains($0) }) else { continue }
+                number = free
+            }
+            result[index].desktopNumber = number
+            result[index].desktopID = ids[number]
+            taken.insert(number)
+        }
+        return result
     }
 }
 

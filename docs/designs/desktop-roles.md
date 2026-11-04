@@ -433,6 +433,17 @@ No blocking findings remain. The 8 open minor finding(s) below are recorded for 
   previous session (read by the setup check). Whether a direct cold start also shows the profile
   picker is checked during T3. A repeat bare run reproduced the picker-only result.
 
+- **`throw` (Q8, 2026-11-05, macOS 26.5, SIP on), from the user's `!` shell:** press on the focused
+  window's title bar, a 4 pt drag, Control+2, hold 0.4 s, release. A Claude window (1710x1072,
+  desktop 1, laptop) landed on desktop 2 in 1.4 s; the window server's own Spaces list confirms it.
+  **Q8: yes, a window can move to another desktop on the same screen without SkyLight writes** (the
+  private move fails silently with SIP on; Amethyst's throw broke in 14.5). Basis for Sort.
+  Chrome (title bar is the tab strip) still to try with `--grab-x 0.9`.
+- **`add-desktop` (Q9, 2026-11-05, macOS 26.5, SIP on):** open Mission Control.app, find the Dock's
+  AXButton with AXIdentifier `mc.spaces.add` (description "add desktop"; the identifier is not
+  localized), AXPress, Escape. Desktops 1 -> 2; Mission Control's buttons were readable after 148 ms.
+  **Q9: yes, a desktop can be added without SkyLight writes.** One + per screen (sort by x).
+
 **Spike summary:** premises 2 (with the move-across-screens step), 4 and Q1, Q2, Q5, Q6, Q7 answered;
 premise 3 (tint isolation after switching away), minimized windows and Q4 (sleep/replug) remain small
 checks during the build.

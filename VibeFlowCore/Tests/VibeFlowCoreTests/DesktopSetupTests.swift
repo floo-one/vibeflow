@@ -409,4 +409,53 @@ private final class FakeMac: DesktopControl, DesktopWindows, AppLauncher {
         let old = ##"{"colored":{"_0":"aurora"}}"##
         #expect(try JSONDecoder().decode(RoleBackground.self, from: Data(old.utf8)) == .colored(.radial))
     }
+
+    // MARK: Roles follow desktops
+
+    private func bound(_ name: String, _ number: Int, _ id: String?) -> DesktopRole {
+        var role = role(name, number, [])
+        role.desktopID = id
+        return role
+    }
+
+    @Test func aRoleFollowsItsDesktopWhenMissionControlReordersThem() {
+        // Sales on desktop 2 (id B), Personal on 3 (id C); C is dragged before B.
+        let roles = [bound("Sales", 2, "B"), bound("Personal", 3, "C")]
+        let after = DesktopBinding.reconcile(roles, ids: [1: "A", 2: "C", 3: "B"])
+        #expect(after.map(\.desktopNumber) == [3, 2])
+        #expect(after.map(\.desktopID) == ["B", "C"])
+    }
+
+    @Test func unboundRolesBindToTheDesktopAtTheirNumber() {
+        let after = DesktopBinding.reconcile([bound("Sales", 2, nil)], ids: [1: "A", 2: "B"])
+        #expect(after.first?.desktopID == "B")
+        #expect(after.first?.desktopNumber == 2)
+    }
+
+    @Test func aRoleWhoseDesktopWasDeletedBindsAgainByNumber() {
+        let after = DesktopBinding.reconcile([bound("Sales", 3, "gone")], ids: [1: "A", 2: "B", 3: "C"])
+        #expect(after.first?.desktopID == "C")
+        #expect(after.first?.desktopNumber == 3)
+    }
+
+    @Test func anUnboundRoleNeverTakesABoundRolesDesktop() {
+        // Personal's desktop moved to 2; Sales lost its desktop and still says 2.
+        let roles = [bound("Sales", 2, "gone"), bound("Personal", 3, "C")]
+        let after = DesktopBinding.reconcile(roles, ids: [1: "A", 2: "C", 3: "D"])
+        #expect(after[1].desktopNumber == 2)
+        #expect(after[0].desktopNumber == 1)
+        #expect(after[0].desktopID == "A")
+        #expect(DesktopRole.invalidDesktopNumbers(in: after).isEmpty)
+    }
+
+    @Test func unreadableDesktopsChangeNothing() {
+        let roles = [bound("Sales", 2, "B")]
+        #expect(DesktopBinding.reconcile(roles, ids: [:]) == roles)
+    }
+
+    @Test func bindingsSurviveARelaunch() throws {
+        let roles = [bound("Sales", 2, "ECC5DBD4-DB2E-459B-BD18-814E0FCB20C8")]
+        let data = try JSONEncoder().encode(roles)
+        #expect(try JSONDecoder().decode([DesktopRole].self, from: data) == roles)
+    }
 }

@@ -3,21 +3,10 @@ import KeyboardShortcuts
 import SwiftUI
 import VibeFlowCore
 
-// Desktop Roles views (docs/designs/desktop-roles.md): the role tag in the menu bar, the
-// Desktops menu (the panel tile's chevron and the role tag), and Settings > Desktops.
+// Desktop Roles views (docs/designs/desktop-roles.md): the Desktops menu behind the panel tile's
+// chevron, and Settings > Desktops. The menu bar tag is AppKit (RoleTagItem).
 
-/// The menu bar item's label: the focused desktop's role as a colored tag.
-struct RoleTagLabel: View {
-    @Environment(AppContainer.self) private var container
-
-    var body: some View {
-        if let role = container.desktops.currentRole {
-            Image(nsImage: RoleTag.image(name: role.name, colorHex: role.colorHex))
-        }
-    }
-}
-
-/// The Desktops menu: behind the panel tile's chevron and on the role tag. Every action closes
+/// The Desktops menu behind the panel tile's chevron (the role tag builds the same in AppKit). Every action closes
 /// the panel first, since a walk switches desktops and Settings takes the front.
 struct DesktopsMenuItems: View {
     @Environment(AppContainer.self) private var container
@@ -132,13 +121,16 @@ struct DesktopsPane: View {
                 ShortcutRecorder("Set up all desktops", hint: "Press again while it runs to stop", name: .setUpDesktops)
                 Toggle(isOn: Binding(
                     get: { container.preferences.desktopRoleTag },
-                    set: { container.preferences.desktopRoleTag = $0 }
+                    set: {
+                        container.preferences.desktopRoleTag = $0
+                        container.desktops.rolesChanged()
+                    }
                 )) {
                     Text("Show the role in the menu bar")
                     Text("The same tag shows on every screen; the wallpaper names each screen's own role.")
                 }
             } footer: {
-                Text("Each role lives on one desktop, numbered like Mission Control across your screens. Setting up opens only what is missing, tints the desktop with the role's color and name, and puts every screen back where it was.")
+                Text("Each role sticks to its desktop: drag desktops around in Mission Control and the role moves with it. Setting up opens only what is missing, sets the role's wallpaper, and puts every screen back where it was.")
                     .foregroundStyle(.secondary)
             }
 
@@ -212,15 +204,29 @@ struct DesktopsPane: View {
         let role = roles[index]
         let desktops = container.desktops
         Section {
-            TextField("Name", text: Binding(
-                get: { role.name },
-                set: { name in update { $0[index].name = name } }
-            ))
-            Picker("Desktop", selection: Binding(
-                get: { role.desktopNumber },
-                set: { number in update { $0[index].desktopNumber = number } }
-            )) {
-                ForEach(([role.desktopNumber] + freeDesktops).sorted(), id: \.self) { Text("Desktop \($0)").tag($0) }
+            LabeledContent("Name") {
+                HStack(spacing: 8) {
+                    TextField("Name", text: Binding(
+                        get: { role.name },
+                        set: { name in update { $0[index].name = name } }
+                    ))
+                    .labelsHidden()
+                    .textFieldStyle(.roundedBorder)
+                    Picker("Desktop", selection: Binding(
+                        get: { role.desktopNumber },
+                        set: { number in
+                            let id = container.desktops.desktopID(at: number)
+                            update {
+                                $0[index].desktopNumber = number
+                                $0[index].desktopID = id
+                            }
+                        }
+                    )) {
+                        ForEach(([role.desktopNumber] + freeDesktops).sorted(), id: \.self) { Text("Desktop \($0)").tag($0) }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
             }
             RoleColorRow(colorHex: role.colorHex) { hex in update { $0[index].colorHex = hex } }
             BackgroundPicker(role: role) { background in update { $0[index].background = background } }

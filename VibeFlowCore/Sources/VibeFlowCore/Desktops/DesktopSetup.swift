@@ -20,10 +20,19 @@ public struct DesktopLayout: Hashable, Sendable {
     public var screens: [Screen]
     /// Index into `screens` of the screen with keyboard focus.
     public var focusedScreen: Int?
+    /// Each desktop's own ID (macOS's Space uuid), by number. It stays with the desktop when
+    /// Mission Control reorders desktops and across restarts; roles bind to it.
+    public var desktopIDs: [Int: String]
 
-    public init(screens: [Screen], focusedScreen: Int?) {
+    public init(screens: [Screen], focusedScreen: Int?, desktopIDs: [Int: String] = [:]) {
         self.screens = screens
         self.focusedScreen = focusedScreen
+        self.desktopIDs = desktopIDs
+    }
+
+    /// The desktop showing on the focused screen.
+    public var focusedDesktop: Int? {
+        focusedScreen.flatMap { screens.indices.contains($0) ? screens[$0].showing : nil }
     }
 
     public var desktopCount: Int { screens.reduce(0) { $0 + $1.desktops.count } }

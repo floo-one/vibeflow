@@ -10,6 +10,8 @@
 //   Q5  does AXWindows list only this desktop's windows (minimized, hidden apps)?  windows
 //   Q6  where do restored windows land when Chrome starts (D8c, blocking)?         chrome --bare (Chrome quit first)
 //   Q7  do apps launched hidden own phantom windows in CGWindowList?               windows --all
+//   Q8  can a window move to another desktop with SIP on (title-bar drag + Control+N)?  throw
+//   Q9  can a desktop be added with SIP on (Mission Control's + via Accessibility)?      add-desktop
 //
 // Usage (from the repo root; Command Line Tools are enough):
 //   swift Spike/desktops-spike.swift spaces                  desktops per display, active one, the four settings
@@ -19,6 +21,12 @@
 //   swift Spike/desktops-spike.swift set-wallpaper <path>    put a wallpaper back (tint prints the old ones)
 //   swift Spike/desktops-spike.swift windows [--all]         AX against CGWindowList, with each window's desktop
 //   swift Spike/desktops-spike.swift profiles                Chrome profiles from Chrome's Local State
+//   swift Spike/desktops-spike.swift add-desktop [--screen N] open Mission Control, press + (on screen N, 1 = first),
+//       confirm a desktop was added, close Mission Control
+//   swift Spike/desktops-spike.swift throw 3 [--grab-x 0.5]  after 3 s, carry the focused window to desktop 3
+//       the way yabai-dockstack does with SIP on: press on its title bar, Control+3, release.
+//       Click the window to move during the 3 s. --grab-x is where along the title bar to press
+//       (0...1 of the width; Chrome's tab strip needs an empty spot, try 0.9).
 //   swift Spike/desktops-spike.swift chrome 'Profile 1' https://claude.ai [--bare] [--no-activate] [--move-to N]
 //       open a window of that profile while this desktop is active and watch where it lands;
 //       --bare (when Chrome is not running) starts Chrome without arguments first and lets the
@@ -269,6 +277,137 @@ func switchToDesktop(_ n: Int) throws {
                 + "that screen still shows \(landed.map { "desktop \($0)" } ?? "an unknown / full-screen space"). "
                 + "Does pressing Control+\(n) by hand work? If it does, run this from Terminal.app (with Accessibility), "
                 + "not from a sandboxed shell.")
+    }
+}
+
+// MARK: - Adding a desktop (Q9)
+
+/// Every element under `root` (depth-first), with its depth, up to `limit` elements.
+func axTree(_ root: AXUIElement, limit: Int = 4000) -> [AXUIElement] {
+    var out: [AXUIElement] = []
+    var stack = [root]
+    while let element = stack.popLast(), out.count < limit {
+        out.append(element)
+        if let children = attribute(element, kAXChildrenAttribute, as: [AXUIElement].self) {
+            stack.append(contentsOf: children.reversed())
+        }
+    }
+    return out
+}
+
+func addDesktop(screenIndex: Int) throws {
+    try requireAccessibility()
+    let before = numberedDesktops(try managedSpaces()).count
+    guard let dock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first else {
+        throw SpikeError.failed("the Dock is not running")
+    }
+    let dockElement = AXUIElementCreateApplication(dock.processIdentifier)
+    AXUIElementSetMessagingTimeout(dockElement, 1)
+    let started = Date()
+    NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Mission Control.app"))
+    // Mission Control's desktop bar shows each screen's + as a button with no title; its
+    // description is localized ("add desktop", "Schreibtisch hinzufügen"), so look at all buttons
+    // inside a "Spaces Bar"-like group and print them.
+    var buttons: [(element: AXUIElement, description: String, x: CGFloat)] = []
+    wait(seconds: 3) {
+        buttons = axTree(dockElement).compactMap { element in
+            guard attribute(element, kAXRoleAttribute, as: String.self) == kAXButtonRole else { return nil }
+            let description = attribute(element, kAXDescriptionAttribute, as: String.self) ?? ""
+            let title = attribute(element, kAXTitleAttribute, as: String.self) ?? ""
+            let identifier = attribute(element, kAXIdentifierAttribute, as: String.self) ?? ""
+            let text = [description, title, identifier].filter { !$0.isEmpty }.joined(separator: " | ")
+            var origin = CGPoint.zero
+            if let value = attribute(element, kAXPositionAttribute, as: AXValue.self) { AXValueGetValue(value, .cgPoint, &origin) }
+            return (element, text, origin.x)
+        }
+        return !buttons.isEmpty
+    }
+    print("Mission Control buttons (\(buttons.count)) after \(Int(Date().timeIntervalSince(started) * 1000)) ms:")
+    for button in buttons { print("  x=\(Int(button.x))  \(button.description.isEmpty ? "(no text)" : button.description)") }
+    // AXIdentifier "mc.spaces.add" (2026-11-05, macOS 26.5) is not localized; the words are a fallback.
+    let add = buttons
+        .filter { b in ["mc.spaces.add", "add desktop", "hinzu"].contains { b.description.lowercased().contains($0) } }
+        .sorted { $0.x < $1.x }
+    guard !add.isEmpty else {
+        pressEscape()
+        throw SpikeError.failed("no add-desktop button found in Mission Control (list above)")
+    }
+    let target = add[min(max(screenIndex - 1, 0), add.count - 1)]
+    print("Pressing: \(target.description) (x=\(Int(target.x)))")
+    AXUIElementPerformAction(target.element, kAXPressAction as CFString)
+    let added = wait(seconds: 2) { ((try? numberedDesktops(managedSpaces()).count) ?? before) > before }
+    wait(seconds: 0.3) { false }
+    pressEscape()
+    let after = numberedDesktops(try managedSpaces()).count
+    print("Desktops: \(before) before, \(after) now.")
+    print(added ? "RESULT: desktop added. Q9 yes." : "RESULT: no desktop added. Q9 no.")
+}
+
+func pressEscape() {
+    let source = CGEventSource(stateID: .hidSystemState)
+    for keyDown in [true, false] {
+        CGEvent(keyboardEventSource: source, virtualKey: 53, keyDown: keyDown)?.post(tap: .cghidEventTap)
+    }
+}
+
+// MARK: - Throwing a window to another desktop (Q8)
+
+func throwFocusedWindow(to n: Int, grabX: Double) throws {
+    try requireAccessibility()
+    guard let key = digitKeyCodes[n] else { throw SpikeError.usage("desktop number 1...9") }
+    print("Click the window to move. Carrying it to desktop \(n) in 3 s…")
+    wait(seconds: 3) { false }
+    guard let app = NSWorkspace.shared.frontmostApplication else { throw SpikeError.failed("no frontmost app") }
+    let appElement = AXUIElementCreateApplication(app.processIdentifier)
+    guard let window = attribute(appElement, kAXFocusedWindowAttribute, as: AXUIElement.self) else {
+        throw SpikeError.failed("\(app.localizedName ?? "the app") has no focused window")
+    }
+    var origin = CGPoint.zero, size = CGSize.zero
+    if let value = attribute(window, kAXPositionAttribute, as: AXValue.self) { AXValueGetValue(value, .cgPoint, &origin) }
+    if let value = attribute(window, kAXSizeAttribute, as: AXValue.self) { AXValueGetValue(value, .cgSize, &size) }
+    var id: CGWindowID = 0
+    let hasID = axGetWindow.map { $0(window, &id) == .success } ?? false
+    let before = hasID ? spaces(ofWindow: id) : []
+    let displays = try managedSpaces()
+    print("Window: \(app.localizedName ?? "?") \(Int(size.width))x\(Int(size.height)) at \(Int(origin.x)),\(Int(origin.y)); "
+        + "on \(before.map { describe($0, in: displays) }.joined(separator: ", "))")
+
+    // AX and CGEvent share global coordinates (top-left origin). 12 pt down is inside the title bar.
+    let grab = CGPoint(x: origin.x + size.width * grabX, y: origin.y + 12)
+    let home = CGEvent(source: nil)?.location ?? grab
+    let source = CGEventSource(stateID: .hidSystemState)
+    func mouse(_ type: CGEventType, _ point: CGPoint) {
+        CGEvent(mouseEventSource: source, mouseType: type, mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
+    }
+    let started = Date()
+    mouse(.mouseMoved, grab)
+    wait(seconds: 0.05) { false }
+    mouse(.leftMouseDown, grab)
+    wait(seconds: 0.1) { false }
+    // A small drag so the window server treats it as a window move, not a click.
+    mouse(.leftMouseDragged, CGPoint(x: grab.x + 4, y: grab.y))
+    wait(seconds: 0.1) { false }
+    for keyDown in [true, false] {
+        let event = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: keyDown)
+        event?.flags = .maskControl
+        event?.post(tap: .cghidEventTap)
+    }
+    let arrived = wait(seconds: 2) { isCurrent(desktop: n) }
+    // Hold a moment after the switch, as a person would, then let go where it was grabbed.
+    wait(seconds: 0.4) { false }
+    mouse(.leftMouseUp, CGPoint(x: grab.x + 4, y: grab.y))
+    wait(seconds: 0.3) { false }
+    mouse(.mouseMoved, home)
+    let elapsed = Int(Date().timeIntervalSince(started) * 1000)
+    let after = hasID ? spaces(ofWindow: id) : []
+    let now = try managedSpaces()
+    print("Switch \(arrived ? "confirmed" : "NOT confirmed") after \(elapsed) ms.")
+    print("Window is now on \(after.map { describe($0, in: now) }.joined(separator: ", ")).")
+    let target = numberedDesktops(now).first { $0.number == n }?.space.id
+    if let target, after.contains(target) {
+        print("RESULT: moved to desktop \(n). Q8 yes.")
+    } else {
+        print("RESULT: not moved. Q8 no (or the press missed the title bar: try another --grab-x).")
     }
 }
 
@@ -677,6 +816,12 @@ func run(_ args: [String]) throws {
         guard let path = rest.first else { throw SpikeError.usage("set-wallpaper PATH") }
         try setWallpaper(path)
     case "windows": try printWindows(all: rest.contains("--all"))
+    case "add-desktop":
+        let screen = rest.firstIndex(of: "--screen").flatMap { rest.indices.contains($0 + 1) ? Int(rest[$0 + 1]) : nil } ?? 1
+        try addDesktop(screenIndex: screen)
+    case "throw":
+        let grabX = rest.firstIndex(of: "--grab-x").flatMap { rest.indices.contains($0 + 1) ? Double(rest[$0 + 1]) : nil } ?? 0.5
+        try throwFocusedWindow(to: try number(0), grabX: min(max(grabX, 0.05), 0.95))
     case "profiles":
         let profiles = chromeProfiles()
         if profiles.isEmpty { print("No Chrome profiles found (Local State missing or unreadable).") }

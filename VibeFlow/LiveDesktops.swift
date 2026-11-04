@@ -45,6 +45,8 @@ final class LiveDesktops: DesktopControl, DesktopWindows, AppLauncher {
         var current: UInt64
         /// Regular desktops only (type 0), in Mission Control order.
         var desktops: [UInt64]
+        /// Their uuids, same order; "" where macOS gives none.
+        var desktopUUIDs: [String]
         /// Every space including full-screen apps.
         var spaces: [UInt64]
     }
@@ -62,13 +64,15 @@ final class LiveDesktops: DesktopControl, DesktopWindows, AppLauncher {
         var number = 0
         var screens: [DesktopLayout.Screen] = []
         var focused: Int?
+        var ids: [Int: String] = [:]
         for (index, display) in displays.enumerated() {
             let numbers = display.desktops.map { _ in number += 1; return number }
+            for (n, uuid) in zip(numbers, display.desktopUUIDs) where !uuid.isEmpty { ids[n] = uuid }
             let showing = display.desktops.firstIndex(of: display.current).map { numbers[$0] }
             screens.append(.init(desktops: numbers, showing: showing))
             if let active, display.spaces.contains(active) { focused = index }
         }
-        return DesktopLayout(screens: screens, focusedScreen: focused)
+        return DesktopLayout(screens: screens, focusedScreen: focused, desktopIDs: ids)
     }
 
     func switchTo(desktop: Int) {
@@ -221,10 +225,12 @@ final class LiveDesktops: DesktopControl, DesktopWindows, AppLauncher {
         }
         return list.map { entry in
             let spaces = entry["Spaces"] as? [[String: Any]] ?? []
+            let regular = spaces.filter { ($0["type"] as? NSNumber)?.intValue == 0 && id($0) != nil }
             return Display(
                 identifier: entry["Display Identifier"] as? String ?? "",
                 current: (entry["Current Space"] as? [String: Any]).flatMap(id) ?? 0,
-                desktops: spaces.filter { ($0["type"] as? NSNumber)?.intValue == 0 }.compactMap(id),
+                desktops: regular.compactMap(id),
+                desktopUUIDs: regular.map { $0["uuid"] as? String ?? "" },
                 spaces: spaces.compactMap(id))
         }
     }
