@@ -486,6 +486,19 @@ public protocol FileTranscriber: Sendable {
     func transcribe(file: URL, options: FileTranscriptionOptions) async throws -> [SpeakerSegment]
 }
 
+/// The memo engine's per-piece call (design D5): Groq Whisper through OpenAITranscriber.
+public protocol PieceTranscriber: Sendable {
+    func transcribeSegments(_ audio: RecordedAudio, language: String?) async throws -> [WhisperSegment]
+}
+
+extension OpenAITranscriber: PieceTranscriber {}
+
+/// Summary and action items for a finished transcript (design D7). The live implementation
+/// asks Claude for structured output; the job validates the result against the transcript.
+public protocol TranscriptSummarizer: Sendable {
+    func summarize(_ transcript: Transcript) async throws -> Transcript.Summary
+}
+
 /// Transcription failures, classified for the fallback table in the design.
 public enum TranscriptionFailure: Error, Equatable, Sendable {
     /// 401 or 403. Surfaces with the Keys action; never falls back silently.
