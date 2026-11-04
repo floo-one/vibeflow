@@ -745,7 +745,8 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
   - Surfaced by: Scope Challenge 4 (D2-A); open questions 1, 2, 4-7; D8c (question 6 blocking)
   - Files: Spike/desktops-spike.swift
   - Verify: `swift Spike/desktops-spike.swift`; answers recorded in the design doc
-- [ ] **T2 (P1, human: ~2d / CC: ~45min)** — VibeFlowCore — Roles model, DesktopSetup (planner + walk) behind three ports, fakes, tests
+- [x] **T2 (P1, human: ~2d / CC: ~45min)** — VibeFlowCore — Roles model, DesktopSetup (planner + walk) behind three ports, fakes, tests
+  - Done 2026-11-04: Desktops/DesktopRoles.swift (model, LaunchPlanner) and Desktops/DesktopSetup.swift (ports DesktopControl, DesktopWindows, AppLauncher, the walk, the report); ports live in the feature file like KeepAwake's PowerAssertion rather than Ports.swift; fakes are private to DesktopSetupTests.swift (23 tests). Includes the spike rules: move across screens, AXStandardWindow presence, Chrome profile from the title, bare start only for restoring profiles.
   - Surfaced by: D1-B; D4-A; D7-A; D8a-c; Test review diagram
   - Files: VibeFlowCore/Sources/VibeFlowCore/Desktops/{Roles,DesktopSetup}.swift, Ports.swift, Settings/Preferences.swift, Tests/VibeFlowCoreTests/{DesktopSetupTests,Fakes}.swift
   - Verify: `cd VibeFlowCore && swift test`

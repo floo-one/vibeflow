@@ -68,6 +68,7 @@ public final class Preferences {
         static let focusCustomLongBreak = "focus.custom.longBreak"
         static let focusCustomRounds = "focus.custom.rounds"
         static let keepAwakeDisplayOn = "keepAwake.displayOn"
+        static let desktopRoles = "desktops.roles"
     }
 
     public var launchAtLogin: Bool {
@@ -168,6 +169,10 @@ public final class Preferences {
     public var keepAwakeDisplayOn: Bool {
         didSet { defaults.set(keepAwakeDisplayOn, forKey: Key.keepAwakeDisplayOn) }
     }
+    /// Desktop Roles, in desktop order; empty means the feature is off.
+    public var desktopRoles: [DesktopRole] {
+        didSet { defaults.set(try? JSONEncoder().encode(desktopRoles), forKey: Key.desktopRoles) }
+    }
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -202,6 +207,8 @@ public final class Preferences {
             rounds: defaults.object(forKey: Key.focusCustomRounds) as? Int ?? classic.rounds
         ).clamped
         keepAwakeDisplayOn = defaults.object(forKey: Key.keepAwakeDisplayOn) as? Bool ?? true
+        desktopRoles = defaults.data(forKey: Key.desktopRoles)
+            .flatMap { try? JSONDecoder().decode([DesktopRole].self, from: $0) } ?? []
     }
 
     public var vocabularyTerms: [String] { Self.parseVocabulary(vocabulary) }
