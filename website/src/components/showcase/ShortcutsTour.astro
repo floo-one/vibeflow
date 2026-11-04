@@ -96,6 +96,7 @@ const first = FLAT[0];
 <style is:global>
   /* Everything is prefixed kt- so it cannot meet the showcase's own .k, .bars or .steps. */
   #keys {
+    position: relative; /* holds the keyboard copy that leaves during a swap */
     --kt-page: color-mix(in srgb, var(--kt-active, var(--dictation)) 6%, var(--ground));
     --kt-alu: #C9CACF; --kt-cap: #1C1C1E; --kt-cap-fg: #F5F5F7;
     background: var(--kt-page); transition: background-color 0.6s var(--ease);
@@ -331,26 +332,39 @@ const first = FLAT[0];
   const phoneLow = (n: number) => PHONE_LOW[n % PHONE_LOW.length];
   let mode: 'off' | 'desk' | 'phone' = 'off', posed = -1;
   let poseTl: gsap.core.Timeline | null = null;
+  let ghost: HTMLElement | null = null;
 
   function pose(n: number, now = false) {
     if (mode === 'off' || n === posed) return;
     const first = posed < 0, from = posed;
     posed = n;
-    poseTl?.kill();
+    poseTl?.kill(); ghost?.remove(); ghost = null;
     const instant = now || first || reduce;
     if (mode === 'desk') {
       // Even sections sit left of the line, so the keyboard takes the right (x 0, its CSS place).
       const tx = n % 2 === 0 ? 0 : -(body.clientWidth - stage.offsetWidth);
       const cx = gsap.getProperty(stage, 'x') as number;
-      if (instant || Math.abs(cx - tx) < 1) { gsap.set(stage, { x: tx }); return; }
+      if (instant || Math.abs(cx - tx) < 1) { gsap.set(stage, { x: tx }); avoid(true); return; }
       const r = stage.getBoundingClientRect(), toLeft = tx < cx;
       const out = toLeft ? cx + (innerWidth - r.left) + 24 : cx - r.right - 24;
       const landLeft = r.left + (tx - cx);
       const enter = toLeft ? tx - (landLeft + r.width) - 24 : tx + (innerWidth - landLeft) + 24;
-      poseTl = gsap.timeline()
-        .to(stage, { x: out, duration: 0.3, ease: 'power2.in' })
-        .set(stage, { x: enter })
-        .to(stage, { x: tx, duration: 0.7, ease: 'power3.out' });
+      // Both at once: a still copy of the keyboard leaves through its edge while the real one
+      // comes in from the opposite edge, same timing, same curve.
+      const g = stage.cloneNode(true) as HTMLElement;
+      g.removeAttribute('id'); g.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
+      g.inert = true; g.setAttribute('aria-hidden', 'true');
+      // It scrolls with the page, so it keeps its distance from the card coming up beside it.
+      const sr = section.getBoundingClientRect();
+      Object.assign(g.style, { position: 'absolute', left: `${r.left - sr.left}px`, top: `${r.top - sr.top}px`, width: `${r.width}px`, margin: '0', zIndex: '3', pointerEvents: 'none', transform: 'none' });
+      section.appendChild(g);
+      ghost = g;
+      const done = () => { g.remove(); if (ghost === g) ghost = null; };
+      const move = { duration: 0.55, ease: 'power2.inOut' };
+      poseTl = gsap.timeline({ onComplete: done, onInterrupt: done })
+        .to(g, { x: out - cx, ...move }, 0)
+        .fromTo(stage, { x: enter }, { x: tx, ...move }, 0);
+      avoid(true); // it comes in already clear of the leaving card
     } else {
       const low = phoneLow(n), sy = low ? Math.max(0, innerHeight - BAR - stage.offsetHeight) : 0;
       stage.classList.toggle('low', low);
@@ -364,6 +378,28 @@ const first = FLAT[0];
     }
   }
 
+  // Wide screens: the keyboard does not have to sit on the reading line. On its side of the line
+  // it keeps clear of the cards: a card coming up from below nudges it up, and after a swap it
+  // starts just below the card that is leaving and glides back to its place as that card goes.
+  const secEls = [...secsEl.querySelectorAll<HTMLElement>(':scope > .kt-sec')];
+  const CLEAR = 24;
+  let yTo: ((v: number) => void) | null = null;
+  function avoid(now = false) {
+    if (mode !== 'desk' || posed < 0) return;
+    const H = stage.offsetHeight, cur = gsap.getProperty(stage, 'y') as number;
+    const base = stage.getBoundingClientRect().top - cur; // where the stage sits untransformed
+    const right = posed % 2 === 0; // even sections sit left, so the keyboard is right
+    let top = base;
+    for (const [i, c] of secEls.entries()) {
+      if ((i % 2 === 1) !== right) continue; // only cards on the keyboard's side
+      const r = c.getBoundingClientRect();
+      if (r.bottom + CLEAR <= top || r.top - CLEAR >= top + H) continue;
+      top = r.top + r.height / 2 > base + H / 2 ? r.top - CLEAR - H : r.bottom + CLEAR;
+    }
+    if (now) { gsap.set(stage, { y: top - base }); return; }
+    (yTo ??= gsap.quickTo(stage, 'y', { duration: 0.3, ease: 'power3.out' }))(top - base);
+  }
+
   const mm = gsap.matchMedia();
   const enter = (m: 'desk' | 'phone') => {
     mode = m; posed = -1;
@@ -371,7 +407,7 @@ const first = FLAT[0];
     const onRefresh = () => { const n = posed; posed = -1; if (n >= 0) pose(n, true); };
     ScrollTrigger.addEventListener('refresh', onRefresh);
     return () => {
-      mode = 'off'; posed = -1; poseTl?.kill();
+      mode = 'off'; posed = -1; poseTl?.kill(); ghost?.remove(); ghost = null;
       stage.classList.remove('low');
       ScrollTrigger.removeEventListener('refresh', onRefresh);
       gsap.set([stage, secsEl], { clearProps: 'transform,opacity,visibility' });
@@ -417,7 +453,6 @@ const first = FLAT[0];
   function pad() {
     // Center line: sections are spaced by more than the keyboard's height, so it always has a gap
     // to change sides in.
-    secsEl.style.rowGap = mode === 'desk' ? `${stage.offsetHeight + 140}px` : '';
     const a = flat[flat.length - 1].anchor;
     const stageTop = narrow() ? BAR : deskTop();
     const listEndAtLine = target(a) + (lastSec.getBoundingClientRect().bottom - a.getBoundingClientRect().top);
@@ -430,6 +465,7 @@ const first = FLAT[0];
   // The key presses play only while the tour is on screen; coming back restarts the loop.
   ScrollTrigger.create({
     trigger: section, start: 'top bottom', end: 'bottom top',
+    onUpdate: () => avoid(),
     onToggle: (self) => {
       inView = self.isActive;
       if (!inView) { run++; return; }
@@ -438,10 +474,7 @@ const first = FLAT[0];
     },
   });
 
-  // On the center line a new section takes over while the gap before it passes the keyboard, so
-  // the keyboard has left before a card on its side could reach it.
-  const opens = (i: number) => i === 0 || flat[i - 1].sec.id !== flat[i].sec.id;
-  const lead = (i: number) => (mode === 'desk' && opens(i) ? stage.offsetHeight + 48 : early());
+  const lead = (_i: number) => early();
 
   // Each step owns the stretch from its headline to the next one's, measured at the reading line.
   flat.forEach((f, i) => {
