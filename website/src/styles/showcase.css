@@ -38,6 +38,12 @@
 .feat:focus-visible { outline-offset: 4px; border-radius: 4px; }
 .feat-row { display: flex; align-items: center; gap: 12px; }
 .feat-row h3 { flex: 1; }
+/* Scroll-driven Voice: a hairline under each feature fills as the scroll plays its beat. */
+.scrub .feat { cursor: pointer; }
+.scrub .feat::after {
+  content: ""; position: absolute; left: 0; bottom: -1px; height: 2px; width: 100%; background: var(--c);
+  transform: scaleX(var(--p, 0)); transform-origin: left; border-radius: 1px;
+}
 
 .show .k { min-width: 24px; height: 24px; padding: 0 6px; font-size: 12.5px;
   transition: background 0.3s var(--ease), border-color 0.3s var(--ease), color 0.3s var(--ease), box-shadow 0.3s var(--ease), transform 0.12s; }

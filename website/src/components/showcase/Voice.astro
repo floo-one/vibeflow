@@ -1,7 +1,8 @@
 ---
 // Voice: the three keys. Each feature plays its moment on an email in the scene (Read
-// highlights it word by word, Smart read speaks a brief, Dictation types a reply), then the
-// next one follows. With reduced motion each feature is one still frame.
+// highlights it word by word, Smart read speaks a brief, Dictation types a reply). On wide
+// screens the section pins and the scroll plays the three beats, snapping to each; on phones
+// they cycle on their own. With reduced motion each feature is one still frame.
 import Glyph from './Glyph.astro';
 import Get from './Get.astro';
 import Notch from './Notch.astro';
@@ -55,6 +56,8 @@ const feats = [
 </section>
 
 <script>
+  import { gsap, ScrollTrigger, MOTION } from '../../scripts/motion';
+
   type F = 'read' | 'smart' | 'dict';
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
   const section = $('voice');
@@ -62,6 +65,7 @@ const feats = [
   const notch = $('vnotch'), card = $('vcard'), field = $('vfield'), pill = $('vpill');
   const TINT: Record<F, string> = { read: '#4C9BFF', smart: '#9D95FF', dict: '#FF6B5E' };
   const REPLY = 'Friday works. I land Thursday at 9, no dietary needs, and yes to the boat!';
+  const ORDER: F[] = ['read', 'smart', 'dict'];
   const split = (el: HTMLElement) => {
     el.innerHTML = (el.textContent ?? '').split(' ').map((w) => `<span class="w">${w}</span>`).join(' ');
     return [...el.querySelectorAll<HTMLElement>('.w')];
@@ -69,7 +73,7 @@ const feats = [
   const words = split($('vbody')), briefWords = split($('vbrief'));
   const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let run = 0, auto = 0, cycling = false, visible = false;
+  let run = 0, auto = 0, cycling = false, visible = false, scrubbing = false;
   let current: F | null = null;
   const fOf = (el: HTMLElement) => el.dataset.f as F;
 
@@ -122,25 +126,118 @@ const feats = [
     if (my === run && cycling) play(fOf(feats[++auto % feats.length]));
   }
   function startCycle() {
+    if (scrubbing) return;
     if (reduced) { if (!current) still('smart'); return; }
     if (cycling) return;
     cycling = true; play(fOf(feats[auto % feats.length]));
   }
 
   feats.forEach((el, i) => {
-    const pick = () => { cycling = false; auto = i; if (current !== fOf(el) || !notch.classList.contains('on')) play(fOf(el)); };
+    const pick = () => {
+      if (scrubbing) return;
+      cycling = false; auto = i; if (current !== fOf(el) || !notch.classList.contains('on')) play(fOf(el));
+    };
     el.addEventListener('mouseenter', pick);
     el.addEventListener('focus', pick);
+    el.addEventListener('click', () => { if (scrubbing) goTo(i); });
   });
   $('vfeats').addEventListener('mouseleave', () => setTimeout(() => {
-    if (!section.querySelector('.feat:hover')) { auto++; startCycle(); }
+    if (!scrubbing && !section.querySelector('.feat:hover')) { auto++; startCycle(); }
   }, 1600));
 
   new IntersectionObserver(([e]) => {
     const now = e.intersectionRatio >= 0.35;
     if (now === visible) return;
     visible = now;
+    if (scrubbing) return;
     if (now) setTimeout(() => { if (visible) startCycle(); }, 500);
     else if (!reduced) { cycling = false; run++; reset(); }
   }, { threshold: [0, 0.35] }).observe(section);
+
+  // ---------- Scroll-driven: the section pins and the scroll plays the three beats ----------
+  // Every frame is drawn from the scroll position alone, so scrolling back plays it in reverse.
+  // Each beat rests where its moment reads best; one scroll gesture moves to the next rest.
+  const BAR = 44;
+  const REST = [0.55, 0.9, 0.9]; // where each beat comes to rest, within the beat
+  const band = (t: number, a: number, b: number) => gsap.utils.clamp(0, 1, (t - a) / (b - a));
+  const POINTS = [0, ...REST.map((r, i) => (i + r) / 3), 1];
+  const nextPoint = ScrollTrigger.snapDirectional(POINTS);
+  let st: ScrollTrigger | null = null;
+  let shown = '', jumping = false;
+
+  function render(p: number) {
+    const n = Math.min(2, Math.floor(p * 3)), t = p * 3 - n, f = ORDER[n];
+    if (current !== f) { current = f; mark(f); }
+    feats.forEach((x, i) => x.style.setProperty('--p', String(i < n ? 1 : i > n ? 0 : t)));
+    notch.classList.toggle('on', t > 0.04 && t < 0.97);
+
+    // Read: a highlight walks the email, word by word.
+    const at = f === 'read' && t > 0.06 && t < 0.92 ? Math.floor(band(t, 0.06, 0.92) * words.length) : -1;
+    words.forEach((w, j) => w.classList.toggle('on', j === at));
+
+    // Smart read: the email dims while it thinks, then the brief is spoken word by word.
+    card.classList.toggle('dim', f === 'smart' && t > 0.08);
+    pill.classList.toggle('is-on', f === 'smart' && t > 0.24);
+    const said = f === 'smart' ? Math.round(band(t, 0.3, 0.85) * briefWords.length) : 0;
+    briefWords.forEach((w, j) => w.classList.toggle('said', j < said));
+
+    // Dictation: listening while the key is held, then the cleaned-up reply lands at once.
+    const state = f !== 'dict' || t < 0.08 ? 'empty' : t < 0.55 ? 'typing' : 'pasted';
+    if (state !== shown) {
+      shown = state;
+      field.classList.toggle('typing', state === 'typing');
+      if (state === 'pasted') field.innerHTML = `<span class="pasted">${REPLY}</span>`;
+      else field.textContent = '';
+    }
+  }
+
+  function goTo(i: number) {
+    if (!st) return;
+    const y = st.start + ((i + REST[i]) / 3) * (st.end - st.start);
+    // A click lands on a rest point; the snap must not read that as a push to the next one.
+    jumping = true;
+    gsap.to(window, { scrollTo: y, duration: 1, ease: 'power2.inOut', overwrite: true, onComplete: () => { setTimeout(() => { jumping = false; }, 400); } });
+  }
+
+  gsap.matchMedia().add(`${MOTION} and (min-width: 901px) and (min-height: 620px)`, () => {
+    scrubbing = true; cycling = false; run++; reset(); shown = '';
+    section.classList.add('scrub');
+    const proxy = { p: 0 };
+    const tween = gsap.to(proxy, {
+      p: 1, ease: 'none',
+      onUpdate: () => render(proxy.p),
+      scrollTrigger: {
+        trigger: section,
+        pin: true,
+        // Centered under the menu bar when it fits; a tall section gives up some top padding.
+        start: () => {
+          const room = innerHeight - BAR, over = section.offsetHeight - room;
+          return over <= 0 ? `center ${BAR + room / 2}px` : `top ${BAR - Math.min(over, 64)}px`;
+        },
+        end: () => `+=${Math.round(innerHeight * 2.4)}`,
+        scrub: 0.5,
+        invalidateOnRefresh: true,
+        snap: {
+          // Resting on a point stays there; any scroll moves one point in its direction.
+          snapTo: (v: number, self?: ScrollTrigger) => {
+            if (jumping) return v;
+            const near = POINTS.find((q) => Math.abs(q - v) < 0.01);
+            return near ?? nextPoint(v, self?.direction ?? 1);
+          },
+          duration: { min: 0.5, max: 1.4 },
+          delay: 0.1,
+          ease: 'power1.inOut',
+        },
+      },
+    });
+    st = tween.scrollTrigger!;
+    render(0);
+    return () => {
+      scrubbing = false; st = null; current = null;
+      section.classList.remove('scrub');
+      feats.forEach((x) => x.style.removeProperty('--p'));
+      reset(); shown = '';
+      if (visible) startCycle();
+    };
+  });
 </script>
