@@ -19,6 +19,8 @@ DEV_ID="one.floo.vibeflow.dev"
 PROD_APP="/Applications/VibeFlow.app"
 DEV_APP="$HOME/Applications/VibeFlow Dev.app"
 RELEASE_DMG="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg"
+# Swift packages, shared by all worktrees; a cache, Xcode downloads it again when emptied.
+SHARED_PACKAGES="$HOME/Library/Caches/VibeFlow/SourcePackages"
 LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 
 MODE=run
@@ -122,8 +124,9 @@ run() {
   xcodegen generate >/dev/null
   mkdir -p "${buildlog:h}"
   # The VF_* settings end up in Info.plist; the Dev menu shows them (BuildStamp).
+  # One package folder for every worktree: sentry-cocoa's binaries alone are 3.3 GB per copy.
   if ! xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug \
-      -derivedDataPath build/DerivedData build -quiet \
+      -derivedDataPath build/DerivedData -clonedSourcePackagesDirPath "$SHARED_PACKAGES" build -quiet \
       VF_GIT_BRANCH="$branch" VF_GIT_COMMIT="$commit" VF_BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
       >"$buildlog" 2>&1; then
     grep -E "error:" "$buildlog" | sort -u >&2 || true
