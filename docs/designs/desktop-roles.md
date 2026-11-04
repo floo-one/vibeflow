@@ -750,10 +750,11 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
   - Surfaced by: D1-B; D4-A; D7-A; D8a-c; Test review diagram
   - Files: VibeFlowCore/Sources/VibeFlowCore/Desktops/{Roles,DesktopSetup}.swift, Ports.swift, Settings/Preferences.swift, Tests/VibeFlowCoreTests/{DesktopSetupTests,Fakes}.swift
   - Verify: `cd VibeFlowCore && swift test`
-- [ ] **T3 (P1, human: ~1.5d / CC: ~30min)** — App — LiveDesktops: probe, switch (explicit flags), tint, AX inventory with 0.5 s cap, CGWindowList, Chrome via NSWorkspace.OpenConfiguration with bare cold start
+- [x] **T3 (P1, human: ~1.5d / CC: ~30min)** — App — LiveDesktops: probe, switch (explicit flags), tint, AX inventory with 0.5 s cap, CGWindowList, Chrome via NSWorkspace.OpenConfiguration with bare cold start
   - Surfaced by: Scope Challenge 3; D7-A; D8b; D8c; spike: new windows land on the screen the app picks, so move a misplaced window across screens (AXPosition); presence = AXStandardWindow on the desktop
   - Files: VibeFlow/LiveDesktops.swift
   - Verify: xcodebuild Debug build; scripts/dev.sh and a morning walk on the real Mac
+  - Done 2026-11-04 as VibeFlow/LiveDesktops.swift (+ ChromeProfiles for the Desktops tab), built from the spike's proven calls; Debug build passes. Not yet exercised in the app: nothing calls it until T5/T6 wire the menu item. Minimized windows are not reported as unplaced yet (spike open question).
 - [ ] **T4 (P1, human: ~2h / CC: ~10min)** — App — Busy exclusion between walk and dictation/smart read
   - Surfaced by: Outside voice 1 (D8a-A)
   - Files: VibeFlow/AppContainer.swift, VibeFlowCore session entry points
