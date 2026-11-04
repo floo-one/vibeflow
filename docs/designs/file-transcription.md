@@ -61,7 +61,8 @@ temporary m4a first (about 1 MB per minute). The upload streams from disk throug
 `AudioFileDecoder.probe` reads duration, channel count and whether there is audio for every
 kind before the options window opens, so the 2-hour cap and the stereo option apply to calls too.
 
-Call engine: decided by a bake-off in T1 (eng review D11, Florian 2026-11-04). Groq Whisper and
+Call engine: **ElevenLabs Scribe**, chosen by Florian on 2026-11-04 after the T1 bake-off (eng
+review D11; results below). Groq Whisper and
 Apple's SpeechAnalyzer return no speakers, so calls need a diarizing engine. Two candidates, both
 one upload of the original file with speaker ids and word timestamps, so calls need no 10-minute
 pieces and no decoding:
@@ -73,9 +74,26 @@ pieces and no decoding:
   `multichannel` are documented features; German support to confirm; about $0.26 to $0.31 per
   audio hour (third-party lists).
 
+T1 run 1 (2026-11-04, a real 36-minute German two-person meeting, mp4 with mono 16 kHz audio;
+audio exported to an 18.2 MB m4a in 0.4 s, 70.1 MB video): Deepgram nova-3 with auto language
+detected German (0.99), finished in 17.2 s, found 2 speakers (74 % / 26 % talk share), 716
+utterances, 3,890 words, mean utterance confidence 0.94. Scribe was refused with HTTP 401
+`missing_permissions` (the ElevenLabs key is scoped without Speech to Text); rerun with
+`--engines scribe` once that permission is on. VibeFlow must surface this case as "ElevenLabs
+key lacks Speech to Text permission", not a generic 401.
+
 T1 runs the same real 40-minute German two-person call through both; Florian judges speaker
 labels and text; the winner is built behind the `FileTranscriber` protocol, the loser is not.
-The table above says "ElevenLabs Scribe" as a placeholder for the winner.
+T1 run 2 (same meeting, ElevenLabs key with Speech to Text permission): Scribe (`scribe_v2`)
+detected German (0.997), finished in 25.0 s, 2 speakers, 4,140 words (Deepgram 3,890), mean word
+probability 0.99, 138 turns (Deepgram 65). The two engines agree on the speaker for 97.4 % of
+3,929 time-matched words. Differences: Scribe gives short replies ("Mhm.") their own turn (46
+turns of two words or fewer, Deepgram 10) where Deepgram sometimes folds the listener's "Mhm"
+into the speaker's turn; Scribe is verbatim ("ähm", "'n", broken-off words), Deepgram's
+smart_format reads cleaner. Decision: Scribe, for the better short-turn labels, the more
+complete text, no second account or key, and the lower price. Fillers are shown as returned in
+v1; a "hide fillers" display toggle is a candidate if they get in the way. Deepgram is not built
+(no `SecretKey.deepgram`).
 
 No key for the chosen call engine: the Call option still works, without speaker labels, through
 the memo engine; the window's engine line says "No <provider> key: no speaker labels".
@@ -86,7 +104,10 @@ the memo engine; the window's engine line says "No <provider> key: no speaker la
 mp4, mov audio track) into 16 kHz 16-bit mono PCM in a temporary WAV. It also reports the
 channel count, which decides whether the options window offers "Channels are speakers". If T1
 shows the winning call engine has no multichannel mode, that option is hidden and stereo calls
-get normal speaker labels (eng review D7). `AVAssetReaderTrackOutput` reportedly rejects the channel-count key; T1
+get normal speaker labels (eng review D7). T1 result (2026-11-04, macOS 26, Spike/file-decode-probe.swift on
+stereo 48 kHz m4a, mono m4a and an mp4 video): `AVAssetReaderTrackOutput` with LPCM 16 kHz,
+1 channel, 16-bit starts and delivers exactly that format on all three, so no `AVAudioConverter`
+step is needed; the concern below did not reproduce. `AVAssetReaderTrackOutput` reportedly rejects the channel-count key; T1
 checks the delivered format and falls back to reading native PCM plus `AVAudioConverter`. No audio
 track: "No audio in interview.mov". Unreadable (DRM, iCloud placeholder): "Couldn't read
 interview.m4a". Temp files are deleted when the job ends, fails or is cancelled, and leftovers
@@ -199,10 +220,10 @@ say so ("Stopped at 30:00: Groq hourly limit").
 
 - `Transcription/AudioFileDecoder.swift`: decode to temp WAV (mono or per channel), and the pure
   `pieces(of:max:searchWindow:)` cutting function.
-- `Transcription/<Winner>Transcriber.swift`: the call engine chosen in T1 (ElevenLabs Scribe or
-  Deepgram), behind `FileTranscriber`: upload of the original file, diarize, speaker count,
-  word timestamps → segments with speaker ids. Deepgram also adds `SecretKey.deepgram` and a row
-  in Settings > Accounts.
+- `Transcription/ScribeTranscriber.swift`: ElevenLabs Scribe (`scribe_v2`) behind
+  `FileTranscriber`: streamed multipart upload, `diarize`, `num_speakers`, word timestamps →
+  segments with speaker ids; HTTP 401 `missing_permissions` maps to "Your ElevenLabs key lacks
+  the Speech to Text permission" with the Accounts action (seen in T1).
 - `Transcription/Transcript.swift`: the document model, turns from segments, rename and merge,
   plain-text export, `TranscriptStore` (one JSON file per transcript).
 - `Transcription/FileTranscriptionJob.swift`: `@MainActor @Observable`; states `idle`,
