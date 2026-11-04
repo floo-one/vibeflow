@@ -31,11 +31,18 @@ SELF="${0:A}"
 
 say() { print "$(date '+%F %T') $1"; }
 
+# True while the build that took the lock in folder $1 still runs. Never `kill -0 0`: that
+# asks about our own process group and always succeeds.
+build_running() {
+  local pid="$(cat "$1/lock/pid" 2>/dev/null)"
+  [[ $pid == <-> ]] && (( pid > 0 )) && kill -0 "$pid" 2>/dev/null
+}
+
 install() {
   # Bring the clone and the published/failed marks over from ~/Library/Caches, unless a build
   # is running there right now.
   if [[ -d $OLD_STATE && ! -e $STATE ]]; then
-    if kill -0 "$(cat "$OLD_STATE/lock/pid" 2>/dev/null || print 0)" 2>/dev/null; then
+    if build_running "$OLD_STATE"; then
       print -u2 "A nightly build is running in $OLD_STATE; --install again once it is done."
       exit 1
     fi
@@ -104,7 +111,7 @@ run() {
   cd "$STATE"
   # One build at a time; a lock left by a run that died is taken over.
   if ! mkdir "$STATE/lock" 2>/dev/null; then
-    if kill -0 "$(cat "$STATE/lock/pid" 2>/dev/null || print 0)" 2>/dev/null; then
+    if build_running "$STATE"; then
       exit 0
     fi
   fi
