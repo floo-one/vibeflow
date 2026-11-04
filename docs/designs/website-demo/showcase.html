@@ -111,7 +111,7 @@ h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); li
 .pill { position: absolute; left: 9%; right: 9%; bottom: 7%; display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 16px;
   background: rgba(22,22,26,.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: #fff; font-size: 15px; line-height: 1.5;
   opacity: 0; transform: translateY(12px); transition: opacity .45s var(--ease), transform .55s var(--ease); }
-.pill.show { opacity: 1; transform: none; }
+.pill.is-on { opacity: 1; transform: none; }
 .pill .tile { width: 28px; height: 28px; border-radius: 8px; flex: none; display: grid; place-items: center; background: var(--smart); }
 .pill .w { color: rgba(255,255,255,.35); transition: color .2s; }
 .pill .w.said { color: #fff; }
@@ -561,7 +561,7 @@ body { padding-top: 44px; }
   }
   function reset() {
     step(-1); phase = ''; skip = false;
-    $('#asel')?.classList.remove('on'); pill.classList.remove('show'); keys.classList.remove('down'); notch.classList.remove('on');
+    $('#asel')?.classList.remove('on'); pill.classList.remove('is-on'); keys.classList.remove('down'); notch.classList.remove('on');
   }
 
   async function loop(my) {
@@ -580,7 +580,7 @@ body { padding-top: 44px; }
         step(1); keys.classList.add('down');
         notch.dataset.f = 'dict'; notch.classList.add('on');
         tile.innerHTML = MIC; lbl.textContent = i ? 'Ask again · it remembers the text' : 'Listening · let go to ask';
-        txt.textContent = ''; pill.classList.add('show');
+        txt.textContent = ''; pill.classList.add('is-on');
         await wait(400);
         const qw = q.split(' ');
         for (let k = 1; k <= qw.length; k++) {
@@ -607,7 +607,7 @@ body { padding-top: 44px; }
         phase = 'read';
         await wait(2200); if (my !== run) return;
         notch.classList.remove('on');
-        pill.classList.remove('show'); await wait(600);
+        pill.classList.remove('is-on'); await wait(600);
       }
       await wait(300);
     }
@@ -721,7 +721,7 @@ body { padding-top: 44px; }
   function reset() {
     words.forEach(w => w.classList.remove('on'));
     briefWords.forEach(w => w.classList.remove('said'));
-    pill.classList.remove('show'); card.classList.remove('dim');
+    pill.classList.remove('is-on'); card.classList.remove('dim');
     field.textContent = ''; field.classList.remove('typing');
     notch.classList.remove('on');
   }
@@ -741,7 +741,7 @@ body { padding-top: 44px; }
     } else if (f === 'smart') {
       card.classList.add('dim');
       await wait(700); if (my !== run) return;   // thinking
-      pill.classList.add('show');
+      pill.classList.add('is-on');
       for (const w of briefWords) { if (my !== run) return; w.classList.add('said'); await wait(210); }
     } else {
       field.classList.add('typing');
