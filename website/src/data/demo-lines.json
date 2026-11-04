@@ -1,0 +1,38 @@
+{
+  "model": "eleven_multilingual_v2",
+  "voices": {
+    "narrator": "bIHbv24MWmeRgasZH58o",
+    "anna": "EXAVITQu4vr4xnSDxMaL",
+    "ben": "nPczCjzI2devNBz1zQrb"
+  },
+  "lines": [
+    { "id": "mail-0", "voice": "narrator", "speed": 1.1, "text": "Hi team, the offsite is confirmed for March 12 to 14 in Lisbon. We stay at a small hotel in Alfama, ten minutes on foot from the venue, and flights go on the company card as usual." },
+    { "id": "mail-1", "voice": "narrator", "speed": 1.1, "text": "Three things I need from you by Friday: your arrival time, any dietary needs, and whether you want to join the boat trip on Thursday afternoon. If you can't come, tell me directly so I can release your room before the deadline on the 20th." },
+    { "id": "mail-2", "voice": "narrator", "speed": 1.1, "text": "The agenda is attached. Day one is planning, day two is workshops, day three is free until the late flight. Bring a laptop, comfortable shoes and one idea you think we should stop doing." },
+    { "id": "mail-3", "voice": "narrator", "speed": 1.1, "text": "Thanks! Lena" },
+    { "id": "chat-0", "voice": "narrator", "speed": 1.1, "text": "Done. I've moved token refresh out of the individual API clients and into TokenService, so there is now exactly one place that decides when a token is stale and how it gets renewed." },
+    { "id": "chat-1", "voice": "narrator", "speed": 1.1, "text": "What changed" },
+    { "id": "chat-2", "voice": "narrator", "speed": 1.1, "text": "Fourteen call sites now ask TokenService.current() instead of refreshing on their own." },
+    { "id": "chat-3", "voice": "narrator", "speed": 1.1, "text": "The retry-on-401 logic lives in one interceptor, with a single in-flight refresh shared by concurrent requests." },
+    { "id": "chat-4", "voice": "narrator", "speed": 1.1, "text": "Logout clears the cache and revokes the refresh token server-side." },
+    { "id": "chat-5", "voice": "narrator", "speed": 1.1, "text": "What still needs you" },
+    { "id": "chat-6", "voice": "narrator", "speed": 1.1, "text": "Two tests in the session suite fail, because they still mock the old AuthClient and never see the new service. I can either update the mock, which is about ten lines, or keep the old code path behind a flag for one release. Which do you prefer?" },
+    { "id": "msgs-0", "voice": "narrator", "speed": 1.1, "text": "Mockups for the new onboarding are up. Can you do 10 tomorrow for the review? Otherwise Thursday after lunch." },
+    { "id": "turn-0", "voice": "anna", "speed": 1.05, "text": "Okay, let's start. The goal for today is to agree on a launch date for the new website." },
+    { "id": "turn-1", "voice": "ben", "speed": 1.05, "text": "Design is nearly done. I need two more days for the demo section, so Thursday at the earliest." },
+    { "id": "turn-2", "voice": "anna", "speed": 1.05, "text": "Thursday works if the copy is final by Wednesday. Can you own that?" },
+    { "id": "turn-3", "voice": "narrator", "speed": 1.05, "text": "Yes. I'll send the final copy on Wednesday at noon." },
+    { "id": "turn-4", "voice": "ben", "speed": 1.05, "text": "Then let's ship Thursday morning, before the newsletter goes out." },
+    { "id": "brief-read", "voice": "narrator", "speed": 1, "text": "Lena needs three things from you by Friday: your arrival time, any dietary needs, and yes or no on Thursday's boat trip. Can't come? Tell her before the 20th so she can release your room." },
+    { "id": "ans-read-0", "voice": "narrator", "speed": 1, "text": "Friday for your three answers. The hard one is the 20th: after that, your room can no longer be released." },
+    { "id": "ans-read-1", "voice": "narrator", "speed": 1, "text": "A laptop, comfortable shoes, and one idea for something the team should stop doing." },
+    { "id": "brief-smart", "voice": "narrator", "speed": 1, "text": "I moved token refresh into one place and touched fourteen files. Two tests fail on the old mock. Should I update the mock, or keep the old path for now?" },
+    { "id": "ans-smart-0", "voice": "narrator", "speed": 1, "text": "Two in the session suite: refresh on expiry, and logout clears tokens. Both still mock the old auth client, so they never see the new service. Updating the mock is about ten lines." },
+    { "id": "ans-smart-1", "voice": "narrator", "speed": 1, "text": "Not yet. The code is done, but with two red tests you can't tell whether logout really clears tokens. Fix the mock first; then it's a small, safe change." },
+    { "id": "ans-smart-2", "voice": "narrator", "speed": 1, "text": "No. Callers still ask for a token the same way. Only where the refresh happens moved: from fourteen places into TokenService." },
+    { "id": "brief-dict", "voice": "narrator", "speed": 1, "text": "Ben asks whether 10 tomorrow works for the onboarding review. If not, Thursday after lunch." },
+    { "id": "ans-dict-0", "voice": "narrator", "speed": 1, "text": "Just a time: yes to 10 tomorrow, or Thursday after lunch." },
+    { "id": "brief-trans", "voice": "narrator", "speed": 1, "text": "Launch moves to Thursday morning, before the newsletter. You owe the final copy on Wednesday at noon." },
+    { "id": "ans-trans-0", "voice": "narrator", "speed": 1, "text": "The final copy, by Wednesday at noon. Ben finishes the demo section; Anna wants it all live before the newsletter." }
+  ]
+}
