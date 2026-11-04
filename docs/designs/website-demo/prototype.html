@@ -1,0 +1,1236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VibeFlow demo prototype</title>
+<!--
+  Prototype of the interactive desktop demo for vibeflow.floo.one (1.5).
+  One self-contained file on purpose: iterate here, then port to website/src/components/demo/.
+  Voice: pre-rendered ElevenLabs clips with character timings (website/scripts/render-demo-voice.mjs);
+  the browser's speechSynthesis only stands in for a line without a clip.
+-->
+<script src="../../../website/public/demo/voice/voice.js"></script>
+<style>
+:root {
+  --text: #1D1D1F; --text-2: #424245; --text-3: #6E6E73;
+  --ground: #FFFFFF; --ground-2: #F5F5F7; --line: #ECECF0; --line-2: #D2D2D7;
+  --dark: #1D1D1F; --dark-2: #2C2C30;
+  --read: #0064D2; --smart: #5B4FE0; --dictation: #D93025; --tools: #0F7B5F;
+  --icon-top: #6B70FF; --icon-bottom: #4030C7;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", "Inter", system-ui, sans-serif;
+  --spring: cubic-bezier(.3, 1.35, .5, 1);
+  --ease: cubic-bezier(.2, .7, .2, 1);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; font-family: var(--font); color: var(--text); background: var(--ground); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, p { margin: 0; }
+button { font: inherit; color: inherit; }
+
+/* ---------- Page frame (stand-in for the real site around the section) ---------- */
+.filler { max-width: 1200px; margin: 0 auto; padding: 72px 24px 24px; }
+.filler .eyebrow { font-size: 14px; font-weight: 600; color: var(--text-3); }
+.filler h1 { font-weight: 800; letter-spacing: -.035em; font-size: clamp(44px, 6vw, 72px); line-height: 1; margin-top: 12px; }
+
+.demo { padding: 88px 0 120px; background:
+  radial-gradient(1200px 500px at 50% 0%, #F1F0FF 0%, rgba(241,240,255,0) 70%), var(--ground); overflow: hidden; }
+.demo-head { max-width: 760px; margin: 0 auto; padding: 0 24px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.demo-head .eyebrow { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 600; color: var(--smart); }
+.demo-head .eyebrow i { width: 8px; height: 8px; border-radius: 4px; background: var(--smart); box-shadow: 0 0 0 4px rgba(91,79,224,.15); animation: pulse 2s infinite; }
+.demo-head h2 { font-weight: 800; font-size: clamp(34px, 4.4vw, 56px); line-height: 1.04; letter-spacing: -.03em; }
+.demo-head p { font-size: 19px; line-height: 1.55; color: var(--text-2); max-width: 40rem; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(91,79,224,0); } }
+
+/* ---------- Stage: the Mac, scaled to fit, tilting in on scroll ---------- */
+.stage { margin: 56px auto 0; max-width: 1200px; padding: 0 24px; perspective: 1800px; }
+.fit { position: relative; margin: 0 auto; }
+.tilt { width: 100%; height: 100%; transform-origin: 50% 0; transition: transform 1.3s var(--ease), opacity 1s var(--ease);
+  transform: rotateX(24deg) translateY(30px) scale(.94); opacity: .35; }
+.stage.in .tilt { transform: none; opacity: 1; }
+.mac { position: absolute; left: 0; top: 0; width: 1144px; height: 724px; transform-origin: 0 0;
+  border-radius: 22px; padding: 12px; background: #0B0B0D;
+  box-shadow: 0 0 0 1px #2A2A2E inset, 0 60px 120px -40px rgba(40,30,120,.55), 0 30px 60px -30px rgba(0,0,0,.5); }
+.screen { position: relative; width: 1120px; height: 700px; border-radius: 12px; overflow: hidden; user-select: none; -webkit-user-select: none;
+  background:
+    radial-gradient(60% 80% at 15% 20%, #9AA2FF 0%, rgba(154,162,255,0) 60%),
+    radial-gradient(50% 70% at 85% 30%, #F2B5E8 0%, rgba(242,181,232,0) 60%),
+    radial-gradient(70% 80% at 60% 100%, #5A49E0 0%, rgba(90,73,224,0) 65%),
+    linear-gradient(160deg, #C9CCFF 0%, #8C84F2 55%, #4A3BC9 100%);
+}
+.screen::before { /* slow drifting light, keeps the wallpaper alive */
+  content: ""; position: absolute; inset: -20%; pointer-events: none;
+  background: radial-gradient(30% 30% at 50% 50%, rgba(255,255,255,.35), rgba(255,255,255,0) 70%);
+  animation: drift 18s ease-in-out infinite alternate; }
+@keyframes drift { from { transform: translate(-18%, -10%); } to { transform: translate(22%, 14%); } }
+
+/* ---------- Menu bar ---------- */
+.menubar { position: absolute; z-index: 30; left: 0; right: 0; top: 0; height: 32px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px 0 18px; font-size: 13.5px; color: #111; background: rgba(255,255,255,.38);
+  backdrop-filter: blur(30px) saturate(1.6); -webkit-backdrop-filter: blur(30px) saturate(1.6); }
+.mb-left, .mb-right { display: flex; align-items: center; gap: 4px; height: 100%; }
+.mb-left span { padding: 3px 8px; }
+.mb-left .app { font-weight: 700; }
+.mb-left .apple { font-size: 16px; padding-right: 10px; }
+.mbi { display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; cursor: default; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mbi:hover, .mbi.open { background: rgba(0,0,0,.1); }
+.mbi.status { animation: popin .5s var(--spring); }
+.mbi.drop { background: rgba(91,79,224,.25); box-shadow: 0 0 0 2px var(--smart) inset; }
+@keyframes popin { from { opacity: 0; transform: translateY(-6px) scale(.8); } }
+.vf-glyph { display: flex; gap: 2px; align-items: center; height: 14px; }
+.vf-glyph b { width: 2px; border-radius: 1px; background: #111; }
+
+/* ---------- Notch indicator ---------- */
+.notch { position: absolute; z-index: 40; top: 0; left: 50%; height: 32px; width: 200px; transform: translateX(-50%);
+  background: #000; border-radius: 0 0 14px 14px; transition: width .55s var(--spring); }
+.notch.on { width: 300px; }
+.notch .slot { position: absolute; top: 0; height: 32px; width: 50px; display: flex; align-items: center; justify-content: center;
+  opacity: 0; transform: scale(.6); transition: opacity .25s, transform .4s var(--spring); color: var(--tint, #fff); }
+.notch.on .slot { opacity: 1; transform: none; transition-delay: .12s; }
+.notch .l { left: 2px; } .notch .r { right: 2px; }
+.notch .r > * { display: none; }
+.notch[data-mode="listen"] .r .lv, .notch[data-mode="think"] .r .spin, .notch[data-mode="speak"] .r .wave { display: flex; }
+.notch .l > * { display: none; }
+.notch[data-icon="mic"] .l .i-mic, .notch[data-icon="spark"] .l .i-spark, .notch[data-icon="spk"] .l .i-spk { display: block; }
+.lv, .wave { gap: 2.5px; align-items: center; height: 16px; }
+.lv b, .wave b { width: 3px; border-radius: 2px; background: var(--tint); height: 4px; transition: height .08s; }
+.wave b { animation: wv .9s ease-in-out infinite; }
+.wave b:nth-child(2) { animation-delay: -.2s } .wave b:nth-child(3) { animation-delay: -.45s } .wave b:nth-child(4) { animation-delay: -.65s }
+@keyframes wv { 0%, 100% { height: 4px; } 50% { height: 15px; } }
+.spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,.2); border-top-color: var(--tint); animation: rot .8s linear infinite; }
+@keyframes rot { to { transform: rotate(360deg); } }
+
+/* ---------- Windows ---------- */
+.win { position: absolute; z-index: 10; background: rgba(255,255,255,.97); border-radius: 13px; overflow: hidden;
+  box-shadow: 0 0 0 .5px rgba(0,0,0,.25), 0 30px 70px -20px rgba(20,10,80,.55), 0 10px 20px -10px rgba(0,0,0,.25);
+  opacity: 0; transform: translateY(16px) scale(.97); pointer-events: none;
+  transition: opacity .45s var(--ease), transform .6s var(--spring); }
+.win.show { opacity: 1; transform: none; pointer-events: auto; }
+.win.front { z-index: 12; }
+.titlebar { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-bottom: 1px solid var(--line); background: #FAFAFC; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.lights { display: flex; gap: 8px; margin-right: 8px; }
+.lights i { width: 12px; height: 12px; border-radius: 6px; background: #FF5F57; }
+.lights i:nth-child(2) { background: #FEBC2E; } .lights i:nth-child(3) { background: #28C840; }
+.titlebar .t { flex: 1; text-align: center; margin-right: 68px; }
+.selectable { user-select: text; -webkit-user-select: text; cursor: text; }
+.selectable ::selection, .selectable::selection { background: rgba(0,100,210,.22); }
+
+.w { border-radius: 4px; transition: background .12s, color .2s, box-shadow .12s; }
+.w.q { background: rgba(var(--hl), .09); }
+.w.done { color: var(--text-2); }
+.w.on { background: rgba(var(--hl), .22); box-shadow: 0 0 0 2px rgba(var(--hl), .22); color: var(--text); }
+.screen { --hl: 0,100,210; }
+.screen[data-tint="smart"] { --hl: 91,79,224; }
+
+/* Mail */
+#w-mail { left: 120px; top: 70px; width: 700px; height: 560px; }
+.mail-head { padding: 22px 30px 16px; border-bottom: 1px solid var(--line); display: flex; gap: 14px; align-items: center; }
+.avatar { width: 40px; height: 40px; border-radius: 20px; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 15px; flex: none; }
+.mail-head h3 { font-size: 18px; letter-spacing: -.01em; }
+.mail-head p { font-size: 13px; color: var(--text-3); margin-top: 2px; }
+.mail-body { padding: 22px 30px; font-size: 15.5px; line-height: 1.7; color: var(--text); display: flex; flex-direction: column; gap: 14px; }
+
+/* Chat */
+#w-chat { left: 150px; top: 60px; width: 720px; height: 580px; }
+.chat-body { padding: 20px 28px; display: flex; flex-direction: column; gap: 16px; font-size: 15px; line-height: 1.65; height: calc(100% - 40px); overflow: hidden; }
+.me { align-self: flex-end; max-width: 75%; background: #EEEEF3; padding: 10px 16px; border-radius: 18px 18px 4px 18px; }
+.ai { display: flex; flex-direction: column; gap: 10px; }
+.ai h4 { margin: 4px 0 0; font-size: 15px; }
+.ai ul { margin: 0; padding-left: 20px; }
+.ai code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: #F2F2F6; padding: 1px 5px; border-radius: 5px; }
+.fade-out { position: absolute; left: 0; right: 0; bottom: 0; height: 90px; background: linear-gradient(rgba(255,255,255,0), #fff); pointer-events: none; }
+
+/* Messages */
+#w-msgs { left: 180px; top: 80px; width: 640px; height: 540px; display: flex; flex-direction: column; }
+#w-msgs.show { display: flex; }
+.thread { flex: 1; padding: 20px 26px; display: flex; flex-direction: column; gap: 16px; font-size: 15px; line-height: 1.55; overflow: hidden; }
+.msg { display: flex; gap: 12px; }
+.msg .who { font-weight: 700; font-size: 14px; } .msg .who span { font-weight: 400; color: var(--text-3); font-size: 12px; margin-left: 6px; }
+.msg.mine .avatar { background: #1D1D1F; }
+.pasted { animation: pasted 1.2s var(--ease); border-radius: 4px; }
+@keyframes pasted { 0% { background: rgba(217,48,37,.22); } 100% { background: rgba(217,48,37,0); } }
+.compose { margin: 0 20px 20px; border: 1px solid var(--line-2); border-radius: 12px; padding: 12px 14px; min-height: 52px; font-size: 15px; line-height: 1.5; outline: none; cursor: text; }
+.compose:focus { border-color: #9EA3FF; box-shadow: 0 0 0 3px rgba(107,112,255,.18); }
+.compose:empty::before { content: attr(data-ph); color: #A1A1A6; }
+
+/* Desktop file + transcript */
+.dfile { position: absolute; z-index: 5; right: 60px; top: 90px; width: 100px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: grab;
+  color: #fff; font-size: 12.5px; font-weight: 500; text-shadow: 0 1px 3px rgba(0,0,0,.4); text-align: center; transition: transform .3s var(--spring), opacity .3s; }
+.dfile:hover .doc { transform: translateY(-3px); }
+.dfile.sel span { background: #2F6DE1; border-radius: 4px; padding: 0 5px; text-shadow: none; }
+.doc { width: 56px; height: 70px; border-radius: 6px; background: #fff; position: relative; box-shadow: 0 8px 18px -6px rgba(0,0,0,.4); display: grid; place-items: center; transition: transform .3s var(--spring); }
+.doc::after { content: ""; position: absolute; right: 0; top: 0; border-style: solid; border-width: 0 14px 14px 0; border-color: transparent #6B70FF #D9DBFF transparent; border-radius: 0 6px 0 0; }
+.dfile.gone { opacity: 0; transform: scale(.7) translateY(-30px); pointer-events: none; }
+
+#w-tx { left: 90px; top: 56px; width: 780px; height: 600px; display: flex; flex-direction: column; }
+.tx-tools { display: flex; gap: 8px; align-items: center; padding: 10px 18px; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--text-3); }
+.tx-tools .pill { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--text-2); font-weight: 600; }
+.tx-tools .search { margin-left: auto; width: 180px; padding: 5px 10px; border-radius: 7px; background: var(--ground-2); }
+.tx-main { flex: 1; display: grid; grid-template-columns: 1fr 250px; min-height: 0; }
+.turns { padding: 14px 18px; display: flex; flex-direction: column; gap: 4px; overflow: auto; }
+.turn { display: grid; grid-template-columns: 54px 1fr; gap: 4px 12px; padding: 10px 12px; border-radius: 10px; cursor: pointer; transition: background .2s; font-size: 14.5px; line-height: 1.55; }
+.turn:hover { background: var(--ground-2); }
+.turn.playing { background: #EEF4FF; }
+.turn .ts { color: var(--text-3); font-variant-numeric: tabular-nums; font-size: 12.5px; padding-top: 2px; }
+.turn .spk { font-weight: 700; font-size: 13px; grid-column: 2; }
+.turn .tt { grid-column: 2; }
+.summary { border-left: 1px solid var(--line); background: #FAFAFC; padding: 16px; font-size: 13.5px; line-height: 1.5; display: flex; flex-direction: column; gap: 10px; }
+.summary h5 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); }
+.act { display: flex; gap: 8px; align-items: flex-start; padding: 8px; border-radius: 8px; cursor: pointer; }
+.act:hover { background: #fff; box-shadow: 0 0 0 1px var(--line); }
+.act .ck { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--line-2); flex: none; margin-top: 2px; }
+.act small { display: block; color: var(--read); font-weight: 600; }
+
+/* HUD (transcription progress) */
+.hud { position: absolute; z-index: 35; right: 16px; top: 42px; width: 300px; padding: 14px 16px; border-radius: 14px;
+  background: rgba(250,250,252,.82); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+  box-shadow: 0 0 0 .5px rgba(0,0,0,.2), 0 20px 40px -16px rgba(0,0,0,.4); font-size: 13px;
+  opacity: 0; transform: translateY(-10px) scale(.96); transition: all .45s var(--spring); pointer-events: none; }
+.hud.show { opacity: 1; transform: none; }
+.hud b { display: block; font-size: 13.5px; }
+.hud .bar { margin-top: 10px; height: 5px; border-radius: 3px; background: rgba(0,0,0,.08); overflow: hidden; }
+.hud .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--icon-top), var(--icon-bottom)); border-radius: 3px; transition: width .2s linear; }
+.hud .sub { margin-top: 6px; color: var(--text-3); font-size: 12px; }
+
+/* ---------- Spoken caption ---------- */
+.say { position: absolute; z-index: 36; left: 50%; bottom: 26px; width: min(720px, 86%); transform: translate(-50%, 20px) scale(.97); opacity: 0;
+  display: flex; gap: 14px; align-items: flex-start; padding: 16px 20px; border-radius: 18px;
+  background: rgba(22,22,26,.84); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); color: #fff;
+  box-shadow: 0 20px 50px -20px rgba(0,0,0,.6); transition: all .5s var(--spring); pointer-events: none; }
+.say.show { opacity: 1; transform: translate(-50%, 0); }
+.screen[data-scene="dict"] .say { bottom: auto; top: 46px; transform: translate(-50%, -16px) scale(.97); }
+.screen[data-scene="dict"] .say.show { transform: translate(-50%, 0); }
+.say .tile { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; flex: none; background: var(--tint); }
+.say .lbl { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.55); margin-bottom: 3px; }
+.say .txt { font-size: 17px; line-height: 1.5; letter-spacing: -.005em; }
+.say .txt .w { color: rgba(255,255,255,.38); }
+.say .txt .w.done, .say .txt .w.on { color: #fff; background: none; box-shadow: none; }
+.say .txt .raw { color: rgba(255,255,255,.75); font-style: italic; }
+.say .q { font-style: normal; }
+
+/* ---------- Menu ---------- */
+.menu { position: absolute; z-index: 50; min-width: 290px; padding: 5px; border-radius: 11px; font-size: 13.5px;
+  background: rgba(246,246,250,.86); backdrop-filter: blur(40px) saturate(1.8); -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  box-shadow: 0 0 0 .5px rgba(0,0,0,.25), 0 24px 50px -16px rgba(0,0,0,.45);
+  opacity: 0; transform: translateY(-4px) scale(.98); transform-origin: top right; transition: opacity .16s, transform .22s var(--ease); pointer-events: none; }
+.menu.show { opacity: 1; transform: none; pointer-events: auto; }
+#menu { right: 132px; top: 36px; }
+.mh { padding: 6px 10px 2px; font-size: 11.5px; font-weight: 600; color: rgba(0,0,0,.45); }
+.mi { position: relative; display: flex; align-items: center; gap: 9px; padding: 4px 10px; border-radius: 6px; cursor: default; white-space: nowrap; }
+.mi:hover { background: #3478F6; color: #fff; }
+.mi:hover .sc, .mi:hover svg { color: #fff; stroke: #fff; }
+.mi .sc { margin-left: auto; padding-left: 24px; color: rgba(0,0,0,.42); font-size: 13px; letter-spacing: .04em; }
+.mi.dis { color: rgba(0,0,0,.4); } .mi.dis:hover { background: none; color: rgba(0,0,0,.4); }
+.mi .chev { margin-left: auto; padding-left: 24px; opacity: .5; }
+.mi svg { flex: none; stroke: #222; }
+.sep { height: 1px; margin: 5px 10px; background: rgba(0,0,0,.1); }
+.sub { position: absolute; right: calc(100% + 2px); top: -5px; min-width: 220px; }
+.mi:hover > .sub { opacity: 1; transform: none; pointer-events: auto; color: var(--text); }
+.mi:hover > .sub .mi { color: var(--text); } .mi:hover > .sub .mi:hover { color: #fff; }
+.mi .check { width: 12px; }
+
+.pop { right: 214px; top: 36px; width: 260px; padding: 12px; }
+.pop .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.join { padding: 6px 16px; border-radius: 14px; background: var(--tools); color: #fff; font-weight: 600; font-size: 13px; border: 0; cursor: pointer; }
+.pop .later { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,.1); color: var(--text-3); font-size: 12.5px; }
+
+/* Nudge */
+.nudge { position: absolute; z-index: 60; left: 24px; top: 46px; transform: translateY(-10px); opacity: 0; transition: all .35s var(--spring);
+  background: #fff; padding: 9px 16px; border-radius: 999px; font-size: 13.5px; font-weight: 500; box-shadow: 0 10px 30px -10px rgba(0,0,0,.35); pointer-events: none; white-space: nowrap; }
+.nudge.show { opacity: 1; transform: none; }
+
+/* Focus scene card */
+.focus-card { position: absolute; z-index: 6; left: 60px; bottom: 60px; width: 380px; padding: 22px; border-radius: 18px; color: #fff;
+  background: rgba(20,16,60,.35); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,.18);
+  opacity: 0; transform: translateY(16px); transition: all .6s var(--spring); }
+.focus-card.show { opacity: 1; transform: none; }
+.focus-card h3 { font-size: 22px; letter-spacing: -.02em; }
+.focus-card p { margin-top: 8px; font-size: 14.5px; line-height: 1.5; color: rgba(255,255,255,.8); }
+.arrow { position: absolute; z-index: 45; right: 150px; top: 38px; color: #fff; font-size: 13px; font-weight: 600; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  opacity: 0; transition: opacity .4s; pointer-events: none; }
+.arrow span:first-child { padding-right: 10px; font-size: 16px; text-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.arrow span:last-child { padding: 5px 11px; border-radius: 999px; background: rgba(20,16,60,.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.arrow.show { opacity: 1; animation: bob 1.6s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-5px); } }
+
+/* ---------- Controls under the Mac ---------- */
+.controls { max-width: 1144px; margin: 34px auto 0; display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: start; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; border: 1px solid var(--line-2); background: #fff; cursor: pointer; font-size: 15px; font-weight: 600; transition: all .25s var(--ease); }
+.tab i { width: 8px; height: 8px; border-radius: 4px; background: var(--c); }
+.tab:hover { border-color: var(--c); }
+.tab[aria-selected="true"] { background: var(--dark); border-color: var(--dark); color: #fff; }
+.tab .new { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: #EDEBFF; color: var(--smart); }
+.tab[aria-selected="true"] .new { background: rgba(255,255,255,.18); color: #fff; }
+.hint { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; min-height: 96px; }
+.hint .step { display: flex; align-items: center; gap: 12px; font-size: 17px; color: var(--text-2); animation: fadein .5s var(--ease) both; }
+.hint .step:nth-child(2) { animation-delay: .07s } .hint .step:nth-child(3) { animation-delay: .14s }
+@keyframes fadein { from { opacity: 0; transform: translateY(6px); } }
+.hint .n { width: 24px; height: 24px; border-radius: 12px; background: var(--ground-2); display: grid; place-items: center; font-size: 12.5px; font-weight: 700; color: var(--text-3); flex: none; }
+.kb-btn { display: inline-flex; gap: 3px; padding: 0; border: 0; background: none; cursor: pointer; vertical-align: middle; }
+.k { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 7px; background: #fff; border: 1px solid var(--line-2);
+  box-shadow: 0 2px 0 #C7C7CC; font-weight: 600; font-size: 14px; line-height: 1; color: var(--text); transition: transform .08s, box-shadow .08s; }
+.kb-btn:hover .k { border-color: #A1A1A6; }
+.kb-btn.down .k, .kb-btn:active .k { transform: translateY(2px); box-shadow: 0 0 0 #C7C7CC; }
+.hold-word { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin-right: 4px; align-self: center; }
+
+/* mini keyboard */
+.kbd { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 16px; background: #E9E9EE; box-shadow: 0 1px 0 #fff inset; }
+.kbd-row { display: flex; gap: 6px; justify-content: flex-end; }
+.kk { width: 52px; height: 48px; border-radius: 8px; background: #FDFDFE; box-shadow: 0 2px 0 #B9B9C0; display: flex; flex-direction: column; justify-content: space-between; padding: 6px 7px;
+  font-size: 15px; font-weight: 600; color: #1D1D1F; transition: transform .08s, box-shadow .08s, background .2s, color .2s; cursor: default; }
+.kk small { font-size: 9px; font-weight: 600; opacity: .8; }
+.kk.dim { color: #A1A1A6; }
+.kk.hot { color: #fff; background: var(--c); box-shadow: 0 2px 0 color-mix(in srgb, var(--c) 60%, #000); cursor: pointer; }
+.kk.opt, .kk.shf { width: 64px; }
+.kk.spc { width: 90px; } .kk.cmd { width: 64px; }
+.kk.down { transform: translateY(2px); box-shadow: 0 0 0 transparent; filter: brightness(1.1); }
+.kk.opt.down, .kk.shf.down { background: #1D1D1F; color: #fff; }
+.under { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; font-size: 13px; color: var(--text-3); }
+.sound { border: 0; background: none; padding: 0; font-weight: 600; color: var(--text-2); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-2); }
+
+.controls { padding: 0 24px; }
+@media (max-width: 1100px) { .controls { grid-template-columns: 1fr; } .kbd-wrap { justify-self: start; } }
+.footnote { max-width: 1144px; margin: 24px auto 0; font-size: 13.5px; color: var(--text-3); text-align: center; }
+.mobile-note { display: none; }
+@media (max-width: 900px) {
+  .stage, .controls, .footnote { display: none; }
+  .mobile-note { display: block; max-width: 520px; margin: 32px auto 0; padding: 0 24px; text-align: center; color: var(--text-3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tilt { transform: none; opacity: 1; transition: none; }
+  .screen::before, .wave b, .arrow.show { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="filler">
+  <p class="eyebrow">(the rest of the landing page sits above this section)</p>
+  <h1>Hear anything.<br />Say anything.</h1>
+</div>
+
+<section class="demo" id="demo" aria-labelledby="demo-title">
+  <div class="demo-head">
+    <p class="eyebrow"><i></i>Live demo · new in 1.5</p>
+    <h2 id="demo-title">Don't watch a video.<br />Press the keys.</h2>
+    <p>This is a Mac in your browser. Select some text and press <strong>⌥&nbsp;.</strong> to hear it, <strong>⌥&nbsp;,</strong> to have it explained, or hold <strong>⌥&nbsp;<span class="dkey">-</span></strong> and it types for you.</p>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="fit" id="fit">
+      <div class="tilt">
+      <div class="mac" id="mac">
+        <div class="screen" id="screen" data-tint="read">
+
+          <!-- Menu bar -->
+          <div class="menubar">
+            <div class="mb-left">
+              <span class="apple"><svg width="14" height="16" viewBox="0 0 17 20" fill="#111"><path d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.3-.9C3.7 4.8 2.1 5.8 1.2 7.3c-1.8 3.2-.5 7.9 1.3 10.4.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8s2 .8 3.3.8c1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9-.1 0-2.7-1-2.7-4.3zM11.6 3.1C12.3 2.3 12.8 1.1 12.6 0c-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4z"/></svg></span><span class="app" id="appname">Mail</span><span>File</span><span>Edit</span><span>View</span><span>Window</span><span>Help</span>
+            </div>
+            <div class="mb-right" id="mbright">
+              <div class="mbi" id="mb-meeting" hidden>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                <span>Standup in 8m</span>
+              </div>
+              <div class="mbi" id="mb-focus" hidden>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/></svg>
+                <span id="focus-left">25:00</span>
+              </div>
+              <div class="mbi" id="mb-awake" hidden>
+                <svg width="15" height="14" viewBox="0 0 26 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h14v6a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6z"/><path d="M18 11h1.5a2.5 2.5 0 0 1 0 5H18M8 3v2M12 3v2"/></svg>
+                <span id="awake-left">1:00</span>
+              </div>
+              <div class="mbi" id="mb-vf" title="VibeFlow">
+                <div class="vf-glyph"><b style="height:5px"></b><b style="height:9px"></b><b style="height:14px"></b><b style="height:8px"></b><b style="height:5px"></b></div>
+              </div>
+              <div class="mbi" id="mb-clock">Mi. 4. Nov. 23:40</div>
+            </div>
+          </div>
+
+          <!-- Notch with VibeFlow's wings -->
+          <div class="notch" id="notch" aria-hidden="true">
+            <div class="slot l">
+              <svg class="i-mic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+              <svg class="i-spark" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M18.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>
+              <svg class="i-spk" width="17" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+            </div>
+            <div class="slot r">
+              <div class="lv" id="lv"><b></b><b></b><b></b><b></b><b></b></div>
+              <div class="spin"></div>
+              <div class="wave"><b></b><b></b><b></b><b></b><b></b></div>
+            </div>
+          </div>
+
+          <!-- VibeFlow menu -->
+          <div class="menu" id="menu" role="menu">
+            <div class="mh">Voice</div>
+            <div class="mi" data-do="read">Read selection<span class="sc">⌥.</span></div>
+            <div class="mi" data-do="smart">Smart read selection<span class="sc">⌥,</span></div>
+            <div class="mi" data-do="read-clip">Speak clipboard<span class="sc">⇧⌥.</span></div>
+            <div class="mi" data-do="smart-clip">Smart read clipboard<span class="sc">⇧⌥,</span></div>
+            <div class="mi dis">Hold to dictate<span class="sc">⌥<span class="dkey">-</span></span></div>
+            <div class="mi" data-do="paste-dict">Paste last dictation<span class="sc">⌃⌥V</span></div>
+            <div class="mi" data-do="transcribe">Transcribe File…</div>
+            <div class="sep"></div>
+            <div class="mh">Focus &amp; Time</div>
+            <div class="mi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/></svg><span id="mi-focus">Pomodoro</span><span class="chev">›</span>
+              <div class="menu sub">
+                <div class="mi" data-do="focus-start" id="mi-focus-start">Start Focus (25 min)</div>
+                <div class="mi" data-do="focus-stop" id="mi-focus-stop" hidden>Stop</div>
+                <div class="sep"></div>
+                <div class="mi"><span class="check">✓</span>Classic: 25 / 5</div>
+                <div class="mi"><span class="check"></span>Long: 50 / 10</div>
+                <div class="mi"><span class="check"></span>Deep: 90 / 20</div>
+                <div class="sep"></div>
+                <div class="mi dis">Today · 2 rounds · 50 min</div>
+              </div>
+            </div>
+            <div class="mi" data-do="meeting"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Standup · 10:00</div>
+            <div class="sep"></div>
+            <div class="mh">Utilities</div>
+            <div class="mi"><svg width="15" height="15" viewBox="0 0 26 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h14v6a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6z"/><path d="M18 11h1.5a2.5 2.5 0 0 1 0 5H18M8 3v2M12 3v2"/></svg><span id="mi-awake">Keep Awake</span><span class="chev">›</span>
+              <div class="menu sub">
+                <div class="mi" data-do="awake-15">Start for 15 min</div>
+                <div class="mi" data-do="awake-60">Start for 1 hour</div>
+                <div class="mi" data-do="awake-240">Start for 4 hours</div>
+                <div class="mi" data-do="awake-stop" id="mi-awake-stop" hidden>End Session</div>
+              </div>
+            </div>
+            <div class="sep"></div>
+            <div class="mi" data-do="feedback">Send Feedback…</div>
+            <div class="mi dis">Settings…<span class="sc">⌘,</span></div>
+            <div class="sep"></div>
+            <div class="mi dis">VibeFlow 1.5.0</div>
+          </div>
+
+          <div class="menu pop" id="pop">
+            <div class="row"><span><strong>Standup</strong><br /><span style="color:var(--text-3)">10:00 – 10:15 · Meet</span></span><button class="join" data-do="join">Join</button></div>
+            <div class="later">11:30 Design review · 15:00 1:1</div>
+          </div>
+
+          <div class="nudge" id="nudge"></div>
+          <div class="arrow" id="arrow"><span>↑</span><span>Click the VibeFlow icon</span></div>
+
+          <!-- Read: Mail -->
+          <div class="win" id="w-mail" data-scene="read">
+            <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><div class="t">Inbox</div></div>
+            <div class="mail-head">
+              <div class="avatar" style="background:#E8833A">LH</div>
+              <div><h3>Lisbon offsite: what I need by Friday</h3><p>Lena Hoffmann · to Team · 09:12</p></div>
+            </div>
+            <div class="mail-body selectable readable">
+              <p>Hi team, the offsite is confirmed for March 12 to 14 in Lisbon. We stay at a small hotel in Alfama, ten minutes on foot from the venue, and flights go on the company card as usual.</p>
+              <p>Three things I need from you by Friday: your arrival time, any dietary needs, and whether you want to join the boat trip on Thursday afternoon. If you can't come, tell me directly so I can release your room before the deadline on the 20th.</p>
+              <p>The agenda is attached. Day one is planning, day two is workshops, day three is free until the late flight. Bring a laptop, comfortable shoes and one idea you think we should stop doing.</p>
+              <p>Thanks! Lena</p>
+            </div>
+          </div>
+
+          <!-- Smart read: AI chat -->
+          <div class="win" id="w-chat" data-scene="smart">
+            <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><div class="t">AI Chat</div></div>
+            <div class="chat-body">
+              <div class="me">Can you refactor the auth module to use the new token service?</div>
+              <div class="ai selectable readable">
+                <p>Done. I've moved token refresh out of the individual API clients and into <code>TokenService</code>, so there is now exactly one place that decides when a token is stale and how it gets renewed.</p>
+                <h4>What changed</h4>
+                <ul>
+                  <li>Fourteen call sites now ask <code>TokenService.current()</code> instead of refreshing on their own.</li>
+                  <li>The retry-on-401 logic lives in one interceptor, with a single in-flight refresh shared by concurrent requests.</li>
+                  <li>Logout clears the cache and revokes the refresh token server-side.</li>
+                </ul>
+                <h4>What still needs you</h4>
+                <p>Two tests in the session suite fail, because they still mock the old <code>AuthClient</code> and never see the new service. I can either update the mock, which is about ten lines, or keep the old code path behind a flag for one release. Which do you prefer?</p>
+              </div>
+            </div>
+            <div class="fade-out"></div>
+          </div>
+
+          <!-- Dictation: Messages -->
+          <div class="win" id="w-msgs" data-scene="dict">
+            <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><div class="t"># design-review</div></div>
+            <div class="thread selectable readable">
+              <div class="msg"><div class="avatar" style="background:#0F7B5F">BK</div><div><div class="who">Ben Kraus<span>16:02</span></div><p>Mockups for the new onboarding are up. Can you do 10 tomorrow for the review? Otherwise Thursday after lunch.</p></div></div>
+            </div>
+            <div class="compose" id="compose" contenteditable="true" spellcheck="false" data-ph="Message #design-review"></div>
+          </div>
+
+          <!-- Transcribe -->
+          <div class="dfile" id="dfile" draggable="true" title="Drag me onto the VibeFlow icon">
+            <div class="doc"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5B4FE0" stroke-width="2.2" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 10v4"/></svg></div>
+            <span>Kickoff call.m4a</span>
+          </div>
+          <div class="win" id="w-tx" data-scene="trans">
+            <div class="titlebar"><div class="lights"><i></i><i></i><i></i></div><div class="t">Kickoff call · 32 min · 3 speakers</div></div>
+            <div class="tx-tools"><span class="pill">Copy</span><span class="pill">Save as Text…</span><span>Speakers: Anna, Ben, You</span><span class="search">⌕ Search</span></div>
+            <div class="tx-main">
+              <div class="turns" id="turns"></div>
+              <div class="summary">
+                <h5>Summary · Claude</h5>
+                <p>Launch moves to Thursday morning, before the newsletter. Design needs two more days for the demo section.</p>
+                <h5>Action items</h5>
+                <div id="acts"></div>
+              </div>
+            </div>
+          </div>
+          <div class="hud" id="hud"><b id="hud-t">Transcribing Kickoff call.m4a</b><div class="bar"><i id="hud-bar"></i></div><div class="sub" id="hud-s">Uploading…</div></div>
+
+          <!-- Focus & Time -->
+          <div class="focus-card" id="focus-card">
+            <h3>Focus &amp; Time</h3>
+            <p>A Pomodoro timer, your next meeting and Keep Awake, all from the menu bar. They show up up there only while they're running.</p>
+          </div>
+
+          <!-- What VibeFlow says -->
+          <div class="say" id="say" aria-live="polite">
+            <div class="tile" id="say-tile"></div>
+            <div><div class="lbl" id="say-lbl"></div><div class="txt" id="say-txt"></div></div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls" id="controls">
+    <div>
+      <div class="tabs" role="tablist" aria-label="Demo scenes">
+        <button class="tab" role="tab" data-scene="read" style="--c:var(--read)"><i></i>Read</button>
+        <button class="tab" role="tab" data-scene="smart" style="--c:var(--smart)"><i></i>Smart read</button>
+        <button class="tab" role="tab" data-scene="dict" style="--c:var(--dictation)"><i></i>Dictation</button>
+        <button class="tab" role="tab" data-scene="trans" style="--c:var(--icon-bottom)"><i></i>Transcribe<span class="new">New</span></button>
+        <button class="tab" role="tab" data-scene="focus" style="--c:var(--tools)"><i></i>Focus &amp; Time<span class="new">New</span></button>
+      </div>
+      <div class="hint" id="hint"></div>
+    </div>
+    <div>
+      <div class="kbd" aria-hidden="true">
+        <div class="kbd-row">
+          <div class="kk dim">N</div><div class="kk dim">M</div>
+          <div class="kk hot" data-key="smart" style="--c:var(--smart)">,<small>Smart read</small></div>
+          <div class="kk hot" data-key="read" style="--c:var(--read)">.<small>Read</small></div>
+          <div class="kk hot" data-key="dict" style="--c:var(--dictation)"><span class="dkey">-</span><small>Dictation</small></div>
+          <div class="kk shf" data-key="shift">⇧<small>clipboard</small></div>
+        </div>
+        <div class="kbd-row">
+          <div class="kk dim spc"></div><div class="kk dim cmd">⌘<small>cmd</small></div><div class="kk opt" data-key="opt">⌥<small>option</small></div>
+        </div>
+      </div>
+      <div class="under"><span id="layout-lbl">German layout</span><button class="sound" id="sound">Sound on</button></div>
+    </div>
+  </div>
+  <p class="footnote">The voice is ElevenLabs, the one VibeFlow reads with. Briefs, answers and dictation are scripted here; in the app, Claude and Groq write them live, or your Mac does on device with no keys at all.</p>
+  <p class="mobile-note">The live demo needs a keyboard. Open this page on your Mac to try it.</p>
+</section>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const screen = $('#screen'), notch = $('#notch'), say = $('#say');
+  const COLORS = { read: '#0064D2', smart: '#8F86FF', dict: '#FF6B5E', trans: '#8F86FF' };
+  const TILE_BG = { read: 'var(--read)', smart: 'var(--smart)', dict: 'var(--dictation)', trans: 'var(--icon-bottom)' };
+  const ICONS = {
+    read: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/></svg>',
+    smart: '<svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M18.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>',
+    dict: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+  };
+  ICONS.trans = ICONS.read;
+
+  /* ---------------- Content ---------------- */
+  const SCENES = {
+    read: {
+      app: 'Mail', win: 'w-mail',
+      brief: "Lena needs three things from you by Friday: your arrival time, any dietary needs, and yes or no on Thursday's boat trip. Can't come? Tell her before the 20th so she can release your room.",
+      followups: [
+        { q: 'When exactly is the deadline?', a: 'Friday for your three answers. The hard one is the 20th: after that, your room can no longer be released.' },
+        { q: 'What should I bring?', a: 'A laptop, comfortable shoes, and one idea for something the team should stop doing.' },
+      ],
+      hint: [
+        'Select a sentence in the email, any length.',
+        ['Press', 'read', 'to hear it. Press it again to stop.'],
+        ['Or try', 'smart', 'on the same email.'],
+      ],
+    },
+    smart: {
+      app: 'AI Chat', win: 'w-chat',
+      brief: 'I moved token refresh into one place and touched fourteen files. Two tests fail on the old mock. Should I update the mock, or keep the old path for now?',
+      followups: [
+        { q: 'Which tests fail?', a: "Two in the session suite: refresh on expiry, and logout clears tokens. Both still mock the old auth client, so they never see the new service. Updating the mock is about ten lines." },
+        { q: 'Is it safe to ship today?', a: "Not yet. The code is done, but with two red tests you can't tell whether logout really clears tokens. Fix the mock first; then it's a small, safe change." },
+        { q: 'Did the public API change?', a: 'No. Callers still ask for a token the same way. Only where the refresh happens moved: from fourteen places into TokenService.' },
+      ],
+      hint: [
+        'A long AI reply. Nobody reads all of that.',
+        ['Press', 'smart', 'and hear what it means, in the assistant\'s own voice.'],
+        ['Then', 'hold', 'and ask it something. Let go to hear the answer.'],
+      ],
+    },
+    dict: {
+      app: 'Messages', win: 'w-msgs',
+      brief: 'Ben asks whether 10 tomorrow works for the onboarding review. If not, Thursday after lunch.',
+      followups: [{ q: 'What does he need from me?', a: 'Just a time: yes to 10 tomorrow, or Thursday after lunch.' }],
+      samples: [
+        { raw: "uh yeah so tomorrow at ten doesn't really work for me um could we do eleven instead and I'll bring the new flows", clean: "Tomorrow at 10 doesn't work for me. Could we do 11 instead? I'll bring the new flows." },
+        { raw: 'oh and can you send me the figma link I think I lost it', clean: 'Also, can you send me the Figma link? I think I lost it.' },
+        { raw: 'thanks have a good evening', clean: 'Thanks, have a good evening!' },
+      ],
+      hint: [
+        ['Hold', 'dict', 'and talk. We\'ll pretend you said something.'],
+        'Let go: it is cleaned up and pasted where you were typing.',
+        ['Hands-free:', 'dict-toggle', 'starts, the same keys stop.'],
+      ],
+    },
+    trans: {
+      app: 'Finder', win: null,
+      brief: 'Launch moves to Thursday morning, before the newsletter. You owe the final copy on Wednesday at noon.',
+      followups: [{ q: 'What do I owe?', a: 'The final copy, by Wednesday at noon. Ben finishes the demo section; Anna wants it all live before the newsletter.' }],
+      hint: [
+        'Drag Kickoff call.m4a onto the VibeFlow icon in the menu bar,',
+        'or choose Transcribe File… from its menu.',
+        'Click any line of the transcript to hear it. Action items jump to the moment they were said.',
+      ],
+    },
+    focus: {
+      app: 'Finder', win: null,
+      hint: [
+        'Click the VibeFlow icon in the menu bar.',
+        'Start a Pomodoro, or Keep Awake for an hour: each gets its own menu bar item while it runs.',
+        'Your next meeting shows up ten minutes before it starts. One click joins.',
+      ],
+    },
+  };
+  const TURNS = [
+    { t: '00:04', s: 'Anna', c: '#E8833A', x: "Okay, let's start. The goal for today is to agree on a launch date for the new website." },
+    { t: '00:11', s: 'Ben', c: '#0F7B5F', x: 'Design is nearly done. I need two more days for the demo section, so Thursday at the earliest.' },
+    { t: '00:19', s: 'Anna', c: '#E8833A', x: 'Thursday works if the copy is final by Wednesday. Can you own that?' },
+    { t: '00:24', s: 'You', c: '#1D1D1F', x: "Yes. I'll send the final copy on Wednesday at noon." },
+    { t: '00:29', s: 'Ben', c: '#0F7B5F', x: "Then let's ship Thursday morning, before the newsletter goes out." },
+  ];
+  const ACTIONS = [
+    { x: 'Send the final copy by Wednesday noon', who: 'You', turn: 3 },
+    { x: 'Finish the demo section', who: 'Ben', turn: 1 },
+    { x: 'Ship Thursday before the newsletter', who: 'Ben', turn: 4 },
+  ];
+
+  /* ---------------- Words ---------------- */
+  // Splits every text node under el into <span class="w"> per word, keeping markup.
+  function wordify(el) {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const n of nodes) {
+      if (!n.textContent.trim()) continue;
+      const frag = document.createDocumentFragment();
+      n.textContent.split(/(\s+)/).forEach(part => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) frag.appendChild(document.createTextNode(part));
+        else { const s = document.createElement('span'); s.className = 'w'; s.textContent = part; frag.appendChild(s); }
+      });
+      n.replaceWith(frag);
+    }
+  }
+  function wordSpans(text) {
+    return text.split(/\s+/).filter(Boolean).map(w => `<span class="w">${w.replace(/</g, '&lt;')}</span>`).join(' ');
+  }
+
+  /* ---------------- Voice (stand-in) ---------------- */
+  const hasSpeech = 'speechSynthesis' in window;
+  const Voice = {
+    enabled: true, token: 0, timer: null, voices: [],
+    load() {
+      if (!hasSpeech) return;
+      const pick = () => {
+        const all = speechSynthesis.getVoices().filter(v => /^en[-_]/i.test(v.lang));
+        const score = v => (/premium|enhanced|neural|natural/i.test(v.name) ? 4 : 0) + (/Ava|Samantha|Zoe|Evan|Nathan|Daniel|Serena|Google US/i.test(v.name) ? 2 : 0) + (/en[-_]US/i.test(v.lang) ? 1 : 0);
+        this.voices = all.sort((a, b) => score(b) - score(a));
+      };
+      pick(); speechSynthesis.addEventListener?.('voiceschanged', pick);
+    },
+    voice(i = 0) { return this.voices.length ? this.voices[i % this.voices.length] : null; },
+    speak(words, { onWord, onEnd, rate = 1.02, voiceIndex = 0 } = {}) {
+      this.stop();
+      const token = ++this.token;
+      const useSpeech = this.enabled && hasSpeech;
+      const starts = []; let p = 0;
+      words.forEach(w => { starts.push(p); p += w.length + 1; });
+      let idx = -1, gotBoundary = false;
+      const advance = i => { if (token !== this.token || i <= idx) return; idx = i; onWord?.(i); };
+      const finish = () => { if (token !== this.token) return; this.token++; clearInterval(this.timer); onWord?.(words.length); onEnd?.(); };
+      const perWord = 60000 / (172 * rate);
+      const runTimer = () => {
+        let i = Math.max(idx, 0); advance(i);
+        clearInterval(this.timer);
+        this.timer = setInterval(() => {
+          if (token !== this.token) return clearInterval(this.timer);
+          i++;
+          if (i >= words.length) { clearInterval(this.timer); if (!useSpeech) setTimeout(finish, 250); return; }
+          advance(i);
+        }, perWord);
+      };
+      if (useSpeech) {
+        const u = new SpeechSynthesisUtterance(words.join(' '));
+        const v = this.voice(voiceIndex); if (v) { u.voice = v; u.lang = v.lang; }
+        u.rate = rate;
+        u.onboundary = e => {
+          if (e.name && e.name !== 'word') return;
+          gotBoundary = true; clearInterval(this.timer);
+          let i = 0; for (let k = 0; k < starts.length; k++) if (starts[k] <= e.charIndex) i = k;
+          advance(i);
+        };
+        u.onend = finish; u.onerror = finish;
+        speechSynthesis.speak(u);
+        setTimeout(() => { if (!gotBoundary && token === this.token) runTimer(); }, 650);
+      } else runTimer();
+      return token;
+    },
+    // Plays clip segments in order; onWord gets the index over all segments' words.
+    play(segs, { onWord, onEnd } = {}) {
+      this.stop();
+      const token = ++this.token;
+      const finish = () => { if (token !== this.token) return; this.token++; onWord?.(Infinity); onEnd?.(); };
+      const run = async k => {
+        if (token !== this.token) return;
+        if (k >= segs.length) return finish();
+        const s = segs[k], a = Clips.el(s.id);
+        this.current = a;
+        if (a.readyState < 1) await new Promise(r => { a.addEventListener('loadedmetadata', r, { once: true }); a.addEventListener('error', r, { once: true }); });
+        if (token !== this.token) return;
+        if (a.error) return finish();
+        a.muted = !this.enabled; a.currentTime = s.from / 1000;
+        try { await a.play(); } catch {
+          // No user gesture yet (autoplay policy): run muted so the highlight still plays.
+          a.muted = true;
+          try { await a.play(); nudge('Click anywhere in the demo to hear the voice.'); } catch { return finish(); }
+        }
+        const loop = () => {
+          if (token !== this.token) return;
+          const ms = a.currentTime * 1000;
+          let i = -1; for (let j = 0; j < s.starts.length; j++) if (s.starts[j] <= ms + 30) i = j;
+          if (i >= 0) onWord?.(s.offset + i);
+          if (ms >= s.to || a.ended) { a.pause(); return run(k + 1); }
+          this.raf = requestAnimationFrame(loop);
+        };
+        loop();
+      };
+      run(0);
+    },
+    stop() {
+      this.token++; clearInterval(this.timer); cancelAnimationFrame(this.raf);
+      this.current?.pause(); this.current = null;
+      if (hasSpeech) speechSynthesis.cancel();
+    },
+  };
+  Voice.load();
+
+  /* ---------------- Pre-rendered clips (ElevenLabs) ---------------- */
+  const VOICE_BASE = '../../../website/public/demo/voice/';
+  const Clips = {
+    data: window.DEMO_VOICE?.clips || {},
+    els: {},
+    el(id) { return this.els[id] ??= Object.assign(new Audio(VOICE_BASE + id + '.mp3'), { preload: 'auto' }); },
+    warm() { Object.keys(this.data).forEach(id => this.el(id)); },
+    // Start (ms) of each word inside the clip, found by characters; null if a word is missing.
+    segment(id, words, offset) {
+      const c = this.data[id]; if (!c || !words.length) return null;
+      let cur = 0; const starts = [];
+      for (const w of words) { const i = c.text.indexOf(w, cur); if (i < 0) return null; starts.push(c.t[i]); cur = i + w.length; }
+      const toEnd = !c.text.slice(cur).trim();
+      const from = c.text.slice(0, c.text.indexOf(words[0])).trim() ? Math.max(0, starts[0] - 40) : 0;
+      return { id, starts, from, to: toEnd ? c.d + 250 : (c.t[cur] ?? c.d) + 60, offset };
+    },
+  };
+  // Speaks spans that sit in [data-clip] blocks from their clips (timing spans may differ from
+  // the spans shown, e.g. clipboard text shown in the caption); else the browser voice.
+  function speakSpans(spans, opts = {}) {
+    const groups = [];
+    spans.forEach((s, i) => {
+      const id = s.closest('[data-clip]')?.dataset.clip || '';
+      const g = groups.at(-1);
+      if (g && g.id === id) g.spans.push(s); else groups.push({ id, spans: [s], offset: i });
+    });
+    const segs = groups.map(g => g.id ? Clips.segment(g.id, g.spans.map(s => s.textContent), g.offset) : null);
+    if (segs.length && segs.every(Boolean)) return Voice.play(segs, opts);
+    return Voice.speak(spans.map(s => s.textContent), opts);
+  }
+  const mark = (spans, i) => spans.forEach((s, j) => { s.classList.toggle('on', j === i); s.classList.toggle('done', j < i); });
+  const esc = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+  /* ---------------- Notch + caption ---------------- */
+  let levelTimer = null;
+  function setNotch(mode, feature) {
+    clearInterval(levelTimer);
+    if (!mode) { notch.classList.remove('on'); return; }
+    notch.dataset.mode = mode;
+    notch.dataset.icon = mode === 'listen' ? 'mic' : mode === 'think' ? 'spark' : (feature === 'smart' ? 'spark' : 'spk');
+    notch.style.setProperty('--tint', COLORS[feature] || '#fff');
+    notch.classList.add('on');
+    if (mode === 'listen') {
+      const bars = $$('#lv b');
+      levelTimer = setInterval(() => bars.forEach((b, i) => { b.style.height = (4 + Math.random() * (i === 2 ? 12 : 9)) + 'px'; }), 90);
+    }
+  }
+  function showSay(feature, label, html) {
+    $('#say-tile').style.background = TILE_BG[feature];
+    $('#say-tile').innerHTML = ICONS[feature];
+    $('#say-lbl').textContent = label;
+    $('#say-txt').innerHTML = html;
+    say.classList.add('show');
+  }
+  const hideSay = () => say.classList.remove('show');
+  let nudgeTimer;
+  function nudge(text, ms = 2600) {
+    const n = $('#nudge'); n.textContent = text; n.classList.add('show');
+    clearTimeout(nudgeTimer); nudgeTimer = setTimeout(() => n.classList.remove('show'), ms);
+  }
+
+  /* ---------------- State ---------------- */
+  const S = {
+    scene: 'read', busy: null,            // busy: 'read' | 'smart' | 'ask' | 'dict' | 'trans-play'
+    clipboard: '', lastBrief: '', lastDictation: '',
+    askIndex: {}, dictIndex: 0, ask: null, dict: null,
+  };
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+  let flow = 0; // bumps on stop, so async flows can bail
+
+  function clearMarks() { $$('.w.q, .w.on, .w.done', screen).forEach(w => w.classList.remove('q', 'on', 'done')); $$('.turn.playing').forEach(t => t.classList.remove('playing')); }
+  function stopAll() {
+    flow++; Voice.stop(); setNotch(null); hideSay(); clearMarks();
+    clearInterval(S.dict?.timer); clearInterval(S.ask?.timer); S.busy = null; S.dict = null; S.ask = null;
+  }
+
+  function activeReadable() {
+    const id = SCENES[S.scene].win || ($('#w-tx').classList.contains('show') ? 'w-tx' : null);
+    return id ? $('#' + id + ' .readable, #' + id + ' .turns') : null;
+  }
+  function selectedSpans() {
+    const sel = getSelection(); const root = activeReadable();
+    if (!root || !sel.rangeCount || sel.isCollapsed) return [];
+    const r = sel.getRangeAt(0);
+    return $$('.w', root).filter(w => r.intersectsNode(w));
+  }
+  function selectSpans(spans) {
+    const r = document.createRange(); r.setStartBefore(spans[0]); r.setEndAfter(spans[spans.length - 1]);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  }
+  function defaultSpans() {
+    const root = activeReadable(); if (!root) return [];
+    const block = $('p, .turn', root); return block ? $$('.w', block) : $$('.w', root);
+  }
+
+  /* ---------------- Read ---------------- */
+  async function doRead(clip) {
+    if (S.busy) { stopAll(); return; }
+    const my = ++flow;
+    if (clip) {
+      if (!S.clipSpans?.length) { nudge('Nothing copied yet. Select text, press ⌘C, then ⇧⌥ .'); return; }
+      showSay('read', 'Reading your clipboard', S.clipSpans.map(s => `<span class="w">${esc(s.textContent)}</span>`).join(' '));
+      $('#say-txt').removeAttribute('data-clip');
+      const shown = $$('#say-txt .w');
+      S.busy = 'read'; setNotch('speak', 'read');
+      speakSpans(S.clipSpans, {
+        onWord: i => mark(shown, i),
+        onEnd: () => { if (my === flow) { setNotch(null); S.busy = null; setTimeout(() => { if (my === flow) hideSay(); }, 1500); } },
+      });
+      return;
+    }
+    let spans = selectedSpans();
+    if (!spans.length) {
+      spans = defaultSpans();
+      if (!spans.length) { nudge('Select some text first.'); return; }
+      selectSpans(spans); nudge('Tip: select any text, then press ⌥ .');
+    }
+    getSelection().removeAllRanges();
+    screen.dataset.tint = 'read';
+    S.busy = 'read'; spans.forEach(s => s.classList.add('q'));
+    setNotch('speak', 'read');
+    speakSpans(spans, {
+      onWord: i => mark(spans, i),
+      onEnd: () => { if (my === flow) { setNotch(null); setTimeout(clearMarks, 400); S.busy = null; } },
+    });
+  }
+
+  // opts.clip: the pre-rendered clip for this text.
+  function speakCaption(feature, label, text, my, opts = {}) {
+    showSay(feature, label, wordSpans(text));
+    if (opts.clip) $('#say-txt').dataset.clip = opts.clip; else $('#say-txt').removeAttribute('data-clip');
+    const spans = $$('#say-txt .w');
+    S.busy = feature === 'smart' ? 'smart' : 'read';
+    setNotch('speak', feature);
+    return new Promise(res => speakSpans(spans, {
+      ...opts,
+      onWord: i => mark(spans, i),
+      onEnd: () => { if (my === flow) { setNotch(null); S.busy = null; setTimeout(() => { if (my === flow) hideSay(); }, 1800); } res(); },
+    }));
+  }
+
+  /* ---------------- Smart read ---------------- */
+  async function doSmart(clip) {
+    if (S.busy) { stopAll(); return; }
+    const my = ++flow;
+    const scene = SCENES[S.scene].brief ? S.scene : 'smart';
+    if (clip && !S.clipSpans?.length) { nudge('Nothing copied yet. Select text, press ⌘C, then ⇧⌥ ,'); return; }
+    if (!clip && !activeReadable()) { nudge('Nothing to read here. Try the Read or Smart read tab.'); return; }
+    let spans = clip ? [] : selectedSpans();
+    if (!clip && !spans.length) {
+      spans = $$('.w', activeReadable());
+      nudge('No selection, so the whole thing. Select any part to narrow it.');
+    }
+    getSelection().removeAllRanges();
+    screen.dataset.tint = 'smart';
+    spans.forEach(s => s.classList.add('q'));
+    S.busy = 'smart'; setNotch('think', 'smart');
+    showSay('smart', 'Smart read · thinking', '<span class="raw">Reading it the way a sharp friend would…</span>');
+    await delay(1100); if (my !== flow) return;
+    spans.forEach(s => s.classList.remove('q'));
+    S.lastBrief = SCENES[scene].brief; S.lastScene = scene;
+    await speakCaption('smart', S.scene === 'smart' ? 'Smart read · as the assistant' : 'Smart read', SCENES[scene].brief, my, { rate: 0.98, clip: `brief-${scene}` });
+  }
+
+  /* Hold the smart read key: ask a follow-up */
+  function startAsk() {
+    stopAll();
+    const scene = S.lastScene || (SCENES[S.scene].followups ? S.scene : 'smart');
+    const list = SCENES[scene].followups;
+    const n = (S.askIndex[scene] = ((S.askIndex[scene] ?? -1) + 1)) % list.length;
+    const item = list[n];
+    S.busy = 'ask'; S.ask = { item, scene, n, shown: 0, timer: null };
+    screen.dataset.tint = 'smart';
+    setNotch('listen', 'smart');
+    showSay('smart', 'Listening… let go to ask', '<span class="raw">(the demo asks for you)</span>');
+    const words = item.q.split(' ');
+    setTimeout(() => {
+      if (S.busy !== 'ask') return;
+      S.ask.timer = setInterval(() => {
+        if (!S.ask) return;
+        S.ask.shown = Math.min(words.length, S.ask.shown + 1);
+        $('#say-txt').innerHTML = `<span class="q">“${words.slice(0, S.ask.shown).join(' ')}”</span>`;
+        if (S.ask.shown >= words.length) clearInterval(S.ask.timer);
+      }, 210);
+    }, 350);
+  }
+  async function endAsk() {
+    if (S.busy !== 'ask' || !S.ask) return;
+    const { item, scene, n } = S.ask; clearInterval(S.ask.timer);
+    const my = ++flow;
+    S.busy = 'smart'; setNotch('think', 'smart');
+    showSay('smart', 'You asked', `<span class="q">“${item.q}”</span>`);
+    await delay(900); if (my !== flow) return;
+    await speakCaption('smart', 'Answer', item.a, my, { rate: 0.98, clip: `ans-${scene}-${n}` });
+  }
+
+  /* ---------------- Dictation ---------------- */
+  function startDict(mode) {
+    if (S.busy === 'dict') { if (mode === 'toggle' || S.dict?.mode === 'toggle') finishDict(); return; }
+    stopAll();
+    if (S.scene !== 'dict') setScene('dict');
+    const sample = SCENES.dict.samples[S.dictIndex++ % SCENES.dict.samples.length];
+    const words = sample.raw.split(' ');
+    S.busy = 'dict'; S.dict = { mode, sample, shown: 0, timer: null };
+    setNotch('listen', 'dict');
+    showSay('dict', mode === 'toggle' ? 'Dictating hands-free · press again to stop' : 'Dictating · let go to paste', '<span class="raw">Listening…</span>');
+    S.dict.timer = setInterval(() => {
+      if (!S.dict) return;
+      S.dict.shown = Math.min(words.length, S.dict.shown + 1);
+      $('#say-txt').innerHTML = `<span class="raw">${words.slice(0, S.dict.shown).join(' ')}</span>`;
+      if (S.dict.shown >= words.length) clearInterval(S.dict.timer);
+    }, 170);
+  }
+  async function finishDict() {
+    if (S.busy !== 'dict' || !S.dict) return;
+    const { sample } = S.dict; clearInterval(S.dict.timer); S.dict = null;
+    const my = ++flow;
+    setNotch('think', 'dict');
+    $('#say-lbl').textContent = 'Cleaning up';
+    $('#say-txt').innerHTML = `<span class="raw">${sample.raw}</span>`;
+    await delay(750); if (my !== flow) return;
+    paste(sample.clean);
+    S.lastDictation = sample.clean;
+    $('#say-lbl').textContent = 'Pasted in 0.8 s';
+    $('#say-txt').innerHTML = sample.clean;
+    setNotch(null); S.busy = null;
+    setTimeout(() => { if (my === flow) hideSay(); }, 1600);
+  }
+  function paste(text) {
+    const c = $('#compose');
+    const lead = c.textContent.trim() ? ' ' : '';
+    const s = document.createElement('span'); s.className = 'pasted'; s.textContent = lead + text;
+    c.appendChild(s);
+    const r = document.createRange(); r.selectNodeContents(c); r.collapse(false);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  }
+
+  /* ---------------- Transcribe ---------------- */
+  function buildTranscript() {
+    $('#turns').innerHTML = TURNS.map((t, i) => `<div class="turn" data-i="${i}"><span class="ts">${t.t}</span><span class="spk" style="color:${t.c}">${t.s}</span><span class="tt">${t.x}</span></div>`).join('');
+    $$('.turn .tt').forEach(wordify);
+    $('#acts').innerHTML = ACTIONS.map(a => `<div class="act" data-turn="${a.turn}"><span class="ck"></span><span>${a.x}<small>${a.who} · ${TURNS[a.turn].t}</small></span></div>`).join('');
+  }
+  let transcribed = false;
+  async function transcribe() {
+    if (transcribed) { setScene('trans'); showTx(); return; }
+    if (S.scene !== 'trans') setScene('trans');
+    closeMenus();
+    const my = ++flow;
+    $('#dfile').classList.add('gone'); $('#arrow').classList.remove('show');
+    const hud = $('#hud'), bar = $('#hud-bar'), sub = $('#hud-s');
+    hud.classList.add('show');
+    const phases = [[0, 'Uploading…'], [18, 'Finding speakers · ElevenLabs Scribe'], [70, 'Writing the summary · Claude'], [100, 'Done']];
+    for (let p = 0; p <= 100; p += 2) {
+      bar.style.width = p + '%';
+      sub.textContent = phases.filter(ph => ph[0] <= p).pop()[1];
+      await delay(38); if (my !== flow) { hud.classList.remove('show'); return; }
+    }
+    await delay(300);
+    hud.classList.remove('show'); transcribed = true;
+    showTx(); renderHint();
+  }
+  function showTx() { $('#w-tx').classList.add('show', 'front'); }
+  function playTurn(i) {
+    stopAll();
+    const my = ++flow;
+    const turn = $(`.turn[data-i="${i}"]`); if (!turn) return;
+    turn.classList.add('playing'); turn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const spans = $$('.w', turn);
+    screen.dataset.tint = 'read';
+    S.busy = 'read'; setNotch('speak', 'read');
+    const vi = { Anna: 1, Ben: 2, You: 0 }[TURNS[i].s];
+    speakSpans(spans, {
+      voiceIndex: vi, rate: 1.05,
+      onWord: k => mark(spans, k),
+      onEnd: () => { if (my === flow) { setNotch(null); S.busy = null; setTimeout(() => { if (my === flow) clearMarks(); }, 500); } },
+    });
+  }
+
+  /* ---------------- Focus & Time ---------------- */
+  const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  let focusT = null, awakeT = null;
+  function startFocus() {
+    clearInterval(focusT); let left = 25 * 60;
+    const el = $('#mb-focus'); el.hidden = false; el.classList.remove('status'); void el.offsetWidth; el.classList.add('status');
+    const tick = () => { $('#focus-left').textContent = fmt(left); $('#mi-focus').textContent = `Focus · ${fmt(left)} left`; left--; };
+    tick(); focusT = setInterval(tick, 1000);
+    $('#mi-focus-start').hidden = true; $('#mi-focus-stop').hidden = false;
+    nudge('Focus started. VibeFlow chimes when it\'s time for a break.');
+  }
+  function stopFocus() { clearInterval(focusT); $('#mb-focus').hidden = true; $('#mi-focus').textContent = 'Pomodoro'; $('#mi-focus-start').hidden = false; $('#mi-focus-stop').hidden = true; }
+  function startAwake(min) {
+    clearInterval(awakeT); let left = min * 60;
+    const el = $('#mb-awake'); el.hidden = false; el.classList.remove('status'); void el.offsetWidth; el.classList.add('status');
+    const tick = () => { const h = Math.floor(left / 3600), m = Math.ceil((left % 3600) / 60); $('#awake-left').textContent = h ? `${h}:${String(m === 60 ? 0 : m).padStart(2, '0')}` : `${Math.ceil(left / 60)}m`; $('#mi-awake').textContent = `Keep Awake · ${$('#awake-left').textContent} left`; left--; };
+    tick(); awakeT = setInterval(tick, 1000);
+    $('#mi-awake-stop').hidden = false;
+    nudge('Your Mac stays awake. The cup shows the time left.');
+  }
+  function stopAwake() { clearInterval(awakeT); $('#mb-awake').hidden = true; $('#mi-awake').textContent = 'Keep Awake'; $('#mi-awake-stop').hidden = true; }
+
+  /* ---------------- Menus ---------------- */
+  function closeMenus() { $('#menu').classList.remove('show'); $('#pop').classList.remove('show'); $$('.mbi.open').forEach(m => m.classList.remove('open')); }
+  // Offsets are in unscaled screen pixels (the menubar is the offsetParent).
+  function placeUnder(el, btn) { el.style.right = Math.max(8, 1120 - (btn.offsetLeft + btn.offsetWidth)) + 'px'; }
+  function toggle(menuId, btn) {
+    const m = $(menuId), open = m.classList.contains('show');
+    placeUnder(m, btn);
+    closeMenus(); if (!open) { m.classList.add('show'); btn.classList.add('open'); $('#arrow').classList.remove('show'); }
+  }
+  $('#mb-vf').addEventListener('mousedown', e => { e.preventDefault(); toggle('#menu', e.currentTarget); });
+  $('#mb-meeting').addEventListener('mousedown', e => { e.preventDefault(); toggle('#pop', e.currentTarget); });
+  // mousedown keeps the text selection alive while the menu is used
+  $$('.menu').forEach(m => m.addEventListener('mousedown', e => e.preventDefault()));
+  screen.addEventListener('click', e => {
+    const item = e.target.closest('[data-do]');
+    if (item) {
+      e.stopPropagation(); closeMenus();
+      const d = item.dataset.do;
+      ({
+        'read': () => doRead(false), 'smart': () => doSmart(false), 'read-clip': () => doRead(true), 'smart-clip': () => doSmart(true),
+        'paste-dict': () => S.lastDictation ? (S.scene !== 'dict' && setScene('dict'), paste(S.lastDictation)) : nudge('Nothing dictated yet.'),
+        'transcribe': transcribe,
+        'focus-start': startFocus, 'focus-stop': stopFocus,
+        'awake-15': () => startAwake(15), 'awake-60': () => startAwake(60), 'awake-240': () => startAwake(240), 'awake-stop': stopAwake,
+        'meeting': () => { $('#mb-meeting').hidden = false; toggle('#pop', $('#mb-meeting')); },
+        'join': () => nudge('In the app, this opens the Meet call.'),
+        'feedback': () => nudge('Bug, Idea or Love it. You see exactly what gets sent.'),
+      })[d]?.();
+      return;
+    }
+    if (!e.target.closest('.menu, .mbi')) closeMenus();
+    const turn = e.target.closest('.turn'); if (turn) return playTurn(+turn.dataset.i);
+    const act = e.target.closest('.act'); if (act) return playTurn(+act.dataset.turn);
+    const f = e.target.closest('.dfile');
+    $('#dfile').classList.toggle('sel', !!f);
+  });
+  $('#dfile').addEventListener('dblclick', transcribe);
+  // Drag the file onto the VibeFlow icon
+  const vf = $('#mb-vf');
+  $('#dfile').addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', 'kickoff'); e.dataTransfer.effectAllowed = 'copy'; });
+  vf.addEventListener('dragover', e => { e.preventDefault(); vf.classList.add('drop'); });
+  vf.addEventListener('dragleave', () => vf.classList.remove('drop'));
+  vf.addEventListener('drop', e => { e.preventDefault(); vf.classList.remove('drop'); transcribe(); });
+
+  // Copy inside the demo fills the demo clipboard (for ⇧⌥ shortcuts)
+  document.addEventListener('copy', () => {
+    const spans = selectedSpans();
+    if (spans.length) { S.clipSpans = spans; nudge('Copied. Now try ⇧⌥ . or ⇧⌥ ,'); }
+  });
+
+  /* ---------------- Scenes ---------------- */
+  function keycaps(kind) {
+    const D = dkey();
+    const map = {
+      read: ['⌥', '.'], smart: ['⌥', ','], hold: ['⌥', ','], dict: ['⌥', D], 'dict-toggle': ['⇧', '⌥', D],
+    };
+    const act = { read: 'read', smart: 'smart', hold: 'smart', dict: 'dict', 'dict-toggle': 'dict' }[kind];
+    const shift = kind === 'dict-toggle';
+    const pre = (kind === 'hold' || kind === 'dict') ? '<span class="hold-word">hold</span>' : '';
+    return `${pre}<button class="kb-btn" data-act="${act}" data-shift="${shift}" aria-label="Press ${map[kind].join(' ')}">${map[kind].map(k => `<span class="k">${k}</span>`).join('')}</button>`;
+  }
+  function renderHint() {
+    let lines = SCENES[S.scene].hint;
+    if (S.scene === 'trans' && transcribed) lines = ['Click any line to hear it, each speaker in their own voice.', 'Action items jump to the moment they were said.', ['Press', 'smart', 'to hear what the call means for you.']];
+    $('#hint').innerHTML = lines.map((l, i) => {
+      const body = Array.isArray(l) ? l.map(p => ['read', 'smart', 'hold', 'dict', 'dict-toggle'].includes(p) ? keycaps(p) : p).join(' ') : l;
+      return `<div class="step"><span class="n">${i + 1}</span><span>${body}</span></div>`;
+    }).join('');
+    $$('#hint .kb-btn').forEach(b => bindPress(b, b.dataset.act, b.dataset.shift === 'true'));
+  }
+  function setScene(name) {
+    if (S.busy && S.busy !== 'dict') stopAll();
+    S.scene = name; S.lastScene = null; screen.dataset.scene = name;
+    closeMenus(); getSelection().removeAllRanges();
+    $$('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.scene === name)));
+    $('#appname').textContent = SCENES[name].app;
+    $$('.win').forEach(w => w.classList.toggle('show', w.dataset.scene === name && (w.id !== 'w-tx' || transcribed)));
+    $('#dfile').style.display = name === 'trans' ? '' : 'none';
+    $('#focus-card').classList.toggle('show', name === 'focus');
+    $('#arrow').classList.toggle('show', name === 'focus' || (name === 'trans' && !transcribed));
+    placeUnder($('#arrow'), $('#mb-vf'));
+    $('#arrow span:last-child').textContent = name === 'trans' ? 'Drop it on the VibeFlow icon' : 'Click the VibeFlow icon';
+    if (name === 'focus') setTimeout(() => { if (S.scene === 'focus') { const m = $('#mb-meeting'); if (m.hidden) { m.hidden = false; m.classList.add('status'); } } }, 900);
+    screen.dataset.tint = name === 'smart' ? 'smart' : 'read';
+    renderHint();
+  }
+  $$('.tab').forEach(t => t.addEventListener('click', () => setScene(t.dataset.scene)));
+
+  /* ---------------- Keys ---------------- */
+  const CODE = { Comma: 'smart', Period: 'read', Slash: 'dict' };
+  let inView = false, holdTimer = null, smartHeld = null;
+  function keyVisual(act, down, shift) {
+    $$(`.kk[data-key="${act}"]`).forEach(k => k.classList.toggle('down', down));
+    $$('.kk[data-key="opt"]').forEach(k => k.classList.toggle('down', down));
+    $$('.kk[data-key="shift"]').forEach(k => k.classList.toggle('down', down && !!shift));
+    $$(`.kb-btn[data-act="${act}"]`).forEach(b => b.classList.toggle('down', down));
+  }
+  function down(act, shift) {
+    keyVisual(act, true, shift);
+    if (act === 'read') return doRead(shift);
+    if (act === 'smart') {
+      if (shift) return doSmart(true);
+      smartHeld = 'tap';
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => { smartHeld = 'hold'; startAsk(); }, 300);
+      return;
+    }
+    if (act === 'dict') return startDict(shift ? 'toggle' : 'ptt');
+  }
+  function up(act) {
+    keyVisual(act, false);
+    if (act === 'smart' && smartHeld) {
+      clearTimeout(holdTimer);
+      if (smartHeld === 'hold') endAsk(); else doSmart(false);
+      smartHeld = null;
+    }
+    if (act === 'dict' && S.dict?.mode === 'ptt') finishDict();
+  }
+  const pressed = new Set();
+  document.addEventListener('keydown', e => {
+    if (!inView) return;
+    // ⌃⌥V paste last dictation
+    if (e.code === 'KeyV' && e.altKey && e.ctrlKey) { e.preventDefault(); if (S.lastDictation) { if (S.scene !== 'dict') setScene('dict'); paste(S.lastDictation); } return; }
+    const act = CODE[e.code];
+    if (!act || !e.altKey || e.metaKey || e.ctrlKey) return;
+    e.preventDefault();
+    if (e.repeat || pressed.has(act)) return;
+    pressed.add(act); down(act, e.shiftKey);
+  });
+  document.addEventListener('keyup', e => {
+    const act = CODE[e.code];
+    if (act && pressed.has(act)) { pressed.delete(act); up(act); }
+    if (e.key === 'Alt') { [...pressed].forEach(a => { pressed.delete(a); up(a); }); }
+  });
+  window.addEventListener('blur', () => { [...pressed].forEach(a => { pressed.delete(a); up(a); }); });
+
+  // Clickable keycaps (hint line and mini keyboard): press on pointerdown, release on up
+  function bindPress(el, act, shift) {
+    el.addEventListener('pointerdown', e => { e.preventDefault(); el.setPointerCapture?.(e.pointerId); if (!pressed.has(act)) { pressed.add(act); down(act, shift); } });
+    const rel = () => { if (pressed.has(act)) { pressed.delete(act); up(act); } };
+    el.addEventListener('pointerup', rel); el.addEventListener('pointercancel', rel);
+  }
+  $$('.kk.hot').forEach(k => bindPress(k, k.dataset.key, false));
+
+  /* ---------------- Layout (German "-" vs US "/") ---------------- */
+  // Same physical key on both: the one right of ".". Its code is Slash on US, but German
+  // browsers report it as Slash too (it sits where US "/" is). Minus is the US key after 0.
+  let layout = /^de\b/i.test(navigator.language) ? 'de' : 'us';
+  const dkey = () => layout === 'de' ? '-' : '/';
+  function applyLayout() {
+    $$('.dkey').forEach(k => { k.textContent = dkey(); });
+    $('#layout-lbl').textContent = layout === 'de' ? 'German layout' : 'US layout';
+    renderHint();
+  }
+  navigator.keyboard?.getLayoutMap?.().then(m => { const c = m.get('Slash'); if (c) { layout = c === '-' ? 'de' : 'us'; applyLayout(); } }).catch(() => {});
+
+  /* ---------------- Sound toggle ---------------- */
+  $('#sound').addEventListener('click', () => {
+    Voice.enabled = !Voice.enabled; $('#sound').textContent = Voice.enabled ? 'Sound on' : 'Sound off';
+    if (!Voice.enabled) Voice.stop();
+  });
+
+  /* ---------------- Clock ---------------- */
+  const clockFmt = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const tickClock = () => { $('#mb-clock').textContent = clockFmt.format(new Date()).replace(/,/g, ''); };
+  tickClock(); setInterval(tickClock, 15000);
+
+  /* ---------------- Fit + reveal ---------------- */
+  const fit = $('#fit'), mac = $('#mac');
+  function resize() {
+    const w = Math.min(fit.parentElement.clientWidth - 48, 1144);
+    const s = w / 1144;
+    fit.style.width = w + 'px'; fit.style.height = (724 * s) + 'px';
+    mac.style.transform = `scale(${s})`;
+  }
+  addEventListener('resize', resize); resize();
+  new IntersectionObserver(([e]) => {
+    inView = e.isIntersecting;
+    if (e.intersectionRatio > 0.25) $('#stage').classList.add('in');
+    if (!inView) { stopAll(); [...pressed].forEach(a => { pressed.delete(a); up(a); }); }
+  }, { threshold: [0, 0.25] }).observe($('#stage'));
+
+  /* ---------------- Init ---------------- */
+  $$('.readable').forEach(wordify);
+  buildTranscript();
+  // Each readable block gets the id of its pre-rendered clip.
+  $$('#w-mail .mail-body p').forEach((b, i) => { b.dataset.clip = `mail-${i}`; });
+  $$('#w-chat .ai > p, #w-chat .ai h4, #w-chat .ai li').forEach((b, i) => { b.dataset.clip = `chat-${i}`; });
+  $$('#w-msgs .msg p').forEach((b, i) => { b.dataset.clip = `msgs-${i}`; });
+  $$('.turn .tt').forEach((b, i) => { b.dataset.clip = `turn-${i}`; });
+  // Dev helper: the lines to render, for website/src/data/demo-lines.json.
+  window.__demoLines = () => {
+    const lines = $$('[data-clip]').filter(b => b.id !== 'say-txt').map(b => {
+      const id = b.dataset.clip, turn = id.startsWith('turn-') ? TURNS[+id.slice(5)] : null;
+      return { id, voice: turn ? { Anna: 'anna', Ben: 'ben', You: 'narrator' }[turn.s] : 'narrator', speed: turn ? 1.05 : 1.1, text: b.textContent.replace(/\s+/g, ' ').trim() };
+    });
+    for (const [name, sc] of Object.entries(SCENES)) {
+      if (sc.brief) lines.push({ id: `brief-${name}`, voice: 'narrator', speed: 1, text: sc.brief });
+      (sc.followups || []).forEach((f, i) => lines.push({ id: `ans-${name}-${i}`, voice: 'narrator', speed: 1, text: f.a }));
+    }
+    return lines;
+  };
+  Clips.warm();
+  applyLayout();
+  setScene('read');
+})();
+</script>
+</body>
+</html>

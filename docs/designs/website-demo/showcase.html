@@ -1,0 +1,1126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VibeFlow 1.5 showcase</title>
+<script>document.documentElement.classList.add('js');</script>
+<!--
+  Minimal 1.5 feature showcase for the landing page (replaces the interactive demo for now;
+  a demo video comes later). The menu is the hero: hover or focus a feature and its row
+  lights up, and its menu bar item appears. No audio, no captured keys.
+-->
+<style>
+:root {
+  --text: #1D1D1F; --text-2: #424245; --text-3: #6E6E73;
+  --ground: #FFFFFF; --ground-2: #F5F5F7; --line: #ECECF0; --line-2: #D2D2D7; --dark: #1D1D1F;
+  --read: #0064D2; --smart: #5B4FE0; --dictation: #D93025; --tools: #0F7B5F;
+  --icon-top: #6B70FF; --icon-bottom: #4030C7;
+  --menu-blue: #2F6FE8; /* macOS menu highlight, darkened for 4.6:1 with white */
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", "Inter", system-ui, sans-serif;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; font-family: var(--font); color: var(--text); background: var(--ground); -webkit-font-smoothing: antialiased; }
+h2, h3, p { margin: 0; }
+html, body { overflow-x: clip; }
+h1, h2 { text-wrap: balance; }
+::selection { background: rgba(91,79,224,.22); }
+
+.show { max-width: 1120px; margin: 0 auto; padding: 88px 24px; display: grid; grid-template-columns: 1fr 1.1fr; gap: 72px; align-items: center; }
+
+/* Text side */
+.eyebrow { font-size: 14px; font-weight: 600; color: var(--text-3); }
+h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); line-height: 1.04; letter-spacing: -.03em; }
+.lead { margin-top: 16px; font-size: 18px; line-height: 1.55; color: var(--text-2); max-width: 28rem; }
+.feats { margin: 40px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.feat { display: block; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-bottom: 1px solid var(--line);
+  padding: 18px 0; cursor: default; position: relative; }
+.feat h3 { font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 10px; transition: color .3s var(--ease); }
+.feat h3::before { content: ""; width: 6px; height: 6px; border-radius: 3px; background: var(--line-2); transition: background .3s var(--ease), transform .3s var(--ease); }
+.feat p { margin-top: 4px; padding-left: 16px; font-size: 15px; line-height: 1.5; color: var(--text-3); }
+.feat.on h3::before { background: var(--c); transform: scale(1.4); }
+.feat:focus-visible { outline: 2px solid var(--read); outline-offset: 4px; border-radius: 4px; }
+
+/* Visual side */
+.scene { position: relative; aspect-ratio: 5 / 4.4; border-radius: 22px; overflow: hidden;
+  background: linear-gradient(160deg, #EEF0FF 0%, #DCDDFB 45%, #C9C4F6 100%);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.04), 0 40px 80px -40px rgba(64,48,199,.45); }
+.bar { position: absolute; left: 0; right: 0; top: 0; height: 34px; display: flex; justify-content: flex-end; align-items: center; gap: 2px; padding: 0 12px;
+  background: rgba(255,255,255,.55); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.bi { display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; white-space: nowrap; }
+.bi.open { background: rgba(0,0,0,.09); }
+.bi.status { animation: pop .5s var(--ease); }
+@keyframes pop { from { opacity: 0; transform: translateY(-4px); } }
+.clocks { gap: 12px; }
+.clk { display: flex; align-items: center; gap: 5px; }
+.clk svg { border-radius: 2px; box-shadow: 0 0 0 .5px rgba(0,0,0,.15); }
+.glyph { display: flex; gap: 2px; align-items: center; height: 14px; }
+.glyph b { width: 2px; border-radius: 1px; background: #111; }
+
+.menu { position: absolute; right: 96px; top: 40px; width: 300px; padding: 5px; border-radius: 12px; font-size: 13.5px;
+  background: rgba(250,250,253,.86); backdrop-filter: blur(40px) saturate(1.8); -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  box-shadow: 0 0 0 .5px rgba(0,0,0,.2), 0 30px 60px -20px rgba(40,30,120,.45);
+  transform-origin: top right; transition: opacity .6s var(--ease), transform .7s var(--ease); }
+/* Visible by default; the entrance only hides it once scripts are known to run. */
+.js .scene:not(.in) .menu { opacity: 0; transform: translateY(-6px) scale(.98); }
+.mh { padding: 7px 10px 3px; font-size: 11.5px; font-weight: 600; color: rgba(0,0,0,.42); }
+.mi { display: flex; align-items: center; gap: 9px; padding: 4px 10px; border-radius: 6px; white-space: nowrap; transition: background .25s var(--ease), color .25s var(--ease); }
+.mi svg { flex: none; stroke: currentColor; }
+.mi .sc { margin-left: auto; color: rgba(0,0,0,.4); letter-spacing: .04em; transition: color .25s; }
+.mi .new { margin-left: 6px; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: #EDEBFF; color: var(--smart); }
+.mi.on { background: var(--menu-blue); color: #fff; }
+.mi.on .sc { color: rgba(255,255,255,.8); }
+.mi.on .new { background: rgba(255,255,255,.22); color: #fff; }
+.sep { height: 1px; margin: 5px 10px; background: rgba(0,0,0,.09); }
+
+/* ---------- Voice section: the visual on the left, mirrored ---------- */
+.show.flip { grid-template-columns: 1.1fr 1fr; }
+.flip .copy { order: 2; }
+.feat .row { display: flex; align-items: center; gap: 12px; }
+.feat .row h3 { flex: 1; }
+.keys { display: flex; gap: 3px; align-items: center; }
+.k { min-width: 24px; height: 24px; padding: 0 6px; border-radius: 6px; display: inline-grid; place-items: center; font-size: 12.5px; font-weight: 600;
+  background: #fff; border: 1px solid var(--line-2); box-shadow: 0 1.5px 0 #C7C7CC; transition: background .3s var(--ease), border-color .3s var(--ease), color .3s var(--ease), box-shadow .3s var(--ease); }
+.keys .hold { font-size: 12px; font-weight: 500; color: var(--text-3); margin-right: 4px; }
+.feat.on .k.key { background: var(--c); border-color: var(--c); color: #fff; box-shadow: 0 1.5px 0 color-mix(in srgb, var(--c) 60%, #000); }
+
+.vscene { aspect-ratio: 5 / 3.4; background: linear-gradient(160deg, #F3F4FF 0%, #E4E5FC 50%, #D5D1F8 100%); }
+.vbar { justify-content: space-between; }
+.notch { position: absolute; left: 50%; top: 0; height: 34px; width: 150px; transform: translateX(-50%); background: #000; border-radius: 0 0 13px 13px;
+  transition: width .6s cubic-bezier(.3, 1.35, .5, 1); }
+.notch.on { width: 236px; }
+.notch .slot { position: absolute; top: 0; height: 34px; width: 40px; display: grid; place-items: center; color: var(--tint);
+  opacity: 0; transform: scale(.6); transition: opacity .25s, transform .4s cubic-bezier(.3, 1.35, .5, 1); }
+.notch.on .slot { opacity: 1; transform: none; transition-delay: .15s; }
+.notch .l { left: 4px; } .notch .r { right: 4px; }
+.bars { display: flex; gap: 2.5px; align-items: center; height: 16px; }
+.bars b { width: 3px; height: 14px; border-radius: 2px; background: var(--tint); transform: scaleY(.3); animation: wv .9s ease-in-out infinite; }
+.bars b:nth-child(2) { animation-delay: -.25s } .bars b:nth-child(3) { animation-delay: -.5s } .bars b:nth-child(4) { animation-delay: -.7s }
+.notch[data-f="dict"] .bars b { animation-duration: .45s; }
+@keyframes wv { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+.notch .ic { display: none; } .notch[data-f="read"] .i-read, .notch[data-f="smart"] .i-smart, .notch[data-f="dict"] .i-dict { display: block; }
+
+.card { position: absolute; left: 9%; right: 9%; top: 74px; padding: 22px 24px; border-radius: 14px; background: #fff;
+  box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 24px 50px -24px rgba(40,30,120,.4); }
+.card .from { font-size: 12.5px; color: var(--text-3); }
+.card .from b { color: var(--text); font-weight: 600; }
+.card .body { margin-top: 10px; font-size: 15.5px; line-height: 1.65; }
+.w { border-radius: 4px; transition: background .15s, box-shadow .15s; }
+.w.on { background: rgba(0,100,210,.16); box-shadow: 0 0 0 2px rgba(0,100,210,.16); }
+.card.dim .body { color: var(--text-3); transition: color .4s; }
+.field { margin-top: 16px; min-height: 46px; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--line-2); font-size: 15px; line-height: 1.5; color: var(--text); }
+.field:empty::before { content: "Reply to Lena"; color: var(--text-3); }
+.field.typing::after { content: ""; display: inline-block; width: 1.5px; height: 1.1em; margin-left: 1px; vertical-align: -3px; background: var(--dictation); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.pill { position: absolute; left: 9%; right: 9%; bottom: 7%; display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 16px;
+  background: rgba(22,22,26,.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: #fff; font-size: 15px; line-height: 1.5;
+  opacity: 0; transform: translateY(12px); transition: opacity .45s var(--ease), transform .55s var(--ease); }
+.pill.is-on { opacity: 1; transform: none; }
+.pill .tile { width: 28px; height: 28px; border-radius: 8px; flex: none; display: grid; place-items: center; background: var(--smart); }
+.pill .w { color: rgba(255,255,255,.35); transition: color .2s; }
+.pill .w.said { color: #fff; }
+.field .pasted { animation: pasted 1.4s var(--ease); border-radius: 4px; }
+@keyframes pasted { from { background: rgba(217,48,37,.2); } to { background: rgba(217,48,37,0); } }
+
+/* ---------- Ask section: a book page, a selection, a question ---------- */
+#ascene { aspect-ratio: 5 / 4.8; cursor: pointer; }
+.ask-vis { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.book { transition: opacity .35s var(--ease); }
+.book.swap { opacity: 0; }
+.actl { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.apause { flex: none; height: 36px; padding: 0 16px 0 12px; border-radius: 18px; border: 1px solid var(--line-2); background: #fff; color: var(--text);
+  display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s, transform .15s; }
+@media (pointer: coarse) { .apause { height: 44px; border-radius: 22px; } }
+.apause:hover { border-color: #A1A1A6; }
+.apause:active { transform: scale(.94); }
+.apause .i-play, .apause[aria-pressed="true"] .i-pause { display: none; }
+.apause[aria-pressed="true"] .i-play { display: block; }
+.apause[aria-pressed="true"] { background: var(--dark); border-color: var(--dark); color: #fff; }
+.apause:focus-visible { outline: 2px solid var(--read); outline-offset: 2px; }
+.paused .bars b, .paused .sel { animation-play-state: paused; }
+.paused .plbl::after { content: " · paused"; color: #fff; }
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.book .from { display: flex; align-items: center; gap: 10px; }
+.book .from > span:first-child { flex: 1; }
+.book .from .by { display: block; margin-top: 1px; }
+.book .body { font-family: "New York", "Iowan Old Style", Charter, Georgia, serif; font-size: 16.5px; line-height: 1.62; color: var(--text); }
+.sel { border-radius: 3px; background: linear-gradient(rgba(0,100,210,.24), rgba(0,100,210,.24)) no-repeat; background-size: 0% 100%;
+  transition: background-size .9s var(--ease); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.sel.on { background-size: 100% 100%; }
+.akeys { display: flex; gap: 3px; align-items: center; }
+.akeys .k { transition: transform .12s, box-shadow .12s, background .2s, color .2s, border-color .2s; }
+.akeys.down .k { transform: translateY(1.5px); box-shadow: 0 0 0 transparent; background: var(--smart); border-color: var(--smart); color: #fff; }
+.akeys .hold { font-size: 12px; font-weight: 500; color: var(--text-3); margin-right: 4px; transition: color .2s; }
+.akeys.down .hold { color: var(--smart); }
+.plbl { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.55); margin-bottom: 2px; }
+ol.feats { counter-reset: s; }
+.step-n { width: 22px; height: 22px; border-radius: 11px; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700;
+  background: var(--ground-2); color: var(--text-3); transition: background .3s var(--ease), color .3s var(--ease); flex: none; }
+.feat.on .step-n { background: var(--smart); color: #fff; }
+.steps .feat h3::before { display: none; }
+.steps .feat p { padding-left: 32px; }
+.steps .feat h3 { gap: 10px; }
+
+/* Narrow screens: the visual comes first, so it is the first thing seen. */
+@media (max-width: 900px) {
+  .show { grid-template-columns: 1fr; gap: 32px; padding: 64px 20px; }
+  .show.flip { grid-template-columns: 1fr; }
+  .scene, .ask-vis { order: -1; }
+  /* Single column: the scenes hug their content instead of keeping a fixed shape. */
+  .scene { aspect-ratio: auto; height: auto; padding: 46px 12px 14px; }
+  .menu, .in .menu { position: relative; right: auto; top: auto; width: auto; max-width: 330px; margin: 0 auto; transform: none; }
+  .vscene { padding: 50px 12px 12px; }
+  .vscene .card { position: relative; left: auto; right: auto; top: auto; padding: 18px; }
+  .vscene .pill { left: 22px; right: 22px; bottom: 22px; }
+  #ascene { aspect-ratio: auto; }
+  #ascene .pill { position: relative; left: auto; right: auto; bottom: auto; margin-top: 12px; min-height: 120px; }
+}
+@media (max-width: 600px) { #clock { display: none; } }
+@media (max-width: 420px) { .menu { font-size: 12.5px; } }
+@media (prefers-reduced-motion: reduce) {
+  .menu, .mi, .feat h3::before, .notch, .notch .slot, .pill, .sel, .book, .card .body, .w, .k, .step-n { transition: none; }
+  .bi.status, .bars b, .field.typing::after, .field .pasted { animation: none; }
+  .bars b { transform: scaleY(.7); }
+}
+</style>
+<style>
+/* ---------- The site’s menu bar ---------- */
+body { padding-top: 44px; }
+.mb { position: fixed; z-index: 100; top: 0; left: 0; right: 0; height: 44px; display: flex; align-items: center; gap: 2px; padding: 0 12px 0 14px;
+  font-size: 14px; background: rgba(255,255,255,.62); backdrop-filter: blur(24px) saturate(1.8); -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  border-bottom: 1px solid rgba(0,0,0,.05); transition: background .4s var(--ease), box-shadow .4s var(--ease); }
+.mb.scrolled { background: rgba(255,255,255,.8); box-shadow: 0 10px 30px -24px rgba(30,20,90,.5); }
+.mt { height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: none; font: inherit; color: var(--text); cursor: default; display: flex; align-items: center; gap: 8px; }
+.mt:hover, .mt[aria-expanded="true"] { background: rgba(0,0,0,.07); }
+.mt.app { font-weight: 700; padding-left: 6px; }
+.mt:focus-visible { outline: 2px solid var(--read); outline-offset: 1px; }
+.mwrap { position: relative; }
+/* 44px hit areas without changing the look (the bar itself is 44px tall). */
+.mt, .dlp { position: relative; }
+.mt::after, .dlp::after { content: ""; position: absolute; inset: -7px -2px; }
+@media (pointer: coarse) { .dd a { padding: 11px 12px; } }
+.mtitles { display: contents; }
+.dd { position: absolute; left: 0; top: 36px; min-width: 250px; padding: 5px; border-radius: 11px; list-style: none; margin: 0;
+  background: rgba(250,250,253,.88); backdrop-filter: blur(40px) saturate(1.8); -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  box-shadow: 0 0 0 .5px rgba(0,0,0,.2), 0 24px 50px -18px rgba(30,20,90,.4);
+  opacity: 0; visibility: hidden; transform: translateY(-4px) scale(.98); transform-origin: top left; pointer-events: none;
+  transition: opacity .14s, transform .2s var(--ease), visibility 0s .2s; }
+.mt[aria-expanded="true"] + .dd { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: 0s; }
+.dd a { display: flex; align-items: center; gap: 10px; padding: 5px 10px; border-radius: 6px; color: var(--text); text-decoration: none; white-space: nowrap; }
+.dd a:hover, .dd a:focus-visible { background: var(--menu-blue); color: #fff; outline: none; }
+.dd a .sc { margin-left: auto; padding-left: 20px; color: rgba(0,0,0,.4); letter-spacing: .04em; }
+.dd a:hover .sc, .dd a:focus-visible .sc { color: rgba(255,255,255,.8); }
+.dd a .dot { width: 7px; height: 7px; border-radius: 4px; background: var(--c); flex: none; }
+.dd .h { padding: 6px 10px 2px; font-size: 11.5px; font-weight: 600; color: rgba(0,0,0,.42); }
+.dd .sep { height: 1px; margin: 5px 10px; background: rgba(0,0,0,.09); }
+.dd .about { padding: 10px; display: flex; gap: 12px; align-items: center; font-size: 13px; color: var(--text-3); }
+.dd .about b { display: block; color: var(--text); font-size: 14px; }
+
+.mb-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.mb-clock { padding: 0 8px; font-variant-numeric: tabular-nums; color: var(--text); }
+.dlp { height: 32px; margin-left: 4px; padding: 0 14px 0 11px; border-radius: 999px; display: flex; align-items: center; gap: 7px;
+  background: var(--dark); color: #fff; font-weight: 600; font-size: 13.5px; text-decoration: none; white-space: nowrap;
+  transition: box-shadow .5s var(--ease), transform .2s var(--ease); }
+.dlp:hover { background: #000; transform: translateY(-1px); }
+.dlp .more { display: inline-block; max-width: 0; overflow: hidden; opacity: 0; vertical-align: bottom; transition: max-width .6s var(--ease), opacity .4s var(--ease); }
+.mb.cta .dlp .more { max-width: 70px; opacity: 1; }
+.mb.cta .dlp { box-shadow: 0 0 0 4px rgba(107,112,255,.2), 0 8px 20px -8px rgba(64,48,199,.6); }
+
+/* ---------- Hero stub and download rows ---------- */
+.hero { max-width: 1120px; margin: 0 auto; padding: 112px 24px 48px; display: flex; flex-direction: column; gap: 20px; align-items: center; text-align: center; }
+.hero-icon { width: 96px; height: 96px; margin-bottom: 8px; filter: drop-shadow(0 18px 28px rgba(64,48,199,.35)); }
+.hero h1 { margin: 0; font-weight: 800; letter-spacing: -.035em; line-height: 1; font-size: clamp(46px, 6.4vw, 80px); }
+.hero .lead { max-width: 34rem; font-size: 20px; }
+.ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; }
+.dl { display: inline-flex; align-items: center; gap: 9px; min-height: 52px; padding: 0 24px; border-radius: 999px; background: var(--dark); color: #fff;
+  font-weight: 600; font-size: 17px; text-decoration: none; transition: transform .2s var(--ease), background .2s; }
+.dl:hover { background: #000; transform: translateY(-1px); }
+.ghost { display: inline-flex; align-items: center; min-height: 52px; padding: 0 22px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--text); text-decoration: none; font-size: 17px; font-weight: 600; }
+.ghost:hover { background: var(--ground-2); }
+.dl:focus-visible, .ghost:focus-visible, .dlp:focus-visible { outline: 2px solid var(--read); outline-offset: 3px; }
+.skip { position: fixed; z-index: 200; left: 12px; top: -60px; padding: 10px 16px; border-radius: 999px; background: var(--dark); color: #fff; font-weight: 600; text-decoration: none; }
+.skip:focus { top: 8px; }
+.get { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.get .dl { min-height: 44px; padding: 0 18px; font-size: 15px; }
+.get span { font-size: 13.5px; color: var(--text-3); }
+
+@media (max-width: 760px) {
+  .mtitles, .mb-clock, .dlp .more { display: none; }
+  .hero { padding-top: 56px; }
+  .hero h1 br { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .dd, .dlp, .dlp .more, .dl { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="mb" id="mb">
+  <nav aria-label="Main" style="display:contents">
+    <div class="mwrap">
+      <button class="mt app" aria-expanded="false">
+        <svg width="22" height="22" viewBox="0 0 30 30" aria-hidden="true"><defs><linearGradient id="ic" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6B70FF"/><stop offset="1" stop-color="#4030C7"/></linearGradient></defs><rect width="30" height="30" rx="7" fill="url(#ic)"/><rect x="6.5" y="12" width="2.6" height="6" rx="1.3" fill="#fff"/><rect x="11.2" y="8" width="2.6" height="14" rx="1.3" fill="#fff"/><rect x="15.9" y="10" width="2.6" height="10" rx="1.3" fill="#fff"/><rect x="20.6" y="13" width="2.6" height="4" rx="1.3" fill="#fff"/></svg>
+        VibeFlow
+      </button>
+      <ul class="dd">
+        <li class="about"><span><b>VibeFlow 1.5.0</b>Free, open source, MIT</span></li>
+        <li class="sep"></li>
+        <li><a href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg">Download for Mac…</a></li>
+        <li><a href="https://github.com/floo-one/vibeflow/blob/main/CHANGELOG.md">What’s New</a></li>
+        <li><a href="https://github.com/floo-one/vibeflow">Source on GitHub</a></li>
+      </ul>
+    </div>
+    <div class="mtitles">
+      <div class="mwrap">
+        <button class="mt" aria-expanded="false">Voice</button>
+        <ul class="dd">
+          <li><a href="#voice" style="--c:var(--read)"><span class="dot"></span>Read<span class="sc">⌥ .</span></a></li>
+          <li><a href="#voice" style="--c:var(--smart)"><span class="dot"></span>Smart read<span class="sc">⌥ ,</span></a></li>
+          <li><a href="#voice" style="--c:var(--dictation)"><span class="dot"></span>Dictation<span class="sc">⌥ <span class="dk">-</span></span></a></li>
+          <li class="sep"></li>
+          <li><a href="#keys">All shortcuts</a></li>
+        </ul>
+      </div>
+      <div class="mwrap">
+        <button class="mt" aria-expanded="false">Tools</button>
+        <ul class="dd">
+          <li class="h">New in 1.5</li>
+          <li><a href="#show">Transcribe File</a></li>
+          <li><a href="#show">Pomodoro</a></li>
+          <li><a href="#show">Keep Awake</a></li>
+          <li class="sep"></li>
+          <li><a href="https://vibeflow.floo.one/meetings/">Meetings</a></li>
+          <li><a href="https://vibeflow.floo.one/clocks/">Clocks</a></li>
+        </ul>
+      </div>
+      <div class="mwrap">
+        <button class="mt" aria-expanded="false">Help</button>
+        <ul class="dd">
+          <li><a href="https://vibeflow.floo.one/#keys">Pricing</a></li>
+          <li><a href="https://vibeflow.floo.one/#privacy">Privacy</a></li>
+          <li><a href="https://vibeflow.floo.one/#faq">Questions</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="mb-right">
+      <span class="mb-clock" id="mb-clock" aria-hidden="true">Do. 5. Nov. 09:41</span>
+      <a class="dlp" href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        <span>Download<span class="more">&nbsp;for Mac</span></span>
+      </a>
+    </div>
+  </nav>
+</header>
+
+<main id="main">
+<section class="hero" id="top">
+  <svg class="hero-icon" viewBox="0 0 30 30" aria-hidden="true"><defs><linearGradient id="ic-hero" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6B70FF"/><stop offset="1" stop-color="#4030C7"/></linearGradient></defs><rect width="30" height="30" rx="7" fill="url(#ic-hero)"/><rect x="6.5" y="12" width="2.6" height="6" rx="1.3" fill="#fff"/><rect x="11.2" y="8" width="2.6" height="14" rx="1.3" fill="#fff"/><rect x="15.9" y="10" width="2.6" height="10" rx="1.3" fill="#fff"/><rect x="20.6" y="13" width="2.6" height="4" rx="1.3" fill="#fff"/></svg>
+  <p class="eyebrow">Free and open source · macOS 15 or later</p>
+  <h1>Everything your Mac <br />was missing.</h1>
+  <p class="lead">Hear any text, ask it a question, dictate, transcribe a call, focus, keep awake. One small app, free and open source.</p>
+  <div class="ctas">
+    <a class="dl" id="hero-dl" href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+      Download for Mac
+    </a>
+    <a class="ghost" href="https://github.com/floo-one/vibeflow">Source on GitHub</a>
+  </div>
+</section>
+
+<section class="show" id="show" aria-labelledby="show-title">
+  <div>
+    <p class="eyebrow">New in 1.5</p>
+    <h2 id="show-title">One menu.<br />Everything in reach.</h2>
+    <p class="lead">Voice, focus and the little things, grouped by what you’re doing. The menu bar stays quiet until something is running.</p>
+    <ul class="feats" id="feats">
+      <li><button class="feat" data-row="transcribe" style="--c:var(--icon-bottom)">
+        <h3>Transcribe any file</h3>
+        <p>Calls and meetings come back with speakers, a summary and action items.</p>
+      </button></li>
+      <li><button class="feat" data-row="focus" data-status="focus" style="--c:var(--tools)">
+        <h3>Pomodoro</h3>
+        <p>Focus and break rounds, a chime between them, and your streak.</p>
+      </button></li>
+      <li><button class="feat" data-row="awake" data-status="awake" style="--c:var(--tools)">
+        <h3>Keep Awake</h3>
+        <p>Keeps your Mac awake for an hour, a day or until you stop it.</p>
+      </button></li>
+      <li><button class="feat" data-row="feedback" style="--c:var(--smart)">
+        <h3>Send Feedback</h3>
+        <p>A bug, an idea or some love. You see exactly what gets sent.</p>
+      </button></li>
+    </ul>
+    <div class="get"><a class="dl" href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg">Download for Mac</a><span>Free · 1.5.0 · updates itself</span></div>
+  </div>
+
+  <div class="scene" id="scene" role="img" aria-label="The VibeFlow menu in the macOS menu bar, grouped into Voice, Focus and Time, and Utilities">
+    <div class="bar" aria-hidden="true">
+      <div class="bi status" id="st-focus" hidden>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/></svg>24:12
+      </div>
+      <div class="bi status" id="st-awake" hidden>
+        <svg width="15" height="14" viewBox="0 0 26 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h14v6a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6z"/><path d="M18 11h1.5a2.5 2.5 0 0 1 0 5H18M8 3v2M12 3v2"/></svg>1:00
+      </div>
+      <div class="bi clocks">
+        <span class="clk"><svg width="16" height="11" viewBox="0 0 5 3"><rect width="5" height="1" fill="#000"/><rect y="1" width="5" height="1" fill="#D00"/><rect y="2" width="5" height="1" fill="#FFCE00"/></svg><span data-tz="Europe/Berlin">09:41</span></span>
+        <span class="clk"><svg width="16" height="11" viewBox="0 0 6 4"><rect width="6" height="4" fill="#A51931"/><rect y=".667" width="6" height="2.667" fill="#F4F5F8"/><rect y="1.333" width="6" height="1.333" fill="#2D2A4A"/></svg><span data-tz="Asia/Bangkok">15:41</span></span>
+        <span class="clk"><svg width="16" height="11" viewBox="0 0 19 13"><rect width="19" height="13" fill="#B22234"/><path d="M0 1.5h19M0 3.5h19M0 5.5h19M0 7.5h19M0 9.5h19M0 11.5h19" stroke="#fff" stroke-width="1"/><rect width="8" height="7" fill="#3C3B6E"/></svg><span data-tz="America/New_York">03:41</span></span>
+      </div>
+      <div class="bi open"><div class="glyph"><b style="height:5px"></b><b style="height:9px"></b><b style="height:14px"></b><b style="height:8px"></b><b style="height:5px"></b></div></div>
+      <div class="bi" id="clock">Do. 5. Nov. 09:41</div>
+    </div>
+
+    <div class="menu" aria-hidden="true">
+      <div class="mh">Voice</div>
+      <div class="mi">Read selection<span class="sc">⌥ .</span></div>
+      <div class="mi">Smart read selection<span class="sc">⌥ ,</span></div>
+      <div class="mi">Hold to dictate<span class="sc">⌥ <span class="dk">-</span></span></div>
+      <div class="mi" data-row="transcribe">Transcribe File…<span class="new">New</span></div>
+      <div class="sep"></div>
+      <div class="mh">Focus &amp; Time</div>
+      <div class="mi" data-row="focus"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/></svg>Pomodoro<span class="new">New</span></div>
+      <div class="mi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Standup · 10:00</div>
+      <div class="sep"></div>
+      <div class="mh">Utilities</div>
+      <div class="mi" data-row="awake"><svg width="15" height="15" viewBox="0 0 26 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h14v6a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6z"/><path d="M18 11h1.5a2.5 2.5 0 0 1 0 5H18M8 3v2M12 3v2"/></svg>Keep Awake<span class="new">New</span></div>
+      <div class="sep"></div>
+      <div class="mi" data-row="feedback">Send Feedback…<span class="new">New</span></div>
+      <div class="mi">Settings…<span class="sc">⌘ ,</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="show flip" id="voice" aria-labelledby="voice-title">
+  <div class="copy">
+    <p class="eyebrow">Voice</p>
+    <h2 id="voice-title">Three keys.<br />Every app.</h2>
+    <p class="lead">Option and the three keys right above it. Select text anywhere, press one, and your Mac talks back. Or talk, and it types.</p>
+    <ul class="feats" id="vfeats">
+      <li><button class="feat" data-f="read" style="--c:var(--read)">
+        <div class="row"><h3>Read</h3><span class="keys"><span class="k">⌥</span><span class="k key">.</span></span></div>
+        <p>Any selected text, in a natural voice, in under a second.</p>
+      </button></li>
+      <li><button class="feat" data-f="smart" style="--c:var(--smart)">
+        <div class="row"><h3>Smart read</h3><span class="keys"><span class="k">⌥</span><span class="k key">,</span></span></div>
+        <p>What it means, in a few spoken sentences. Hold the key to ask back.</p>
+      </button></li>
+      <li><button class="feat" data-f="dict" style="--c:var(--dictation)">
+        <div class="row"><h3>Dictation</h3><span class="keys"><span class="hold">hold</span><span class="k">⌥</span><span class="k key dk">-</span></span></div>
+        <p>Talk, let go, and it’s typed where you were, cleaned up.</p>
+      </button></li>
+    </ul>
+    <div class="get"><a class="dl" href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg">Download for Mac</a><span>Works without any keys · no account</span></div>
+  </div>
+
+  <div class="scene vscene" id="vscene" role="img" aria-label="An email in a Mac window: Read highlights it word by word, Smart read speaks a one-line brief, Dictation types a reply">
+    <div class="bar vbar" aria-hidden="true">
+      <span style="font-weight:700;padding-left:6px">Mail</span>
+      <div class="notch" id="vnotch">
+        <div class="slot l">
+          <svg class="ic i-read" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+          <svg class="ic i-smart" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M18.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>
+          <svg class="ic i-dict" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </div>
+        <div class="slot r"><div class="bars"><b></b><b></b><b></b><b></b><b></b></div></div>
+      </div>
+      <span class="glyph" style="padding-right:8px"><b style="height:5px"></b><b style="height:9px"></b><b style="height:14px"></b><b style="height:8px"></b><b style="height:5px"></b></span>
+    </div>
+
+    <div class="card" id="vcard" aria-hidden="true">
+      <p class="from"><b>Lena Hoffmann</b> · Lisbon offsite</p>
+      <p class="body" id="vbody">Three things I need from you by Friday: your arrival time, any dietary needs, and whether you want to join the boat trip on Thursday.</p>
+      <div class="field" id="vfield"></div>
+    </div>
+
+    <div class="pill" id="vpill" aria-hidden="true">
+      <span class="tile"><svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/></svg></span>
+      <span id="vbrief">Lena needs three answers by Friday: when you land, what you eat, and yes or no to the boat.</span>
+    </div>
+  </div>
+</section>
+
+<section class="show" id="ask" aria-labelledby="ask-title">
+  <div class="copy">
+    <p class="eyebrow">Ask back</p>
+    <h2 id="ask-title">Select it.<br />Ask it.</h2>
+    <p class="lead">Stuck on a line in a book, a paper or a long thread? Select it, hold the smart read key and ask, out loud. Let go, and the answer is spoken, grounded in what you’re reading.</p>
+    <ol class="feats steps" id="asteps">
+      <li class="feat"><h3><span class="step-n">1</span>Select what you’re reading</h3><p>A phrase, a paragraph or a whole page, in any app.</p></li>
+      <li class="feat"><h3><span class="step-n">2</span>Hold <span class="keys" style="margin-left:2px"><span class="k">⌥</span><span class="k">,</span></span> and ask</h3><p>In your own words: “What does that mean?”</p></li>
+      <li class="feat"><h3><span class="step-n">3</span>Let go and listen</h3><p>A short answer in a few sentences. Ask again; it remembers the text.</p></li>
+    </ol>
+    <div class="get"><a class="dl" href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg">Download for Mac</a><span>Smart read needs an Anthropic key · pay as you go</span></div>
+  </div>
+
+  <div class="ask-vis">
+  <div class="scene vscene" id="ascene" aria-hidden="true">
+    <div class="bar vbar">
+      <span style="font-weight:700;padding-left:6px">Books</span>
+      <div class="notch" id="anotch" style="--tint:#9D95FF">
+        <div class="slot l">
+          <svg class="ic i-smart" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M18.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>
+          <svg class="ic i-dict" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </div>
+        <div class="slot r"><div class="bars"><b></b><b></b><b></b><b></b><b></b></div></div>
+      </div>
+      <span class="glyph" style="padding-right:8px"><b style="height:5px"></b><b style="height:9px"></b><b style="height:14px"></b><b style="height:8px"></b><b style="height:5px"></b></span>
+    </div>
+
+    <div class="card book" id="abook">
+      <p class="from"><span id="asrc"><b>The Beginning of Infinity</b><span class="by">David Deutsch</span></span>
+        <span class="akeys" id="akeys"><span class="hold">hold</span><span class="k">⌥</span><span class="k">,</span></span></p>
+      <p class="body" id="abody">Deutsch’s claim is that all progress comes from one thing: the search for good explanations. A bad explanation can be bent to fit any outcome, so it tells us nothing. Good explanations are <span class="sel on" id="asel">hard to vary</span>: every detail does work, and you can’t change one without breaking the whole.</p>
+    </div>
+
+    <div class="pill" id="apill">
+      <span class="tile" id="atile"></span>
+      <span><span class="plbl" id="albl" style="display:block"></span><span id="atxt"></span></span>
+    </div>
+  </div>
+
+  <div class="actl">
+    <button class="apause" id="apause" aria-pressed="false">
+      <svg class="i-pause" width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><rect x="2" y="1.5" width="3" height="9" rx="1"/><rect x="7" y="1.5" width="3" height="9" rx="1"/></svg>
+      <svg class="i-play" width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M3 1.8v8.4a.6.6 0 0 0 .9.5l7-4.2a.6.6 0 0 0 0-1L3.9 1.3a.6.6 0 0 0-.9.5z"/></svg>
+      <span id="apause-t">Pause</span>
+    </button>
+  </div>
+  <p class="visually-hidden" id="aread" aria-live="polite"></p>
+  </div>
+</section>
+
+<!-- ---------- Shortcuts: the key map, a scroll-driven tour of every voice shortcut ---------- -->
+<style>
+/* Everything is scoped to #keys and prefixed kt- so it cannot meet the showcase's own .k, .bars
+   or .steps. The keyboard is the bottom of a German MacBook; it pans and zooms to the keys of
+   the step at the reading line. Snapping is on only while the tour fills the screen. */
+#keys { --kt-page: color-mix(in srgb, var(--kt-active, var(--dictation)) 6%, var(--ground));
+  --kt-alu: #C9CACF; --kt-cap: #1C1C1E; --kt-cap-fg: #F5F5F7;
+  background: var(--kt-page); transition: background-color .6s var(--ease); }
+.kt-wrap { max-width: 1120px; margin: 0 auto; padding: 88px 24px 40px; }
+.kt-head .lead { max-width: 30rem; }
+.kt-body { margin-top: 48px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 56px; align-items: start; }
+.kt-stage { position: sticky; top: max(68px, calc(50vh - 190px)); container-type: inline-size; display: flex; flex-direction: column; gap: 16px; }
+.kt-secs { list-style: none; margin: 0; padding: 0 0 62vh; display: flex; flex-direction: column; gap: 28px; }
+
+.kt-groups { display: flex; flex-wrap: wrap; gap: 6px; }
+.kt-groups button { font: 600 13px var(--font); border: 0; border-radius: 999px; padding: 6px 12px 6px 10px; background: var(--ground); color: var(--text-3); cursor: pointer;
+  display: flex; align-items: center; gap: 7px; box-shadow: 0 0 0 1px var(--line); transition: background .3s, color .3s; }
+.kt-groups button i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.kt-groups button.on { background: var(--c); color: #fff; box-shadow: none; }
+.kt-groups button.on i { background: #fff; }
+.kt-groups button:focus-visible { outline: 2px solid var(--read); outline-offset: 2px; }
+
+.kt-screen { align-self: flex-start; max-width: 100%; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 18px 0 12px; border-radius: 999px;
+  background: rgba(22,22,26,.9); color: #fff; font-size: 14px; font-weight: 500; box-shadow: 0 10px 30px -12px rgba(0,0,0,.45); }
+.kt-ico { width: 26px; height: 26px; border-radius: 50%; background: var(--c); display: grid; place-items: center; flex: none; transition: background .3s; }
+.kt-eq { display: flex; gap: 2px; align-items: center; height: 12px; }
+.kt-eq span { width: 2px; height: 4px; border-radius: 1px; background: #fff; }
+.kt-screen[data-state="live"] .kt-eq span { animation: kt-eq .9s ease-in-out infinite; }
+.kt-eq span:nth-child(2) { animation-delay: -.6s !important; } .kt-eq span:nth-child(3) { animation-delay: -.3s !important; } .kt-eq span:nth-child(4) { animation-delay: -.75s !important; }
+@keyframes kt-eq { 0%, 100% { height: 3px; } 50% { height: 12px; } }
+.kt-check { display: none; width: 12px; height: 12px; }
+.kt-screen[data-state="done"] .kt-eq { display: none; } .kt-screen[data-state="done"] .kt-check { display: block; }
+.kt-scr { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.kt-win { --u: min(46px, calc((100cqw - 4px) / 15.45)); position: relative; overflow: hidden; padding: 2px 0 8px; }
+.kt-board { position: relative; width: max-content; transform-origin: 0 0; transition: transform .7s cubic-bezier(.2,.8,.2,1);
+  background: var(--kt-alu); border-radius: calc(var(--u) * .34); padding: calc(var(--u) * .24); display: flex; flex-direction: column; gap: calc(var(--u) * .1);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 0 0 1px #B7B8BE, 0 30px 60px -30px rgba(0,0,0,.35); }
+.kt-row { display: flex; gap: calc(var(--u) * .1); }
+.kt-k { --c: var(--text-3); position: relative; width: calc(var(--u) * var(--w, 1) - var(--u) * .1); height: var(--u); flex: none; background: var(--kt-cap);
+  color: color-mix(in srgb, var(--kt-cap-fg) 38%, transparent); border-radius: calc(var(--u) * .14); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: calc(var(--u) * .34); line-height: 1.05; box-shadow: 0 calc(var(--u) * .05) 0 rgba(0,0,0,.35); user-select: none;
+  transition: background .25s, color .25s, transform .09s ease-out, box-shadow .09s; }
+.kt-k small { font-size: calc(var(--u) * .23); opacity: .55; }
+.kt-k.mod { font-size: calc(var(--u) * .2); align-items: flex-start; justify-content: flex-end; padding: 0 0 calc(var(--u) * .1) calc(var(--u) * .13); }
+.kt-k.mod.r { align-items: flex-end; padding: 0 calc(var(--u) * .13) calc(var(--u) * .1) 0; }
+.kt-k.mod i { font-style: normal; font-size: calc(var(--u) * .27); position: absolute; top: calc(var(--u) * .08); right: calc(var(--u) * .13); opacity: .55; }
+.kt-k.mod.r i { left: calc(var(--u) * .13); right: auto; }
+.kt-k.ret2 { border-radius: 0 0 calc(var(--u) * .14) calc(var(--u) * .14); }
+.kt-row.ctx .kt-k { opacity: .5; }
+.kt-arrows { width: calc(var(--u) * 3 - var(--u) * .1); height: var(--u); display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: calc(var(--u) * .06); }
+.kt-arrows .kt-k { width: auto; height: auto; font-size: calc(var(--u) * .18); }
+.kt-arrows .lr { grid-row: 2; } .kt-arrows .up { grid-column: 2; grid-row: 1; }
+.kt-k.lit { background: var(--c); color: #fff; }
+.kt-k.lit small, .kt-k.lit i { opacity: .8; }
+.kt-k.down { transform: translateY(calc(var(--u) * .05)) scale(.97); box-shadow: 0 0 0 calc(var(--u) * .08) color-mix(in srgb, var(--c) 30%, transparent); }
+.kt-k .fill { position: absolute; inset: auto 0 0 0; height: 0; background: rgba(255,255,255,.28); border-radius: inherit; }
+.kt-k.hold .fill { animation: kt-fill 1.6s linear forwards; }
+@keyframes kt-fill { to { height: 100%; } }
+
+.kt-sec { background: var(--ground); border-radius: 22px; padding: 26px 24px 10px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent); transition: box-shadow .4s; }
+.kt-sec.on { box-shadow: 0 0 0 2px var(--c), 0 20px 40px -28px var(--c); }
+.kt-sh { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.kt-sh .lbl { display: flex; gap: 4px; }
+.kt-sh .lbl kbd { font: 700 13px var(--font); background: var(--c); color: #fff; border-radius: 6px; min-width: 24px; height: 24px; padding: 0 7px; display: inline-grid; place-items: center; }
+.kt-sh h3 { font-size: clamp(26px, 2.6vw, 32px); letter-spacing: -.02em; line-height: 1.1; font-weight: 800; color: var(--c); margin: 4px 0 0; }
+.kt-sh p { color: var(--text-2); font-size: 15px; line-height: 1.5; }
+.kt-subs { list-style: none; margin: 8px 0 0; padding: 0 0 0 18px; border-left: 2px solid color-mix(in srgb, var(--c) 25%, transparent); }
+.kt-step { position: relative; min-height: 18vh; display: flex; flex-direction: column; gap: 8px; padding: 18px 0 26px; opacity: .38; transition: opacity .35s; cursor: pointer; }
+.kt-step::before { content: ""; position: absolute; left: -25px; top: 58px; width: 12px; height: 12px; border-radius: 50%; background: var(--ground);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 40%, transparent); transition: background .3s, box-shadow .3s; }
+.kt-step.on { opacity: 1; }
+.kt-step.on::before { background: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 22%, transparent); }
+.kt-how { font-size: 12px; font-weight: 600; color: var(--text-3); }
+.kt-how em { font-style: normal; border: 1px solid var(--line-2); border-radius: 999px; padding: 0 8px; }
+.kt-step h4 { margin: 0; font-size: 19px; letter-spacing: -.01em; line-height: 1.2; font-weight: 650; }
+.kt-step p { color: var(--text-2); font-size: 15px; line-height: 1.5; max-width: 34ch; }
+.kt-combo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.kt-combo kbd { font: 600 13px var(--font); background: var(--ground-2); color: var(--text); border-radius: 7px; padding: 4px 9px; box-shadow: inset 0 -1px 0 var(--line), 0 0 0 1px var(--line); }
+.kt-combo kbd.key { background: var(--c); color: #fff; box-shadow: none; }
+.kt-combo span { color: var(--text-3); font-size: 13px; }
+.kt-combo span.then { font-weight: 600; color: var(--text-2); }
+.kt-foot { max-width: 1120px; margin: 0 auto; padding: 0 24px 72px; font-size: 13.5px; line-height: 1.5; color: var(--text-3); }
+.kt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Snap, only while the tour fills the screen (the script sets the class and scroll-padding). */
+html.kt-snap { scroll-snap-type: y mandatory; }
+.kt-head { scroll-snap-align: start; scroll-margin-top: 44px; }
+.kt-snap-at { scroll-snap-align: start; scroll-snap-stop: always; scroll-margin-top: var(--m); }
+.kt-sh.kt-snap-at { --m: 48px; } .kt-step h4.kt-snap-at { --m: 52px; }
+.kt-end { scroll-snap-align: end; }
+
+@media (max-width: 900px) {
+  .kt-wrap { padding: 64px 20px 24px; }
+  .kt-body { display: block; margin-top: 28px; }
+  .kt-stage { top: 44px; z-index: 5; background: var(--kt-page); transition: background-color .6s var(--ease); gap: 10px;
+    margin: 0 -20px; padding: 12px 20px 10px; box-shadow: 0 12px 16px -14px rgba(0,0,0,.25); }
+  .kt-win { --u: calc(100cqw / 9.4); }
+  .kt-screen { min-height: 36px; font-size: 13px; }
+  .kt-secs { padding-top: 12px; }
+  .kt-sec { padding: 20px 16px 6px; }
+  .kt-step { min-height: 20vh; }
+  .kt-sh.kt-snap-at { --m: 36px; }
+  .kt-foot { padding: 0 20px 56px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #keys, .kt-stage, .kt-board, .kt-k, .kt-step, .kt-sec, .kt-groups button { transition: none; }
+  .kt-screen .kt-eq span, .kt-k.hold .fill { animation: none !important; }
+}
+</style>
+
+<section id="keys" aria-labelledby="keys-title">
+  <div class="kt-wrap">
+    <div class="kt-head">
+      <p class="eyebrow">Shortcuts</p>
+      <h2 id="keys-title">Learn them<br />in one scroll.</h2>
+      <p class="lead">Hold Option and press the key right above it. Add Shift for the clipboard or hands-free.</p>
+    </div>
+    <div class="kt-body">
+      <div class="kt-stage" aria-live="polite">
+        <div class="kt-groups" id="kt-groups"></div>
+        <div class="kt-screen" id="kt-screen" data-state="live" aria-hidden="true">
+          <span class="kt-ico"><span class="kt-eq"><span></span><span></span><span></span><span></span></span>
+            <svg class="kt-check" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.3 5 8.7l4.5-5.2"/></svg></span>
+          <span class="kt-scr" id="kt-scr"></span>
+        </div>
+        <div class="kt-win" id="kt-win" aria-hidden="true"><div class="kt-board" id="kt-board"></div></div>
+        <p class="kt-sr" id="kt-now"></p>
+      </div>
+      <ol class="kt-secs" id="kt-secs"></ol>
+    </div>
+  </div>
+  <p class="kt-foot kt-end">Voice shortcuts are shown with the right Shift and Option, paste with the left hand; either side works the same. Every shortcut can be changed in Settings.</p>
+</section>
+
+<script>
+// Shortcuts tour: four sections (Dictation, Smart read, Read, Paste again). The step whose
+// headline sits at the reading line lights its keys, the keyboard pans and zooms to them, and
+// the presses play on a loop (the first round faster, so a quick scroll still teaches it).
+(() => {
+  const $ = id => document.getElementById(id);
+  const section = $('keys'), board = $('kt-board'), win = $('kt-win'), secsEl = $('kt-secs'), groupsEl = $('kt-groups');
+  const screen = $('kt-screen'), scr = $('kt-scr'), now = $('kt-now');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // The dictation key: "-" on German keyboards, "/" elsewhere (the showcase's .dk rule refines it).
+  const dk = /^de\b/i.test(navigator.language) ? '-' : '/';
+
+  const ROWS = [
+    [['caps','⇪',1.75],...'ASDFGHJKLÖÄ'.split('').map(c=>[c.toLowerCase(),c,1]),['#','#',1,"'"],['ret2','',1.25,'','ret2']],
+    [['shiftL','shift',1.25,'⇧','mod'],['<','<',1,'>'],...'YXCVBNM'.split('').map(c=>[c.toLowerCase(),c,1]),['comma',',',1,';'],['period','.',1,':'],['slash',dk,1,'_','dk'],['shiftR','shift',2.75,'⇧','mod r']],
+    [['fn','fn',1,'◎','mod'],['ctrl','control',1,'⌃','mod'],['optL','option',1,'⌥','mod'],['cmdL','command',1.25,'⌘','mod'],['space','',5.5],['cmdR','command',1.25,'⌘','mod r'],['optR','option',1,'⌥','mod r']],
+  ];
+  const NAME = { optL:'⌥ Option', optR:'⌥ Option', cmdL:'⌘ Command', shiftL:'⇧ Shift', shiftR:'⇧ Shift', comma:',', period:'.', slash:dk, v:'V' };
+  const SECTIONS = [
+    { id:'talk', c:'--dictation', title:'Dictation', key:['⌥', dk], blurb:'Speak, and the text appears where your cursor is.', steps:[
+      { name:'Push to talk', text:'Hold while you speak. Let go and it is typed.', parts:[{ keys:['optR','slash'], how:'hold', live:'Listening', done:'Typed into your app' }] },
+      { name:'Hands-free', text:'Press once and talk as long as you like. Press again to stop.', parts:[{ keys:['shiftR','optR','slash'], how:'toggle', live:'Recording hands-free', done:'Stopped and typed' }] },
+    ]},
+    { id:'smart', c:'--smart', title:'Smart read', key:['⌥', ','], blurb:'Select text first. The AI works on exactly that text and answers out loud.', steps:[
+      { name:'Smart read the selected text', text:'Select text anywhere, then tap. You hear what it means.', parts:[{ keys:['optR','comma'], how:'tap', live:'Thinking about the selected text' }] },
+      { name:'Ask about the selected text', text:'Select text, then hold the same keys and ask out loud. Let go to get the answer.', parts:[{ keys:['optR','comma'], how:'hold', live:'Listening to your question', done:'Answering out loud' }] },
+      { name:'Smart read the clipboard', text:'No selection needed: add Shift and it uses what you copied.', parts:[{ keys:['shiftR','optR','comma'], how:'tap', live:'Thinking about the clipboard' }] },
+      { name:'Ask about the clipboard', text:'Smart read the clipboard first. Then, with nothing selected, hold and ask.', parts:[
+        { keys:['shiftR','optR','comma'], how:'tap', live:'Thinking about the clipboard' },
+        { keys:['optR','comma'], how:'hold', live:'Listening to your question', done:'Answering out loud' }] },
+    ]},
+    { id:'read', c:'--read', title:'Read', key:['⌥', '.'], blurb:'Hear any text in a natural voice.', steps:[
+      { name:'Read the selection', text:'Select text and tap. Tap again to stop.', parts:[{ keys:['optR','period'], how:'tap', live:'Reading aloud' }] },
+      { name:'Read the clipboard', text:'Add Shift to hear what you copied.', parts:[{ keys:['shiftR','optR','period'], how:'tap', live:'Reading the clipboard' }] },
+    ]},
+    { id:'paste', c:'--tools', title:'Paste again', key:['⌥', '⌘', 'V'], blurb:'Put the last result where you need it.', steps:[
+      { name:'Last dictation', text:'Like ⌘ V with Option added: Option and Command sit side by side.', parts:[{ keys:['optL','cmdL','v'], how:'tap', done:'Dictation pasted' }] },
+      { name:'Last smart read', text:'Same, plus Shift.', parts:[{ keys:['shiftL','optL','cmdL','v'], how:'tap', done:'Answer pasted' }] },
+    ]},
+  ];
+  const HOW = { tap:'Tap', hold:'Hold', toggle:'Press to start and stop' };
+
+  // Keyboard
+  ROWS.forEach((r, n) => {
+    const row = document.createElement('div'); row.className = 'kt-row' + (n === 0 ? ' ctx' : '');
+    r.forEach(([id, lab, w, sub, kind]) => {
+      const k = document.createElement('div');
+      k.className = 'kt-k' + (kind && kind !== 'dk' ? ' ' + kind : ''); k.dataset.id = id; k.style.setProperty('--w', w);
+      if (kind && kind.startsWith('mod')) k.innerHTML = `<i>${sub}</i>${lab}`;
+      else k.innerHTML = (sub ? `<small>${sub}</small>` : '') + `<span${kind === 'dk' ? ' class="dk"' : ''}>${lab}</span>`;
+      k.insertAdjacentHTML('beforeend', '<span class="fill"></span>');
+      row.appendChild(k);
+    });
+    if (n === 2) row.insertAdjacentHTML('beforeend', '<div class="kt-arrows"><div class="kt-k up">▲</div><div class="kt-k lr">◀</div><div class="kt-k lr">▼</div><div class="kt-k lr">▶</div></div>');
+    board.appendChild(row);
+  });
+  const keyOf = id => board.querySelector(`.kt-k[data-id="${id}"]`);
+
+  // Sections and steps
+  const flat = [];
+  const combo = keys => keys.map((id, n) => `<kbd class="${n === keys.length - 1 ? 'key' : ''}${id === 'slash' ? ' dk' : ''}">${NAME[id]}</kbd>`).join('<span>+</span>');
+  SECTIONS.forEach(sec => {
+    const li = document.createElement('li'); li.className = 'kt-sec'; li.style.setProperty('--c', `var(${sec.c})`); li.dataset.sec = sec.id;
+    li.innerHTML = `<div class="kt-sh"><span class="lbl">${sec.key.map(k => `<kbd${k === dk ? ' class="dk"' : ''}>${k}</kbd>`).join('')}</span><h3>${sec.title}</h3><p>${sec.blurb}</p></div><ol class="kt-subs"></ol>`;
+    const subs = li.querySelector('.kt-subs');
+    sec.steps.forEach(s => {
+      const el = document.createElement('li'); el.className = 'kt-step';
+      const how = s.parts.length > 1 ? 'Tap, then hold' : HOW[s.parts[0].how];
+      const combos = s.parts.map((p, n) => (n && p.how === 'hold' ? '<span class="then">then hold</span>' : '') + combo(p.keys)).join('');
+      el.innerHTML = `<div class="kt-how"><em>${how}</em></div><h4>${s.name}</h4><div class="kt-combo">${combos}</div><p>${s.text}</p>`;
+      const anchor = subs.children.length ? el.querySelector('h4') : li.querySelector('.kt-sh');
+      anchor.classList.add('kt-snap-at');
+      const i = flat.length; flat.push({ s, sec, el, anchor });
+      el.addEventListener('click', () => go(i));
+      subs.appendChild(el);
+    });
+    secsEl.appendChild(li);
+  });
+  groupsEl.innerHTML = SECTIONS.map(s => `<button type="button" data-g="${s.id}" style="--c:var(${s.c})"><i></i>${s.title}</button>`).join('');
+  groupsEl.querySelectorAll('button').forEach(b => b.onclick = () => go(flat.findIndex(f => f.sec.id === b.dataset.g)));
+
+  // Reading line: under the fixed menu bar and level with the stage on wide screens, just under
+  // the sticky keyboard on phones.
+  const narrow = () => innerWidth <= 900;
+  const stage = section.querySelector('.kt-stage');
+  const snapTop = () => narrow() ? 44 + stage.offsetHeight : Math.max(68, innerHeight / 2 - 190);
+  const target = a => snapTop() + parseFloat(getComputedStyle(a).scrollMarginTop || 0);
+  function go(i) { const a = flat[i].anchor; scrollTo({ top: scrollY + a.getBoundingClientRect().top - target(a), behavior: reduce ? 'auto' : 'smooth' }); }
+
+  // Camera: zoom out only as far as needed to fit the active keys, then center them.
+  let framed = [];
+  function frame(keys) {
+    framed = keys;
+    const els = keys.map(keyOf), u = els[0].offsetHeight, pad = u * .7;
+    const minX = Math.min(...els.map(k => k.offsetLeft)), maxX = Math.max(...els.map(k => k.offsetLeft + k.offsetWidth));
+    const W = win.clientWidth, BW = board.offsetWidth, BH = board.offsetHeight;
+    const s = Math.min(1, W / (maxX - minX + 2 * pad));
+    let tx = BW * s <= W ? (W - BW * s) / 2 : W / 2 - ((minX + maxX) / 2) * s;
+    tx = Math.min(Math.max(tx, Math.min(0, W - BW * s)), Math.max(0, W - BW * s));
+    board.style.transform = `translate(${tx}px,${BH - BH * s}px) scale(${s})`;
+  }
+
+  const setScreen = (state, text, c) => { screen.dataset.state = state; scr.textContent = text; screen.style.setProperty('--c', `var(${c})`); };
+  let active = -1, run = 0, inView = false;
+  function activate(i) {
+    if (i === active) return; active = i;
+    const { s, sec } = flat[i];
+    section.style.setProperty('--kt-active', `var(${sec.c})`);
+    flat.forEach((f, n) => f.el.classList.toggle('on', n === i));
+    secsEl.querySelectorAll('.kt-sec').forEach(el => el.classList.toggle('on', el.dataset.sec === sec.id));
+    groupsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.g === sec.id));
+    board.querySelectorAll('.kt-k').forEach(k => { k.classList.remove('lit', 'down', 'hold'); k.style.removeProperty('--c'); });
+    const keys = [...new Set(s.parts.flatMap(p => p.keys))];
+    keys.forEach(id => { const k = keyOf(id); k.classList.add('lit'); k.style.setProperty('--c', `var(${sec.c})`); });
+    frame(keys);
+    now.textContent = `${s.name}: ${keys.map(id => NAME[id]).join(' + ')}`;
+    play(s, sec.c);
+  }
+
+  // Key presses: modifiers go down one after another, then the action key taps, holds or toggles.
+  async function play(s, c) {
+    const id = ++run, alive = () => id === run && inView, wait = ms => new Promise(r => setTimeout(r, ms));
+    const first = s.parts[0], last = s.parts[s.parts.length - 1];
+    if (reduce) { setScreen(last.done ? 'done' : 'live', last.done || last.live, c); return; }
+    setScreen(first.live ? 'live' : 'done', first.live || first.done, c);
+    let quick = true;
+    while (alive()) {
+      for (const p of s.parts) {
+        if (!alive()) return;
+        const ks = p.keys.map(keyOf), mods = ks.slice(0, -1), act = ks[ks.length - 1];
+        const down = async () => { for (const k of mods) { k.classList.add('down'); await wait(quick ? 70 : 150); } };
+        const up = () => mods.forEach(k => k.classList.remove('down'));
+        const tap = async () => { act.classList.add('down'); await wait(170); act.classList.remove('down'); };
+        await down(); if (!alive()) return up();
+        if (p.how === 'tap') { await tap(); setScreen(p.live ? 'live' : 'done', p.live || p.done, c); await wait(220); up(); await wait(2100); }
+        else if (p.how === 'hold') {
+          act.classList.add('down', 'hold'); setScreen('live', p.live, c); await wait(1700);
+          act.classList.remove('down', 'hold'); up(); if (!alive()) return; setScreen('done', p.done, c); await wait(1700);
+        } else {
+          await tap(); await wait(120); up(); setScreen('live', p.live, c); await wait(2200); if (!alive()) return;
+          await down(); await tap(); await wait(120); up(); setScreen('done', p.done, c); await wait(1700);
+        }
+      }
+      quick = false; await wait(500);
+    }
+  }
+
+  // Which step sits at the reading line; snapping only while the tour fills the screen.
+  function onScroll() {
+    const r = section.getBoundingClientRect();
+    const fills = r.top < innerHeight * .4 && r.bottom > innerHeight * .6;
+    document.documentElement.classList.toggle('kt-snap', fills);
+    document.documentElement.style.scrollPaddingTop = fills ? snapTop() + 'px' : '';
+    const wasInView = inView; inView = r.top < innerHeight && r.bottom > 0;
+    if (!inView) { run++; return; }
+    let best = 0, dist = Infinity;
+    flat.forEach((f, n) => { const d = Math.abs(f.anchor.getBoundingClientRect().top - target(f.anchor)); if (d < dist) { dist = d; best = n; } });
+    if (!wasInView) active = -1; // coming back: restart the loop
+    activate(best);
+  }
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', () => { onScroll(); if (framed.length) frame(framed); });
+  inView = true; activate(0); onScroll();
+})();
+</script>
+</main>
+
+<script>
+// Ask section: a page from a book, a phrase selected, a question asked out loud, a short
+// spoken answer, then a follow-up. Each visitor gets one source at random (never the one
+// they saw last time); pause holds the answer on screen (the button below the scene, or a
+// click on the scene). Page texts and answers are our own wording of each author’s idea,
+// not quotations.
+(() => {
+  const $ = s => document.querySelector(s);
+  const SOURCES = [
+    { who: 'Deutsch', title: 'The Beginning of Infinity', author: 'David Deutsch',
+      pre: "Deutsch’s claim is that all progress comes from one thing: the search for good explanations. A bad explanation can be bent to fit any outcome, so it tells us nothing. Good explanations are ",
+      sel: 'hard to vary', post: ": every detail does work, and you can’t change one without breaking the whole.",
+      qa: [
+        { q: 'What does that mean?', a: "Every part of a good explanation is load-bearing. Change a detail and it stops working. A myth can swap one god for another and still “explain” the same thing, which is exactly why it explains nothing." },
+        { q: 'Give me an example.', a: "Seasons. “A goddess is sad, so it’s winter” survives any rewrite. “Earth’s axis is tilted” doesn’t: change the tilt and you predict the wrong seasons, in the wrong hemispheres." },
+      ] },
+    { who: 'Naval', title: 'The Almanack of Naval Ravikant', author: 'Eric Jorgenson',
+      pre: "Naval’s path to wealth starts with ",
+      sel: 'specific knowledge', post: ": what you know because you were curious, not because someone taught you. Add leverage, like code or media, and put your own name on the result.",
+      qa: [
+        { q: 'What does that mean?', a: "Know-how that grew out of your own curiosity, so nobody can be trained to replace you. If a course can teach it, someone cheaper will learn it too." },
+        { q: 'How do I find mine?', a: "Look at what feels like play to you but looks like work to others. That’s usually where it is." },
+      ] },
+    { who: 'Kapil Gupta', title: 'Direct Truth', author: 'Kapil Gupta',
+      pre: "Kapil Gupta distrusts every method. Techniques, routines and habits keep you busy, he argues, without changing anything. A problem doesn’t need to be managed; it ends when it is ",
+      sel: 'seen completely', post: '.',
+      qa: [
+        { q: 'What does that mean?', a: "Instead of a trick to cope with a problem, you look at it until you understand exactly how you keep creating it. Once that’s clear, there’s nothing left to manage." },
+        { q: "Isn’t a method useful, though?", a: 'In his view, a method lets you put off the looking. You practise the technique and never face the thing itself.' },
+      ] },
+    { who: 'Krishnamurti', title: 'Freedom from the Known', author: 'J. Krishnamurti',
+      pre: 'Krishnamurti asks you to look at fear without running from it, naming it or explaining it away. Watch it that way, he says, and you find that ',
+      sel: 'the observer is the observed', post: ': there is no separate you standing outside the fear.',
+      qa: [
+        { q: 'What does that mean?', a: "It feels like there’s a “you” who has the fear and could step outside to fix it. He means the one looking is made of the same thoughts as the fear. There’s no outsider to do the fixing." },
+        { q: 'So what do I do?', a: 'Nothing, in his sense. You watch it fully, without judging. That kind of attention is the change.' },
+      ] },
+    { who: 'Hesse', title: 'Siddhartha', author: 'Hermann Hesse',
+      pre: 'Near the end of the book, Siddhartha, now an old ferryman, tells his friend Govinda that ',
+      sel: 'wisdom cannot be passed on', post: '. Knowledge can be taught; wisdom has to be found, by each person, on their own.',
+      qa: [
+        { q: 'What does that mean?', a: "You can hand someone facts, but not the understanding that comes from living through something. Siddhartha only grew wise through his own mistakes, not by following a teacher." },
+        { q: 'Then why read books at all?', a: 'They can point the way. In the story, the river teaches Siddhartha more than any teacher did, because he listened to it himself.' },
+      ] },
+  ];
+  const steps = [...document.querySelectorAll('#asteps .feat')];
+  const scene = $('#ascene'), book = $('#abook'), notch = $('#anotch'), pill = $('#apill'), lbl = $('#albl'), txt = $('#atxt'), keys = $('#akeys'), tile = $('#atile');
+  const btn = $('#apause'), live = $('#aread');
+  const MIC = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+  const SPARK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/></svg>';
+  const step = n => steps.forEach((s, i) => s.classList.toggle('on', i === n));
+  let run = 0, visible = false, paused = false, phase = '', skip = false;
+
+  // One source per visitor, different from the one this browser showed last time.
+  const KEY = 'vf-ask-source';
+  let last = -1;
+  try { last = Number(localStorage.getItem(KEY) ?? -1); } catch {}
+  let src = Math.floor(Math.random() * SOURCES.length);
+  if (src === last) src = (src + 1) % SOURCES.length;
+  try { localStorage.setItem(KEY, String(src)); } catch {}
+
+  // A wait that stops counting while paused.
+  const waiters = new Set();
+  const wait = ms => new Promise(res => {
+    let left = ms, t0 = 0, timer = null;
+    const w = {
+      go() { t0 = performance.now(); timer = setTimeout(() => { waiters.delete(w); res(); }, left); },
+      hold() { clearTimeout(timer); left = Math.max(0, left - (performance.now() - t0)); },
+    };
+    waiters.add(w);
+    if (!paused) w.go();
+  });
+  function setPaused(p) {
+    if (p === paused) return;
+    paused = p;
+    waiters.forEach(w => (p ? w.hold() : w.go()));
+    btn.setAttribute('aria-pressed', String(p));
+    $('#apause-t').textContent = p ? 'Play' : 'Pause';
+    scene.classList.toggle('paused', p);
+    // Pausing mid-sentence shows the whole sentence, so it can be read.
+    if (p && (phase === 'ask' || phase === 'answer')) {
+      skip = true;
+      if (phase === 'answer') txt.querySelectorAll('.w').forEach(w => w.classList.add('said'));
+    }
+  }
+
+  function render(i) {
+    const s = SOURCES[i];
+    $('#asrc').innerHTML = `<b>${s.title}</b><span class="by">${s.author}</span>`;
+    $('#abody').innerHTML = `${s.pre}<span class="sel" id="asel">${s.sel}</span>${s.post}`;
+  }
+  function reset() {
+    step(-1); phase = ''; skip = false;
+    $('#asel')?.classList.remove('on'); pill.classList.remove('is-on'); keys.classList.remove('down'); notch.classList.remove('on');
+  }
+
+  async function loop(my) {
+    while (my === run) {
+      const s = SOURCES[src];
+      reset();
+      book.classList.add('swap'); await wait(350); if (my !== run) return;
+      render(src); book.classList.remove('swap');
+      await wait(700); if (my !== run) return;
+      step(0); $('#asel').classList.add('on');
+      await wait(1500);
+      for (const [i, { q, a }] of s.qa.entries()) {
+        if (my !== run) return;
+        // Hold the key and ask
+        phase = 'ask'; skip = false;
+        step(1); keys.classList.add('down');
+        notch.dataset.f = 'dict'; notch.classList.add('on');
+        tile.innerHTML = MIC; lbl.textContent = i ? 'Ask again · it remembers the text' : 'Listening · let go to ask';
+        txt.textContent = ''; pill.classList.add('is-on');
+        await wait(400);
+        const qw = q.split(' ');
+        for (let k = 1; k <= qw.length; k++) {
+          if (my !== run) return;
+          txt.textContent = `“${qw.slice(0, skip ? qw.length : k).join(' ')}”`;
+          if (skip) break;
+          await wait(270);
+        }
+        await wait(450); if (my !== run) return;
+        // Let go: think, then answer
+        phase = 'think'; skip = false;
+        keys.classList.remove('down'); step(2);
+        notch.dataset.f = 'smart'; tile.innerHTML = SPARK; lbl.textContent = 'Thinking';
+        await wait(700); if (my !== run) return;
+        phase = 'answer'; lbl.textContent = 'Answer';
+        txt.innerHTML = a.split(' ').map(w => `<span class="w">${w}</span>`).join(' ');
+        live.textContent = `${q} ${a}`;
+        for (const w of txt.querySelectorAll('.w')) {
+          if (my !== run) return;
+          if (skip) break;
+          w.classList.add('said'); await wait(165);
+        }
+        txt.querySelectorAll('.w').forEach(w => w.classList.add('said'));
+        phase = 'read';
+        await wait(2200); if (my !== run) return;
+        notch.classList.remove('on');
+        pill.classList.remove('is-on'); await wait(600);
+      }
+      await wait(300);
+    }
+  }
+
+  btn.addEventListener('click', () => setPaused(!paused));
+  scene.addEventListener('click', () => setPaused(!paused));
+
+  render(src);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // Reduced motion: the finished moment, held still; nothing plays, so nothing to pause.
+    const { q, a } = SOURCES[src].qa[0];
+    step(2); $('#asel').classList.add('on');
+    notch.dataset.f = 'smart'; notch.classList.add('on');
+    tile.innerHTML = SPARK; lbl.textContent = `You asked “${q}”`;
+    txt.innerHTML = a.split(' ').map(w => `<span class="w said">${w}</span>`).join(' ');
+    pill.classList.add('is-on'); btn.hidden = true; scene.style.cursor = 'default';
+    return;
+  }
+  new IntersectionObserver(([e]) => {
+    const now = e.intersectionRatio >= 0.35;
+    if (now === visible) return;
+    visible = now;
+    if (now) loop(++run); else { run++; setPaused(false); reset(); }
+  }, { threshold: [0, 0.35] }).observe($('#ask'));
+})();
+</script>
+
+<script>
+(() => {
+  const $$ = s => [...document.querySelectorAll(s)];
+  const feats = $$('#show .feat');
+  let current = null, auto = 0, timer = null;
+
+  function select(feat) {
+    if (current === feat) return;
+    current = feat;
+    feats.forEach(f => f.classList.toggle('on', f === feat));
+    $$('#show .mi[data-row]').forEach(r => r.classList.toggle('on', r.dataset.row === feat?.dataset.row));
+    const st = feat?.dataset.status;
+    ['focus', 'awake'].forEach(s => { document.getElementById('st-' + s).hidden = st !== s; });
+  }
+
+  // Gently cycles through the features until the visitor points at one.
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function cycle() { select(feats[auto++ % feats.length]); }
+  function startCycle() { if (reduced || timer) return; cycle(); timer = setInterval(cycle, 2600); }
+  function stopCycle() { clearInterval(timer); timer = null; }
+
+  feats.forEach(f => {
+    f.addEventListener('mouseenter', () => { stopCycle(); select(f); });
+    f.addEventListener('focus', () => { stopCycle(); select(f); });
+  });
+  document.getElementById('feats').addEventListener('mouseleave', () => { auto = feats.indexOf(current) + 1; setTimeout(() => { if (!document.querySelector('#show .feat:hover')) startCycle(); }, 1200); });
+
+  new IntersectionObserver(([e]) => {
+    if (e.intersectionRatio >= 0.35) { document.getElementById('scene').classList.add('in'); setTimeout(startCycle, 700); }
+    else stopCycle();
+  }, { threshold: [0, 0.35] }).observe(document.getElementById('show'));
+
+  // German clock, like the app’s menu bar
+  const fmt = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const hm = tz => new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: tz });
+  const tick = () => {
+    const now = new Date();
+    document.getElementById('clock').textContent = fmt.format(now).replace(/,/g, '');
+    $$('[data-tz]').forEach(el => { el.textContent = hm(el.dataset.tz).format(now); });
+  };
+  tick(); setInterval(tick, 15000);
+
+  // The dictation key: "-" on German keyboards, "/" on US
+  navigator.keyboard?.getLayoutMap?.().then(m => { const c = m.get('Slash'); if (c) $$('.dk').forEach(k => { k.textContent = c; }); }).catch(() => {});
+  if (!/^de\b/i.test(navigator.language)) $$('.dk').forEach(k => { k.textContent = '/'; });
+})();
+</script>
+
+<script>
+// Menu bar: click a title to open its menu; while one is open, pointing at another title
+// switches to it, like macOS. Esc, a click elsewhere or choosing an item closes it.
+(() => {
+  const mb = document.getElementById('mb');
+  const titles = [...mb.querySelectorAll('.mt')];
+  let open = null;
+  const set = t => {
+    titles.forEach(x => x.setAttribute('aria-expanded', String(x === t)));
+    open = t;
+  };
+  titles.forEach(t => {
+    t.addEventListener('click', e => { e.stopPropagation(); set(open === t ? null : t); });
+    t.addEventListener('mouseenter', () => { if (open && open !== t) set(t); });
+  });
+  mb.querySelectorAll('.dd a').forEach(a => a.addEventListener('click', () => set(null)));
+  document.addEventListener('click', e => { if (open && !e.target.closest('.dd')) set(null); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && open) { const t = open; set(null); t.focus(); } });
+
+  // Frosted bar firms up once the page scrolls; the Download pill grows once the hero’s
+  // own button has scrolled away.
+  const onScroll = () => mb.classList.toggle('scrolled', scrollY > 8);
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  new IntersectionObserver(([e]) => mb.classList.toggle('cta', !e.isIntersecting && e.boundingClientRect.top < 0))
+    .observe(document.getElementById('hero-dl'));
+
+  const fmt = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const tick = () => { document.getElementById('mb-clock').textContent = fmt.format(new Date()).replace(/,/g, ''); };
+  tick(); setInterval(tick, 15000);
+})();
+</script>
+
+<script>
+// Voice section: each feature plays its moment in the scene, then the next one follows.
+(() => {
+  const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+  const feats = $$('#voice .feat'), notch = $('#vnotch'), card = $('#vcard'), field = $('#vfield'), pill = $('#vpill');
+  const TINT = { read: '#4C9BFF', smart: '#9D95FF', dict: '#FF6B5E' };
+  const REPLY = 'Friday works. I land Thursday at 9, no dietary needs, and yes to the boat!';
+  const split = el => { el.innerHTML = el.textContent.split(' ').map(w => `<span class="w">${w}</span>`).join(' '); return [...el.querySelectorAll('.w')]; };
+  const words = split($('#vbody')), briefWords = split($('#vbrief'));
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  let run = 0, auto = 0, cycling = false, current = null;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Reduced motion: each feature is one still frame, chosen by hover or focus, never cycled.
+  function still(f) {
+    run++; current = f; reset();
+    feats.forEach(x => x.classList.toggle('on', x.dataset.f === f));
+    notch.dataset.f = f; notch.style.setProperty('--tint', TINT[f]); notch.classList.add('on');
+    if (f === 'read') words.slice(8, 14).forEach(w => w.classList.add('on'));
+    else if (f === 'smart') { card.classList.add('dim'); pill.classList.add('is-on'); briefWords.forEach(w => w.classList.add('said')); }
+    else field.textContent = REPLY;
+  }
+
+  function reset() {
+    words.forEach(w => w.classList.remove('on'));
+    briefWords.forEach(w => w.classList.remove('said'));
+    pill.classList.remove('is-on'); card.classList.remove('dim');
+    field.textContent = ''; field.classList.remove('typing');
+    notch.classList.remove('on');
+  }
+  async function play(f) {
+    if (reduced) return still(f);
+    const my = ++run; current = f; reset();
+    feats.forEach(x => x.classList.toggle('on', x.dataset.f === f));
+    notch.dataset.f = f; notch.style.setProperty('--tint', TINT[f]);
+    await wait(200); if (my !== run) return;
+    notch.classList.add('on');
+    if (f === 'read') {
+      for (let i = 0; i < words.length; i++) {
+        if (my !== run) return;
+        words.forEach((w, j) => w.classList.toggle('on', j === i));
+        await wait(185);
+      }
+      words.forEach(w => w.classList.remove('on'));
+    } else if (f === 'smart') {
+      card.classList.add('dim');
+      await wait(700); if (my !== run) return;   // thinking
+      pill.classList.add('is-on');
+      for (const w of briefWords) { if (my !== run) return; w.classList.add('said'); await wait(210); }
+    } else {
+      field.classList.add('typing');
+      await wait(1800); if (my !== run) return;  // listening while the key is held
+      field.classList.remove('typing');
+      field.innerHTML = `<span class="pasted">${REPLY}</span>`;
+    }
+    await wait(500); if (my === run) notch.classList.remove('on');
+    await wait(f === 'read' ? 600 : 1800);
+    if (my === run && cycling) play(feats[++auto % feats.length].dataset.f);
+  }
+  function startCycle() {
+    if (reduced) { if (!current) still('smart'); return; }
+    if (cycling) return; cycling = true; play(feats[auto % feats.length].dataset.f);
+  }
+
+  feats.forEach((f, i) => {
+    const pick = () => { cycling = false; auto = i; if (current !== f.dataset.f || !notch.classList.contains('on')) play(f.dataset.f); };
+    f.addEventListener('mouseenter', pick); f.addEventListener('focus', pick);
+  });
+  $('#vfeats').addEventListener('mouseleave', () => setTimeout(() => { if (!$('#voice .feat:hover')) { auto++; startCycle(); } }, 1600));
+
+  let visible = false;
+  new IntersectionObserver(([e]) => {
+    const now = e.intersectionRatio >= 0.35;
+    if (now === visible) return;
+    visible = now;
+    if (now) setTimeout(() => { if (visible) startCycle(); }, 500);
+    else if (!reduced) { cycling = false; run++; reset(); }
+  }, { threshold: [0, 0.35] }).observe($('#voice'));
+})();
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 ---
 // Tiny drawn flags for the clock mockups (the app itself shows flag emoji).
-interface Props { country: 'IE' | 'DE' | 'JP'; width?: number }
+interface Props { country: 'IE' | 'DE' | 'JP' | 'TH' | 'US'; width?: number }
 const { country, width = 16 } = Astro.props;
 const height = Math.round((width * 11) / 16);
 ---
@@ -17,5 +17,15 @@ const height = Math.round((width * 11) / 16);
 {country === 'JP' && (
   <svg width={width} height={height} viewBox="0 0 3 2" aria-hidden="true">
     <rect width="3" height="2" fill="#FFFFFF" stroke="#C7C7CC" stroke-width="0.08" /><circle cx="1.5" cy="1" r="0.6" fill="#BC002D" />
+  </svg>
+)}
+{country === 'TH' && (
+  <svg width={width} height={height} viewBox="0 0 6 4" aria-hidden="true">
+    <rect width="6" height="4" fill="#A51931" /><rect y="0.667" width="6" height="2.667" fill="#F4F5F8" /><rect y="1.333" width="6" height="1.333" fill="#2D2A4A" />
+  </svg>
+)}
+{country === 'US' && (
+  <svg width={width} height={height} viewBox="0 0 19 13" aria-hidden="true">
+    <rect width="19" height="13" fill="#B22234" /><path d="M0 1.5h19M0 3.5h19M0 5.5h19M0 7.5h19M0 9.5h19M0 11.5h19" stroke="#FFFFFF" stroke-width="1" /><rect width="8" height="7" fill="#3C3B6E" />
   </svg>
 )}

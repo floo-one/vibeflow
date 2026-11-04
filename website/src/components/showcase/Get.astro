@@ -1,0 +1,7 @@
+---
+// A small download row under a showcase section: the button and one line of fine print.
+import DownloadButton from '../DownloadButton.astro';
+interface Props { note: string }
+const { note } = Astro.props;
+---
+<div class="get"><DownloadButton size="sm" /><span>{note}</span></div>
