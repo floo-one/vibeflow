@@ -21,6 +21,7 @@ gsap.matchMedia().add(MOTION, () => {
     // bar's icon, which takes over the moment it lands. Scrolling back undocks it.
     const icon = badge?.querySelector<SVGElement>('svg');
     const slot = document.querySelector<SVGElement>('#mb .mt.app svg');
+    const brand = document.querySelector<HTMLElement>('#mb .app-name');
     if (badge && icon && slot && slot.getBoundingClientRect().width > 0) {
       const travel = () => Math.round(Math.min(420, innerHeight * 0.45));
       // Where the icon has to go, from layout alone (offsets ignore the entrance's transform):
@@ -44,6 +45,12 @@ gsap.matchMedia().add(MOTION, () => {
         .fromTo(badge, { '--glow': 1 }, { '--glow': 0, ease: 'none', duration: 0.6 }, 0.4)
         .to(icon, { opacity: 0, duration: 0.06, ease: 'none' }, 0.94)
         .fromTo(slot, { opacity: 0 }, { opacity: 1, duration: 0.06, ease: 'none' }, 0.94);
+      // Until the icon lands, the name sits where the icon goes, so the bar never shows a hole;
+      // it steps aside just as the icon arrives.
+      if (brand) {
+        const gap = parseFloat(getComputedStyle(slot.parentElement!).columnGap) || 8;
+        tl.fromTo(brand, { x: -(Number(slot.getAttribute('width')) + gap) }, { x: 0, duration: 0.24, ease: 'power2.inOut' }, 0.72);
+      }
     }
   }
 
