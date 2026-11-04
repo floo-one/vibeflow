@@ -16,6 +16,7 @@
   --ground: #FFFFFF; --ground-2: #F5F5F7; --line: #ECECF0; --line-2: #D2D2D7; --dark: #1D1D1F;
   --read: #0064D2; --smart: #5B4FE0; --dictation: #D93025; --tools: #0F7B5F;
   --icon-top: #6B70FF; --icon-bottom: #4030C7;
+  --menu-blue: #2F6FE8; /* macOS menu highlight, darkened for 4.6:1 with white */
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", "Inter", system-ui, sans-serif;
   --ease: cubic-bezier(.2, .7, .2, 1);
 }
@@ -66,7 +67,7 @@ h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); li
 .mi svg { flex: none; stroke: currentColor; }
 .mi .sc { margin-left: auto; color: rgba(0,0,0,.4); letter-spacing: .04em; transition: color .25s; }
 .mi .new { margin-left: 6px; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: #EDEBFF; color: var(--smart); }
-.mi.on { background: #3478F6; color: #fff; }
+.mi.on { background: var(--menu-blue); color: #fff; }
 .mi.on .sc { color: rgba(255,255,255,.8); }
 .mi.on .new { background: rgba(255,255,255,.22); color: #fff; }
 .sep { height: 1px; margin: 5px 10px; background: rgba(0,0,0,.09); }
@@ -107,7 +108,7 @@ h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); li
 .w.on { background: rgba(0,100,210,.16); box-shadow: 0 0 0 2px rgba(0,100,210,.16); }
 .card.dim .body { color: var(--text-3); transition: color .4s; }
 .field { margin-top: 16px; min-height: 46px; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--line-2); font-size: 15px; line-height: 1.5; color: var(--text); }
-.field:empty::before { content: "Reply to Lena"; color: #A1A1A6; }
+.field:empty::before { content: "Reply to Lena"; color: var(--text-3); }
 .field.typing::after { content: ""; display: inline-block; width: 1.5px; height: 1.1em; margin-left: 1px; vertical-align: -3px; background: var(--dictation); animation: blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 .pill { position: absolute; left: 9%; right: 9%; bottom: 7%; display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 16px;
@@ -205,7 +206,7 @@ body { padding-top: 44px; }
   transition: opacity .14s, transform .2s var(--ease), visibility 0s .2s; }
 .mt[aria-expanded="true"] + .dd { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: 0s; }
 .dd a { display: flex; align-items: center; gap: 10px; padding: 5px 10px; border-radius: 6px; color: var(--text); text-decoration: none; white-space: nowrap; }
-.dd a:hover, .dd a:focus-visible { background: #3478F6; color: #fff; outline: none; }
+.dd a:hover, .dd a:focus-visible { background: var(--menu-blue); color: #fff; outline: none; }
 .dd a .sc { margin-left: auto; padding-left: 20px; color: rgba(0,0,0,.4); letter-spacing: .04em; }
 .dd a:hover .sc, .dd a:focus-visible .sc { color: rgba(255,255,255,.8); }
 .dd a .dot { width: 7px; height: 7px; border-radius: 4px; background: var(--c); flex: none; }
