@@ -25,6 +25,9 @@ final class Updater: NSObject, SPUUpdaterDelegate {
     private var controller: SPUStandardUpdaterController?
     private var install: (() -> Void)?
     private var waiting: Task<Void, Never>?
+    /// The downloaded version waiting for idle, for the menu bar panel's "Update to x" pill (D7);
+    /// its click (Check for Updates) installs it at once.
+    var onUpdateWaiting: ((String?) -> Void)?
 
     init(isBusy: @escaping () -> Bool, followsMain: @escaping () -> Bool) {
         self.isBusy = isBusy
@@ -97,6 +100,7 @@ final class Updater: NSObject, SPUUpdaterDelegate {
                  immediateInstallationBlock immediateInstallHandler: @escaping () -> Void) -> Bool {
         log.notice("update: \(item.displayVersionString, privacy: .public) downloaded, installs when idle")
         install = immediateInstallHandler
+        onUpdateWaiting?(item.displayVersionString)
         waiting?.cancel()
         waiting = Task { [weak self] in
             while let self, !Task.isCancelled {

@@ -261,23 +261,63 @@ struct DictationCueTests {
         #expect(h.cues == [.recordingStarted, .recordingStopped])
     }
 
-    @Test func cancelAndFailedStartsAreSilent() {
+    @Test func cancelCuesCancelledNotStopped() {
         let h = DictationHarness()
         h.session.recordKeyDown()
         #expect(h.session.cancel())
-        #expect(h.cues == [.recordingStarted], "a read follows a cancel, so no stop sound")
+        #expect(h.cues == [.recordingStarted, .cancelled])
+        #expect(!h.session.cancel(), "nothing left to cancel")
+        #expect(h.cues == [.recordingStarted, .cancelled])
+    }
 
+    @Test func failedStartsAreSilent() {
+        let h = DictationHarness()
         h.recorder.startError = .noInputDevice
         h.session.recordKeyDown()
         h.recorder.startError = nil
         h.recorder.permission = .denied
         h.session.toggleRecording()
-        #expect(h.cues == [.recordingStarted])
+        #expect(h.cues.isEmpty)
     }
 }
 
-@Suite("DictationSession: cancel (read shortcut)") @MainActor
+@Suite("DictationSession: cancel (Escape, read shortcut, Stop)") @MainActor
 struct DictationCancelTests {
+    @Test func cancelFlashesThenClears() async {
+        let h = DictationHarness()
+        h.session.toggleRecording()
+        #expect(!h.session.justCancelled)
+        #expect(h.session.cancel())
+        #expect(h.session.justCancelled)
+        await h.settle()
+        h.clock.advance(by: .milliseconds(1100))
+        await h.settle()
+        #expect(h.session.justCancelled)
+        h.clock.advance(by: .milliseconds(200))
+        await h.settle()
+        #expect(!h.session.justCancelled)
+    }
+
+    @Test func nextDictationClearsTheFlash() async {
+        let h = DictationHarness()
+        h.session.toggleRecording()
+        h.session.cancel()
+        h.session.toggleRecording()
+        #expect(!h.session.justCancelled)
+        await h.settle()
+        h.clock.advance(by: .seconds(2))
+        await h.settle()
+        #expect(!h.session.justCancelled)
+        #expect(h.session.state == .recording(handsFree: true))
+    }
+
+    @Test func idleCancelDoesNotFlash() {
+        let h = DictationHarness()
+        #expect(!h.session.cancel())
+        #expect(!h.session.justCancelled)
+        #expect(h.cues.isEmpty)
+    }
+
     @Test func cancelWhileRecordingDropsTheAudio() async {
         let h = DictationHarness()
         h.session.recordKeyDown()
@@ -966,6 +1006,6 @@ struct QuestionRecordingTests {
         h.session.recordKeyDown()
         h.session.cancel()
         h.recorder.becomeReady()
-        #expect(h.cues.isEmpty)
+        #expect(h.cues == [.cancelled], "the cancel is heard, the late start is not")
     }
 }

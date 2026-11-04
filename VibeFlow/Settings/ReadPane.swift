@@ -23,7 +23,7 @@ struct ReadPane: View {
             } header: {
                 Text("Voice")
             } footer: {
-                Text("Smart Read speaks with this voice too.").foregroundStyle(.secondary)
+                Text("Smart Read uses these too, unless you pick its own in Smart Read.").foregroundStyle(.secondary)
             }
             Section("Output") {
                 DevicePicker(title: "Speaker", automaticLabel: "System output", devices: speakers, selection: $prefs.speakerUID)

@@ -3,12 +3,13 @@ import SwiftUI
 /// The Settings panes in sidebar order. Title, symbol and colour live here so the menu can
 /// use the same look for the same feature.
 enum SettingsTab: Hashable, CaseIterable {
-    case general, accounts, read, smartRead, dictation, clocks, meetings, pomodoro, keepAwake
+    case general, accounts, usage, read, smartRead, dictation, clocks, meetings, pomodoro, keepAwake
 
     var title: String {
         switch self {
         case .general: return "General"
         case .accounts: return "Accounts"
+        case .usage: return "Usage"
         case .read: return "Read"
         case .smartRead: return "Smart Read"
         case .dictation: return "Dictation"
@@ -23,6 +24,7 @@ enum SettingsTab: Hashable, CaseIterable {
         switch self {
         case .general: return "gearshape"
         case .accounts: return "key.fill"
+        case .usage: return "chart.bar.fill"
         case .read: return "waveform"
         case .smartRead: return "sparkles"
         case .dictation: return "mic.fill"
@@ -35,7 +37,7 @@ enum SettingsTab: Hashable, CaseIterable {
 
     var tint: Color {
         switch self {
-        case .general, .accounts: return .gray
+        case .general, .accounts, .usage: return .gray
         case .read: return FeatureColor.read
         case .smartRead: return FeatureColor.smartRead
         case .dictation: return FeatureColor.dictation
@@ -69,6 +71,7 @@ struct SettingsView: View {
             List(selection: $container.settingsTab) {
                 row(.general)
                 row(.accounts)
+                row(.usage)
                 Section("Voice") {
                     row(.read)
                     row(.smartRead)
@@ -123,6 +126,7 @@ struct SettingsView: View {
         switch tab {
         case .general: GeneralPane()
         case .accounts: AccountsPane()
+        case .usage: UsagePane()
         case .read: ReadPane()
         case .smartRead: SmartReadPane()
         case .dictation: DictationPane()

@@ -65,8 +65,8 @@ Native macOS, matching the app's foundations:
 | Group | Feature | What the user gets | Needs |
 |---|---|---|---|
 | Voice | Read | ⌥ . selection, ⇧ ⌥ . clipboard; < 1 s; tables, links, Markdown rewritten for listening | ElevenLabs key, else Apple voice |
-| Voice | Smart read | ⌥ , spoken brief; hold ⌥ , to ask a follow-up (10 turns of context); ⇧ ⌥ , clipboard; ⇧ ⌃ ⌥ V paste again; assistant voice in AI chat apps | Anthropic key (+ Groq or on-device for questions) |
-| Voice | Dictation | hold ⌥ - to talk; ⇧ ⌥ - hands-free; ⌃ ⌥ V paste again; cleanup, ~0.8 s; the key right of the period (- on German, / on US) | Groq key, else Apple on macOS 26 |
+| Voice | Smart read | ⌥ , spoken brief; hold ⌥ , to ask a follow-up (10 turns of context); ⇧ ⌥ , clipboard; ⇧ ⌥ ⌘ V paste again; assistant voice in AI chat apps | Anthropic key (+ Groq or on-device for questions) |
+| Voice | Dictation | hold ⌥ - to talk; ⇧ ⌥ - hands-free; ⌥ ⌘ V paste again; cleanup, ~0.8 s; the key right of the period (- on German, / on US) | Groq key, else Apple on macOS 26 |
 | Tools | Clocks | Time zones with flags in the menu bar, 24 h, added by city, country, abbreviation or IANA name | none |
 | Tools | Meetings | Next Google Calendar meeting from 5/10/15 min before, one-click Join, only real meetings | Google sign-in (read-only) |
 | Shared | Notch indicator | Wings at the notch while listening, thinking or speaking | none |

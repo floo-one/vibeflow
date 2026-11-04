@@ -55,90 +55,17 @@ struct HeldShortcutRow: View {
 
 // MARK: - Prompts
 
-/// The prompts VibeFlow sends to the models, read-only for now.
-enum PromptKind: String, CaseIterable, Identifiable {
-    case brief = "Smart read: brief"
-    case cleanup = "Smart read: cleanup"
-    case dictation = "Dictation cleanup"
-    var id: Self { self }
-}
-
-struct PromptsButton: View {
-    let initial: PromptKind
-    @State private var showing = false
-
-    var body: some View {
-        LabeledContent("Prompts") {
-            Button("Show Prompts…") { showing = true }
-        }
-        .sheet(isPresented: $showing) { PromptsSheet(kind: initial) }
-    }
-}
-
-/// Built with the current vocabulary and default preset, so it shows what is actually sent.
-struct PromptsSheet: View {
+/// Opens the Context window, where every prompt and what VibeFlow knows about you are edited.
+struct PromptsLink: View {
     @Environment(AppContainer.self) private var container
-    @Environment(\.dismiss) private var dismiss
-    @State var kind: PromptKind
+    @Environment(\.openWindow) private var openWindow
+    let page: ContextPage
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Picker("Prompt", selection: $kind) {
-                ForEach(PromptKind.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    section("System", system)
-                    if kind == .brief {
-                        Text("The word limit follows the selection: 40 words under 600 characters, 80 under 4,000, 140 above.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        section("Added before your preferences in ChatGPT, Codex, Claude and Gemini", SmartReadPrompts.aiReplyRule)
-                    }
-                    section("User message", user)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
-            }
-            .background(.background.secondary, in: .rect(cornerRadius: 6))
-            HStack {
-                Text("Read-only. Editing comes later.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button("Done") { dismiss() }
-                    .keyboardShortcut(.defaultAction)
-            }
+        LabeledContent("Prompts and context") {
+            Button("Open Context…") { ContextWindow.present(openWindow, container: container, page: page) }
+                .buttonStyle(.link)
         }
-        .padding()
-        .frame(width: 500, height: 380)
-    }
-
-    private func section(_ title: String, _ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            Text(text)
-                .font(.callout.monospaced())
-                .textSelection(.enabled)
-        }
-    }
-
-    private var system: String {
-        let preset = container.presets.defaultPreset
-        switch kind {
-        case .brief, .cleanup:
-            return SmartReadPrompts.system(mode: kind == .brief ? .brief : .cleanup,
-                                           language: preset.languageOverride,
-                                           instructions: preset.smartReadInstructions)
-        case .dictation:
-            return SmartReadPrompts.dictationCleanupSystem(vocabulary: container.preferences.vocabularyTerms)
-        }
-    }
-
-    private var user: String {
-        kind == .dictation ? SmartReadPrompts.dictationUser("…transcript…") : SmartReadPrompts.user(text: "…selected text…")
     }
 }
 
@@ -229,6 +156,75 @@ struct SpeedSlider: View {
                 Text((draft ?? speed).formatted(.number.precision(.fractionLength(2))))
                     .monospacedDigit()
                     .frame(width: 40)
+            }
+        }
+    }
+}
+
+/// A voice that can follow Read's: nil = the Read voice.
+struct InheritingVoicePicker: View {
+    @Environment(AppContainer.self) private var container
+    @Binding var voiceID: String?
+    let readVoiceID: String
+
+    var body: some View {
+        let voices = container.catalogs.voices
+        let readName = voices.first { $0.id == readVoiceID }?.name
+        Picker("Voice", selection: Binding(get: { voiceID ?? "" }, set: { voiceID = $0.isEmpty ? nil : $0 })) {
+            Text(readName.map { "Same as Read (\($0))" } ?? "Same as Read").tag("")
+            Divider()
+            ForEach(voices) { voice in
+                Text(voice.name).tag(voice.id)
+            }
+            if let chosen = voiceID, !voices.contains(where: { $0.id == chosen }) {
+                Text("Custom voice").tag(chosen)
+            }
+        }
+    }
+}
+
+/// A model that can follow Read's: nil = the Read model.
+struct InheritingModelPicker: View {
+    let title: String
+    let options: [ModelOption]
+    @Binding var selection: String?
+    let readModel: String
+
+    var body: some View {
+        let readName = options.first { $0.id == readModel }?.name
+        Picker(title, selection: Binding(get: { selection ?? "" }, set: { selection = $0.isEmpty ? nil : $0 })) {
+            Text(readName.map { "Same as Read (\($0))" } ?? "Same as Read").tag("")
+            Divider()
+            ForEach(options) { option in
+                Text(option.name).tag(option.id)
+            }
+            if let chosen = selection, !options.contains(where: { $0.id == chosen }) {
+                Text(chosen).tag(chosen)
+            }
+        }
+    }
+}
+
+/// A speaker that can follow Read's: nil = the Read speaker, "" = system output, else a device.
+struct InheritingDevicePicker: View {
+    let devices: [AudioDevice]
+    @Binding var selection: String?
+
+    private static let sameAsRead = "same-as-read"
+
+    var body: some View {
+        Picker("Speaker", selection: Binding(
+            get: { selection ?? Self.sameAsRead },
+            set: { selection = $0 == Self.sameAsRead ? nil : $0 }
+        )) {
+            Text("Same as Read").tag(Self.sameAsRead)
+            Divider()
+            Text("System output").tag("")
+            ForEach(devices) { device in
+                Text(device.name).tag(device.uid)
+            }
+            if let chosen = selection, !chosen.isEmpty, !devices.contains(where: { $0.uid == chosen }) {
+                Text("Unplugged device").tag(chosen)
             }
         }
     }

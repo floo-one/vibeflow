@@ -287,3 +287,17 @@ Follow-ups from the /design-review of docs/designs/website-demo/showcase.html (2
 **Effort:** S
 **Priority:** P3
 **Depends on:** Astro port of the showcase.
+
+## Context
+
+### Suggest context learned from history
+
+**What:** VibeFlow proposes additions to Context (About you, Terms and people, per-app rules) from what you read, ask and dictate, for example a name it keeps hearing or an app whose briefs you always follow up the same way. Each suggestion waits for your approval in the Context window; nothing is added on its own.
+
+**Why:** Context only helps if it is filled in, and most people never write a profile or a term list by hand.
+
+**Context:** Asked for on 2026-11-05 when the Context window was built (PR floo-one/vibeflow#43); deliberately left for later. The suggestions have to be computed from History on the Mac and must never reach the logs (CLAUDE.md: never log user text), so any model call that finds them needs the same guard as smart read. Start from the History entries (text, question, source app).
+
+**Effort:** M
+**Priority:** P3
+**Depends on:** the Context window in daily use for a while.

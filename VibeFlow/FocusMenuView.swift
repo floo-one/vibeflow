@@ -187,7 +187,6 @@ struct PomodoroControls: View {
 /// appears once one runs.
 struct PomodoroMenuItems: View {
     @Environment(AppContainer.self) private var container
-    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         let focus = container.focus
@@ -199,7 +198,10 @@ struct PomodoroMenuItems: View {
                 Text("\(preset.title): \(preset.rhythm(custom: container.preferences.focusCustom).summary)").tag(preset)
             }
         }
-        Button("Pomodoro Settings…") { SettingsWindow.present(openSettings, container: container, tab: .pomodoro) }
+        Button("Pomodoro Settings…") {
+            container.closePanel?()
+            container.presentSettings(tab: .pomodoro)
+        }
     }
 }
 

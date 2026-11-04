@@ -267,15 +267,23 @@ public struct SmartReadRequest: Sendable, Equatable {
     public var maxTokens: Int
     /// Per-app guidance from the preset (trusted, user-authored), nil = none.
     public var instructions: String?
-    /// The text was copied from an AI assistant app, so the brief speaks as that assistant.
-    public var aiReply: Bool
+    /// The AI assistant app the text came from ("Claude"), so the brief relays it by name; nil = not an AI reply.
+    public var assistant: String?
+    public var aiReply: Bool { assistant != nil }
+    /// The listener's prompt edits (Settings > Prompts), empty = the defaults.
+    public var prompts: PromptLibrary
+    /// The listener's names and terms (Dictation > Vocabulary).
+    public var terms: [String]
 
-    public init(text: String, mode: SmartReadMode, language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil, aiReply: Bool = false) {
+    public init(text: String, mode: SmartReadMode, language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil, assistant: String? = nil,
+                prompts: PromptLibrary = PromptLibrary(), terms: [String] = []) {
+        self.terms = terms
         self.text = text
         self.mode = mode
         self.language = language
         self.instructions = instructions
-        self.aiReply = aiReply
+        self.assistant = assistant
+        self.prompts = prompts
         self.model = model
         self.maxTokens = maxTokens
     }
@@ -327,9 +335,16 @@ public struct AskRequest: Sendable, Equatable {
     public var model: String
     public var maxTokens: Int
     public var instructions: String?
+    /// The listener's prompt edits (Settings > Prompts), empty = the defaults.
+    public var prompts: PromptLibrary
+    /// The listener's names and terms (Dictation > Vocabulary).
+    public var terms: [String]
 
     public init(document: String, brief: String? = nil, turns: [ConversationTurn] = [], question: String,
-                language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil) {
+                language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil,
+                prompts: PromptLibrary = PromptLibrary(), terms: [String] = []) {
+        self.prompts = prompts
+        self.terms = terms
         self.document = document
         self.brief = brief
         self.turns = turns

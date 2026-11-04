@@ -22,6 +22,8 @@ final class AppContainer {
     let onDeviceModel: OnDeviceModelStatus
     /// Reads and answered questions, on this Mac only (Application Support/VibeFlow/history.json).
     let history: HistoryStore
+    /// What the paid APIs cost, per day and model (Settings > Usage); counts only, never text.
+    let usage: UsageLog
     /// The entry the History window shows; set by the menu's History submenu.
     var historySelection: HistoryEntry.ID?
     /// Transcribe File (docs/designs/file-transcription.md).
@@ -29,6 +31,16 @@ final class AppContainer {
     /// SwiftUI's window opener, handed over by the always-visible menu bar label, so a
     /// notification click can open a window while no menu is showing.
     @ObservationIgnored var openWindow: OpenWindowAction?
+    /// SwiftUI's Settings opener, handed over by SceneAnchor at launch: the menu bar panel is
+    /// AppKit-hosted and cannot rely on its own environment for it.
+    @ObservationIgnored var openSettings: OpenSettingsAction?
+    /// Closes the menu bar panel (StatusItemController); every shortcut calls it first (D13).
+    @ObservationIgnored var closePanel: (() -> Void)?
+    /// The version Sparkle downloaded and holds until idle, for the panel's update pill (D7).
+    var updateWaiting: String?
+    /// The "hold to ask" tip under the notch on the first smart read taps (D17).
+    let holdTip = HoldTipModel()
+    @ObservationIgnored private var holdTipClear: Task<Void, Never>?
     @ObservationIgnored private var appNames: [String: String] = [:]
     let accessibility = LiveAccessibility()
     private let clipboardSource = LiveClipboardSource()
@@ -48,6 +60,8 @@ final class AppContainer {
     let keepAwake: KeepAwake
     /// Which settings tab is showing; "Add key" buttons jump to Keys.
     var settingsTab: SettingsTab = .general
+    /// The page the Context window shows.
+    var contextPage: ContextPage = .feature(.brief)
     /// True after the record shortcut, false after a read: which session the menu's status
     /// line and icon describe.
     private(set) var showsDictation = false
@@ -57,6 +71,8 @@ final class AppContainer {
     /// Settings while it is denied.
     private(set) var microphonePermission: MicrophonePermission = .undetermined
     @ObservationIgnored private var permissionWatch: Task<Void, Never>?
+    /// Whether Escape is registered as the cancel-dictation hotkey right now.
+    @ObservationIgnored private var escapeRegistered = false
 
     init() {
         LegacyMigration.runIfNeeded()
@@ -75,11 +91,22 @@ final class AppContainer {
 
         let clock = ContinuousSessionClock()
         let pasteboard = LivePasteboard()
-        let http = URLSessionHTTPClient()
+        // Every client that can reach a paid API goes through a meter (UsageMeter). VibeFlow
+        // Dev keeps its own file, like history-dev.json.
+        #if DEBUG
+        let usage = UsageLog(fileURL: UsageLog.defaultFileURL.deletingLastPathComponent().appending(path: "usage-dev.json"))
+        #else
+        let usage = UsageLog(fileURL: UsageLog.defaultFileURL)
+        #endif
+        self.usage = usage
+        let meter = usage.sink()
+        let http = MeteredHTTPClient(URLSessionHTTPClient(), record: meter)
+        let stream = MeteredByteStreamClient(URLSessionByteStreamClient(), record: meter)
         focus = FocusTimer(preferences: preferences)
         meetings = MeetingsStore(config: GoogleOAuthConfig(infoDictionary: Bundle.main.infoDictionary),
                                  secrets: secrets, preferences: preferences, http: http)
-        let elevenLabs = ElevenLabsProvider(client: URLSessionByteStreamClient(), player: player, secrets: secrets)
+        let elevenLabs = ElevenLabsProvider(client: stream, webSocket: MeteredWebSocketClient(URLSessionWebSocketClient(), record: meter),
+                                            player: player, secrets: secrets)
         self.elevenLabs = elevenLabs
         let session = ReadSession(
             accessibility: accessibility,
@@ -88,7 +115,7 @@ final class AppContainer {
             presets: presets,
             elevenLabs: elevenLabs,
             apple: AppleSpeechProvider(catalog: voices),
-            smartRead: AnthropicClient(http: http, secrets: secrets),
+            smartRead: AnthropicClient(http: http, stream: stream, secrets: secrets),
             secrets: secrets,
             clock: clock,
             configuration: preferences.sessionConfiguration,
@@ -135,13 +162,15 @@ final class AppContainer {
                 return DictationSetupFactory.make(vocabulary: preferences.vocabularyTerms,
                                                   transcriptionModel: preferences.transcriptionModel,
                                                   cleanupModel: preferences.cleanupModel,
-                                                  secrets: secrets, http: http, onDevice: onDevice, microphoneUID: microphone)
+                                                  secrets: secrets, http: http, onDevice: onDevice, microphoneUID: microphone,
+                                                  prompts: preferences.prompts)
             },
             stopReading: { session.stop() }, // D3
             readIsCapturing: { session.state == .capturing },
             cue: { if preferences.dictationSounds { sounds.play($0) } }
         )
-        notch = NotchIndicator(dictation: dictation, reading: session, preferences: preferences, level: { [recorder] in recorder.level })
+        notch = NotchIndicator(dictation: dictation, reading: session, preferences: preferences, holdTip: holdTip,
+                               level: { [recorder] in recorder.level })
         onDeviceModel = OnDeviceModelStatus(store: LiveOnDeviceModelStore())
         onDeviceModel.prepare(language: presets.defaultPreset.languageOverride) // D9
 
@@ -151,28 +180,42 @@ final class AppContainer {
             onTap: { [weak self] in
                 log.notice("Smart read shortcut: tap")
                 self?.hotkey(.smartRead)
+                self?.showHoldTipIfDue()
             },
             onHoldStart: { [weak self] in
                 log.notice("Smart read shortcut: hold")
+                self?.preferences.holdTipHeld = true
+                self?.holdTip.text = nil
                 self?.questionHoldStarted()
             },
             onHoldEnd: { [weak self] in self?.questionHoldEnded() }
         )
-        KeyboardShortcuts.onKeyDown(for: .smartRead) { [weak self] in self?.smartReadPress?.keyDown() }
+        KeyboardShortcuts.onKeyDown(for: .smartRead) { [weak self] in
+            self?.closePanel?()
+            self?.smartReadPress?.keyDown()
+        }
         KeyboardShortcuts.onKeyUp(for: .smartRead) { [weak self] in self?.smartReadPress?.keyUp() }
         KeyboardShortcuts.onKeyUp(for: .readClipboard) { [weak self] in self?.clipboardHotkey(.read) }
         KeyboardShortcuts.onKeyUp(for: .smartReadClipboard) { [weak self] in self?.clipboardHotkey(.smartRead) }
         KeyboardShortcuts.onKeyDown(for: .record) { [weak self] in self?.recordKeyDown() }
         KeyboardShortcuts.onKeyUp(for: .record) { [weak self] in self?.dictation.recordKeyUp() }
         KeyboardShortcuts.onKeyDown(for: .recordToggle) { [weak self] in self?.toggleRecording() }
-        KeyboardShortcuts.onKeyUp(for: .pasteLastDictation) { [weak self] in self?.pasteLastDictation() }
-        KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in self?.pasteLastAnswer() }
+        KeyboardShortcuts.onKeyUp(for: .pasteLastDictation) { [weak self] in
+            self?.closePanel?()
+            self?.pasteLastDictation()
+        }
+        KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in
+            self?.closePanel?()
+            self?.pasteLastAnswer()
+        }
         KeyboardShortcuts.onKeyUp(for: .focusToggle) { [weak self] in self?.focus.toggle() }
+        watchDictationForEscape()
 
         wireFileTranscription()
         applyColorMode()
         refreshPermissions()
-        // Every menu that opens re-checks, so a grant taken away later shows up as well.
+        // Every menu that opens re-checks, so a grant taken away later shows up as well (the
+        // menu bar panel calls refreshPermissions itself when it opens).
         _ = NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshPermissions() }
         }
@@ -182,6 +225,7 @@ final class AppContainer {
             isBusy: { [weak self] in self?.isRunning ?? false },
             followsMain: { [weak self] in self?.preferences.updateToNewestMain ?? false }
         )
+        updater?.onUpdateWaiting = { [weak self] version in self?.updateWaiting = version }
         #endif
 
         warmConnections()
@@ -225,12 +269,14 @@ final class AppContainer {
     }
 
     private func recordKeyDown() {
+        closePanel?()
         showsDictation = true
         dictation.recordKeyDown()
     }
 
     /// Shortcut and menu "Start dictation".
     func toggleRecording() {
+        closePanel?()
         showsDictation = true
         dictation.toggleRecording()
     }
@@ -252,7 +298,7 @@ final class AppContainer {
     /// Held past the threshold: stop any read (the dictation side does it, D3) and record.
     private func questionHoldStarted() {
         if dictationCancelledByRead() { return }
-        applyReadSettings()
+        applyReadSettings(smart: true)
         showsDictation = true // microphone problems show as dictation errors
         dictation.startQuestion { [weak self] result in self?.questionTranscribed(result) }
     }
@@ -277,7 +323,7 @@ final class AppContainer {
     /// History: read an entry aloud again (the answer, for a question).
     func readAgain(_ entry: HistoryEntry) {
         if dictationCancelledByRead() { return }
-        applyReadSettings()
+        applyReadSettings(smart: entry.kind == .question)
         session.readAgain(entry.text)
     }
 
@@ -296,12 +342,6 @@ final class AppContainer {
         return name
     }
 
-    func copyLastAnswer() {
-        guard let answer = session.lastExchange?.answer else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(answer, forType: .string)
-    }
-
     /// A read shortcut while dictating cancels the dictation and does nothing else. While a
     /// paste owns the clipboard it is ignored, so a read's Copy cannot snapshot the pasted text.
     private func dictationCancelledByRead() -> Bool {
@@ -313,7 +353,106 @@ final class AppContainer {
 
     /// Menu "Stop": whichever session is running.
     func stopAll() {
-        if !dictation.cancel() { session.stop() }
+        if !cancelDictation() { session.stop() }
+    }
+
+    // MARK: Menu bar panel
+
+    /// Everything PanelState decides from (docs/designs/menu-bar-popover.md, R2).
+    var panelInput: PanelState.Input {
+        // One short label that never truncates: a release shows its version, a nightly or Dev
+        // build only the commit it was built from (the full line is in Settings > General).
+        let stamp = BuildStamp(info: Bundle.main.infoDictionary ?? [:])
+        #if DEBUG
+        let build = PanelState.Build.debug
+        let version = stamp?.commit ?? "Dev"
+        #else
+        let build: PanelState.Build = Updater.isNightly ? .nightly : .release
+        let release = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let version = stamp?.commit ?? "VibeFlow \(release)"
+        #endif
+        return PanelState.Input(
+            readState: session.state, readStatus: session.status, readError: session.lastError,
+            dictationState: dictation.state, dictationStatus: dictation.status, dictationError: dictation.lastError,
+            showsDictation: showsDictation,
+            accessibilityTrusted: session.accessibilityTrusted,
+            microphoneDenied: microphonePermission == .denied,
+            feedbackEnabled: FeedbackSender.isEnabled,
+            updateWaiting: updateWaiting, build: build, version: version)
+    }
+
+    /// Opens Settings (optionally on a tab) with the opener SceneAnchor handed over.
+    func presentSettings(tab: SettingsTab?) {
+        log.notice("Settings requested, tab=\(tab.map { "\($0)" } ?? "last", privacy: .public)")
+        guard let openSettings else { return }
+        SettingsWindow.present(openSettings, container: self, tab: tab)
+    }
+
+    /// Right-click on a menu bar item: Settings opens, or closes when it is already open (R3).
+    func toggleSettings(tab: SettingsTab?) {
+        if SettingsWindow.isVisible {
+            SettingsWindow.close()
+        } else {
+            presentSettings(tab: tab)
+        }
+    }
+
+    /// D17: the first three smart read taps teach that holding the key asks a question.
+    private func showHoldTipIfDue() {
+        guard HoldTip.shows(tapsSoFar: preferences.holdTipTaps, hasHeld: preferences.holdTipHeld) else { return }
+        preferences.holdTipTaps += 1
+        let key = KeyboardShortcuts.getShortcut(for: .smartRead).map { "\($0)" } ?? "the Smart read key"
+        holdTip.text = "Hold \(key) next time to ask a question"
+        holdTipClear?.cancel()
+        holdTipClear = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard !Task.isCancelled else { return }
+            self?.holdTip.text = nil
+        }
+    }
+
+    /// Escape and menu Stop. A follow-up question still being transcribed also drops the smart
+    /// read waiting for it. Returns whether a dictation was cancelled.
+    @discardableResult
+    private func cancelDictation() -> Bool {
+        guard dictation.cancel() else { return false }
+        if pendingQuestion != nil {
+            pendingQuestion = nil
+            session.stop()
+        }
+        return true
+    }
+
+    // MARK: Escape cancels dictation
+
+    /// Re-arms on every dictation state change: Escape is a global hotkey only while a
+    /// dictation can be cancelled, and goes back to the frontmost app right after.
+    private func watchDictationForEscape() {
+        let cancellable = withObservationTracking {
+            dictation.state.isCancellable
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.watchDictationForEscape() }
+        }
+        escapeCancels(cancellable)
+    }
+
+    private func escapeCancels(_ on: Bool) {
+        guard on != escapeRegistered else { return }
+        escapeRegistered = on
+        guard on else {
+            KeyboardShortcuts.removeHandler(for: .cancelDictation)
+            KeyboardShortcuts.removeHandler(for: .cancelDictationHeld)
+            return
+        }
+        // Push-to-talk keeps its modifiers down, so Escape arrives as Option-Escape then.
+        let held = KeyboardShortcuts.getShortcut(for: .record)?.modifiers ?? []
+        KeyboardShortcuts.setShortcut(held.isEmpty ? nil : .init(.escape, modifiers: held), for: .cancelDictationHeld)
+        for name in [KeyboardShortcuts.Name.cancelDictation, .cancelDictationHeld] {
+            KeyboardShortcuts.onKeyDown(for: name) { [weak self] in
+                guard let self, self.cancelDictation() else { return }
+                log.notice("Dictation cancelled with Escape")
+            }
+        }
     }
 
     var isRunning: Bool { session.state != .idle || dictation.state.isBusy }
@@ -324,6 +463,7 @@ final class AppContainer {
         case .transcribing, .cleaning, .pasting: return "ellipsis.circle"
         case .idle: break
         }
+        if dictation.justCancelled, session.state == .idle { return "mic.slash" }
         if showsDictation, session.state == .idle, dictation.lastError != nil { return IconState.error.symbolName }
         // A file being transcribed shows in the menu bar the whole time, not only in the menu.
         if files.job.isRunning, session.state == .idle { return "ellipsis.circle" }
@@ -336,31 +476,34 @@ final class AppContainer {
         keepAwake.keepsDisplayOn = on
     }
 
-    /// The models and speaker chosen in Settings, applied right before each read.
-    private func applyReadSettings() {
+    /// The models and speaker chosen in Settings, applied right before each read. A smart read
+    /// uses Smart Read's own voice model and speaker when they are set.
+    private func applyReadSettings(smart: Bool) {
         session.configuration = preferences.sessionConfiguration
-        elevenLabs.model = preferences.voiceModel
-        player.outputDeviceUID = preferences.speakerUID
+        elevenLabs.model = smart ? (preferences.smartReadVoiceModel ?? preferences.voiceModel) : preferences.voiceModel
+        player.outputDeviceUID = smart ? preferences.smartReadOutputDeviceUID : preferences.speakerUID
     }
 
     /// Shortcut and menu "Read selection": the menu does not take focus, so the selection
     /// is still the frontmost app's.
     func hotkey(_ kind: ReadKind) {
+        closePanel?()
         if dictationCancelledByRead() { return }
-        applyReadSettings()
+        applyReadSettings(smart: kind == .smartRead)
         session.hotkey(kind)
     }
 
     private func clipboardHotkey(_ kind: ReadKind) {
+        closePanel?()
         if dictationCancelledByRead() { return }
-        applyReadSettings()
+        applyReadSettings(smart: kind == .smartRead)
         session.clipboardHotkey(kind, text: NSPasteboard.general.string(forType: .string) ?? "")
     }
 
     /// Menu reads use the clipboard text and the default preset.
     func menuRead(_ kind: ReadKind) {
         if dictationCancelledByRead() { return }
-        applyReadSettings()
+        applyReadSettings(smart: kind == .smartRead)
         let text = NSPasteboard.general.string(forType: .string) ?? ""
         session.menuRead(kind, text: text)
     }

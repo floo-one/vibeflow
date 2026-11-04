@@ -17,6 +17,12 @@ public struct SessionConfiguration: Sendable, Equatable {
     /// Speed for briefs and follow-up answers (Settings > Smart Read), nil = the read speed.
     public var smartReadSpeed: Double?
     public var briefMaxTokens: Int = 800
+    /// Voice for briefs and follow-up answers (Settings > Smart Read), nil = the preset's voice.
+    public var smartReadVoiceID: String?
+    /// The listener's prompt edits (Settings > Prompts).
+    public var prompts = PromptLibrary()
+    /// The listener's names and terms (Dictation > Vocabulary), for briefs and answers.
+    public var terms: [String] = []
 
     public init() {}
 

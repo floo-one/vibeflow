@@ -19,7 +19,8 @@ final class NotchIndicator {
     private let layout = NotchLayout()
     private var screenObserver: NSObjectProtocol?
 
-    init(dictation: DictationSession, reading: ReadSession, preferences: Preferences, level: @escaping @MainActor () -> Float) {
+    init(dictation: DictationSession, reading: ReadSession, preferences: Preferences, holdTip: HoldTipModel,
+         level: @escaping @MainActor () -> Float) {
         panel = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -30,7 +31,8 @@ final class NotchIndicator {
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
 
         let layout = layout
-        let view = NotchIndicatorView(dictation: dictation, reading: reading, preferences: preferences, layout: layout, level: level) { [weak self] in
+        let view = NotchIndicatorView(dictation: dictation, reading: reading, preferences: preferences, holdTip: holdTip,
+                                      layout: layout, level: level) { [weak self] in
             self?.place()
         }
         panel.contentView = NSHostingView(rootView: view.environment(\.colorScheme, .dark))
@@ -49,8 +51,12 @@ final class NotchIndicator {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         layout.update(for: screen)
         let width = layout.notchWidth + 2 * NotchLayout.wingWidth
-        panel.setFrame(NSRect(x: screen.frame.midX - width / 2, y: screen.frame.maxY - layout.height,
-                              width: width, height: layout.height), display: true)
+        // Room below the notch for the hold tip (D17); the panel ignores the mouse, so the
+        // transparent strip never gets in the way.
+        let height = layout.height + NotchLayout.tipHeight
+        panel.setFrame(NSRect(x: screen.frame.midX - width / 2 - NotchLayout.tipOverhang,
+                              y: screen.frame.maxY - height,
+                              width: width + 2 * NotchLayout.tipOverhang, height: height), display: true)
     }
 }
 
@@ -59,6 +65,10 @@ final class NotchIndicator {
 @Observable
 final class NotchLayout {
     static let wingWidth: CGFloat = 40
+    /// Below the notch: the hold tip's capsule and its gap (D17).
+    static let tipHeight: CGFloat = 32
+    /// Each side beyond the wings, so the tip's text fits.
+    static let tipOverhang: CGFloat = 70
     private(set) var notchWidth: CGFloat = 0
     private(set) var height: CGFloat = 24
 
@@ -86,6 +96,8 @@ private enum NotchPhase: Equatable {
     case asking
     /// Dictation is transcribing, cleaning or pasting.
     case dictationWorking
+    /// A dictation was just cancelled: a short flash instead of the wings simply vanishing.
+    case cancelled
     /// A read is capturing the selection or waiting for the first audio.
     case preparing
     /// Smart read is waiting for the model.
@@ -97,6 +109,7 @@ private enum NotchPhase: Equatable {
         case .hidden: return nil
         case .listening, .dictationWorking: return "mic.fill"
         case .asking: return "questionmark.bubble.fill"
+        case .cancelled: return "mic.slash.fill"
         case .preparing, .speaking: return "speaker.wave.2.fill"
         case .thinking: return "sparkles"
         }
@@ -107,6 +120,7 @@ private struct NotchIndicatorView: View {
     let dictation: DictationSession
     let reading: ReadSession
     let preferences: Preferences
+    let holdTip: HoldTipModel
     let layout: NotchLayout
     let level: @MainActor () -> Float
     let willShow: @MainActor () -> Void
@@ -117,7 +131,7 @@ private struct NotchIndicatorView: View {
         switch dictation.state {
         case .recording: return dictation.isAskingQuestion ? .asking : .listening
         case .transcribing, .cleaning, .pasting: return dictation.isAskingQuestion ? .thinking : .dictationWorking
-        case .idle: break
+        case .idle: if dictation.justCancelled { return .cancelled }
         }
         switch reading.state {
         case .idle, .awaitingConfirm: return .hidden
@@ -137,7 +151,7 @@ private struct NotchIndicatorView: View {
                 if let symbol = phase.symbol {
                     Image(systemName: symbol)
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(phase == .listening || phase == .asking || phase == .speaking ? 1 : 0.7))
+                        .foregroundStyle(.white.opacity(phase == .listening || phase == .asking || phase == .speaking || phase == .cancelled ? 1 : 0.7))
                         .contentTransition(.symbolEffect(.replace))
                 }
             }
@@ -147,6 +161,11 @@ private struct NotchIndicatorView: View {
                 switch phase {
                 case .listening, .asking: ListeningIndicator(style: preferences.listeningStyle, level: level)
                 case .dictationWorking, .preparing, .thinking: ProgressView().controlSize(.mini)
+                case .cancelled:
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white, .red)
+                        .transition(.scale.combined(with: .opacity))
                 case .speaking:
                     Image(systemName: "waveform")
                         .font(.system(size: 11, weight: .semibold))
@@ -161,8 +180,23 @@ private struct NotchIndicatorView: View {
         .background(.black)
         .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10))
         .opacity(shown ? 1 : 0)
+        .overlay(alignment: .top) {
+            if let tip = holdTip.text, shown {
+                Text(tip)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .frame(height: 22)
+                    .background(.black, in: Capsule())
+                    .fixedSize()
+                    .offset(y: layout.height + 6)
+                    .transition(.opacity)
+            }
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(.spring(response: 0.32, dampingFraction: 0.8), value: phase)
+        .animation(.easeOut(duration: 0.2), value: holdTip.text)
         .onChange(of: shown) { _, isShown in if isShown { willShow() } }
     }
 }
@@ -225,4 +259,12 @@ private struct Waveform: View {
             .animation(.linear(duration: 1 / 30), value: loudness)
         }
     }
+}
+
+/// The "Hold ⌥ , next time to ask a question" line under the notch, set by AppContainer on the
+/// first three smart read taps (menu bar popover D17).
+@MainActor
+@Observable
+final class HoldTipModel {
+    var text: String?
 }

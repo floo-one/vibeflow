@@ -5,13 +5,14 @@ aloud in a natural voice. v1 (shipped locally) is speech out; VibeFlow 2 adds Fr
 dictation and a conversation mode (docs/designs/vibeflow-2-dictation-conversation.md).
 Default shortcuts: Option + . read, Option + , smart read (hold to ask a follow-up), Shift adds clipboard, Option + - push-to-talk
 dictation, Shift + Option + - toggle dictation (the three keys right above Option, same physical keys on every layout:
-`,` `.` `-` on German, `,` `.` `/` on US; the dictation key is kVK_ANSI_Slash), Control + Option + V paste last dictation,
-Shift + Control + Option + V paste last smart read.
+`,` `.` `-` on German, `,` `.` `/` on US; the dictation key is kVK_ANSI_Slash), Option + Command + V paste last dictation,
+Shift + Option + Command + V paste last smart read.
 
 ## Stack and decisions
 
-- Swift 6 / SwiftUI, `MenuBarExtra` for the menu bar UI, a Settings window for voice,
+- Swift 6 / SwiftUI, a Settings window for voice,
   speed and shortcuts. No Electron, no Tauri, no server, no database.
+- Menu bar: the VibeFlow icon is an own NSStatusItem with a non-activating panel (VibeFlow/Popover, docs/designs/menu-bar-popover.md); its rules live in VibeFlowCore PanelState. Clocks, Meetings, Pomodoro and Keep Awake stay `MenuBarExtra`s. SwiftUI's openWindow/openSettings come from SceneAnchor (an invisible window in VibeFlowApp), because AppKit-hosted views cannot rely on them. The icon's autosaveName "vibeflow-icon" keeps it from inheriting a hidden MenuBarExtra slot ("NSStatusItem VisibleCC Item-N" = 0).
 - Xcode project generated from `project.yml` via XcodeGen so it stays text-reviewable.
 - Selection capture: Accessibility API first, simulated Cmd+C + pasteboard as fallback.
   Needs the Accessibility permission; sign with a stable identity so TCC keeps the grant
@@ -37,7 +38,8 @@ Shift + Control + Option + V paste last smart read.
 Xcode 26.6 installed and selected (2026-10-01). The .xcodeproj is generated and gitignored; project.yml is the source of truth.
 
 - Regenerate the project after editing project.yml: `xcodegen generate`
-- Build: `xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug -derivedDataPath build/DerivedData build`
+- Build: `xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug -derivedDataPath build/DerivedData -clonedSourcePackagesDirPath ~/Library/Caches/VibeFlow/SourcePackages build`
+  (the shared package folder keeps worktrees from each holding their own 3.3 GB copy of sentry-cocoa; scripts/dev.sh uses it too. release.sh keeps packages in build/DerivedData, where it finds Sparkle's tools)
   (until a signing identity exists, append `CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=` for an ad-hoc build)
 - Core tests: `cd VibeFlowCore && swift test` (Swift Testing)
 - Two apps side by side: the installed release (Release config, "VibeFlow", one.floo.vibeflow, from the GitHub DMG in /Applications) is prod; the Debug build is "VibeFlow Dev" (one.floo.vibeflow.dev): own UserDefaults and TCC grants, own data files in the shared Application Support/VibeFlow folder (focus-dev.json, history-dev.json, Transcripts-dev/; an older release that meets a newer history row cannot read the file and empties it), DEV tag in the menu bar, Control added to default shortcuts via `#if DEBUG` in Shortcuts.swift. Keychain service "one.floo.vibeflow" is shared by both. Each runs once: a starting copy quits every older copy of itself from any path (AppDelegate.quitOlderCopies, called from VibeFlowApp.init).

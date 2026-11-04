@@ -1,4 +1,7 @@
 #!/bin/zsh
+# Fallback only: GitHub Actions (.github/workflows/ship.yml) publishes the nightlies since #34.
+# Install this only while Actions cannot; never both at once, they would race on the release.
+#
 # Keep the "nightly" pre-release at the newest main, built, signed and notarized on this Mac,
 # so a VibeFlow with Settings > General > Updates, Channel "Nightly", installs every new main.
 # A LaunchAgent runs it every 30 minutes; it builds only when origin/main moved and CI passed

@@ -5,6 +5,8 @@ import VibeFlowCore
 /// a summary is listened to more slowly than a text you skim.
 struct SmartReadPane: View {
     @Environment(AppContainer.self) private var container
+    /// Loaded when the pane appears, never in body (CoreAudio enumeration).
+    @State private var speakers: [AudioDevice] = []
 
     var body: some View {
         @Bindable var prefs = container.preferences
@@ -18,21 +20,21 @@ struct SmartReadPane: View {
             }
             Section("Thinking") {
                 ModelPicker(title: "Model", options: ModelOptions.smartRead, selection: $prefs.smartReadModel)
-                PromptsButton(initial: .brief)
+                PromptsLink(page: .feature(.brief))
             }
             Section {
-                LabeledContent("Voice") {
-                    Button("Same as Read") { container.settingsTab = .read }
-                        .buttonStyle(.link)
-                }
+                InheritingVoicePicker(voiceID: $prefs.smartReadVoiceID, readVoiceID: container.presets.defaultPreset.elevenLabsVoiceID)
+                InheritingModelPicker(title: "Voice model", options: ModelOptions.voice, selection: $prefs.smartReadVoiceModel, readModel: prefs.voiceModel)
                 SpeedSlider(speed: $prefs.smartReadSpeed)
+                InheritingDevicePicker(devices: speakers, selection: $prefs.smartReadSpeaker)
             } header: {
                 Text("Speaking")
             } footer: {
-                Text("A brief is listened to more slowly than a text you skim, so it has its own speed.")
+                Text("Briefs and follow-up answers. A brief is listened to more slowly than a text you skim, so it has its own speed.")
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
+        .task { speakers = AudioDevices.outputs() }
     }
 }

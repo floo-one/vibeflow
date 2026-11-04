@@ -72,7 +72,8 @@ final class FileTranscriptions {
             : nil
         let summaryModel = preferences.smartReadModel
         let summarizer = secrets.read(.anthropic) != nil
-            ? ClaudeTranscriptSummarizer(client: AnthropicClient(http: http, secrets: secrets), model: { summaryModel })
+            ? ClaudeTranscriptSummarizer(client: AnthropicClient(http: http, secrets: secrets), model: { summaryModel },
+                                         prompts: preferences.prompts)
             : nil
         return .init(pieces: groq, call: scribe, onDevice: AppleTranscriber.isAvailable ? AppleTranscriber() : nil,
                      summarizer: summarizer)
@@ -113,6 +114,14 @@ final class FileTranscriptions {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        use(url, then: openOptions)
+    }
+
+    /// A file chosen in the open panel or dropped on the menu bar panel (D15): checked, then
+    /// the options window opens for it.
+    func use(_ url: URL, then openOptions: @escaping () -> Void) {
+        guard !job.isRunning else { return }
+        pickError = nil
         Task {
             do {
                 let info = try await AudioFileDecoder.probe(url)

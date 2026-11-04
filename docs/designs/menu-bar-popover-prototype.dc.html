@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>VibeFlow panel prototype</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.pt button{font:inherit;border:0;margin:0;cursor:pointer;background:transparent;color:inherit}
+.pt .ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.pt .row{display:flex;align-items:center;gap:10px;height:30px;padding:0 8px;border-radius:8px;width:100%;box-sizing:border-box;text-align:left}
+.pt .row:hover{background:rgba(127,127,127,0.14)}
+.pt .mi{display:flex;align-items:center;gap:6px;height:22px;padding:0 10px;margin:0 5px;border-radius:5px;width:calc(100% - 10px);box-sizing:border-box;text-align:left;font-size:13px}
+.pt .mi:hover{background:#5B4FE0;color:#ffffff}
+.pt .chip{height:26px;padding:0 10px;border-radius:13px;font-size:12px;border:1px solid #D2D2D7 !important;background:#ffffff !important;color:#1D1D1F !important}
+.pt .chip.on{background:#1D1D1F !important;color:#ffffff !important;border-color:#1D1D1F !important}
+.pt .sect{font-size:11px;font-weight:600;color:#6E6E73;letter-spacing:0.2px;margin:0 0 6px}
+</style>
+</helmet>
+<div class="pt" style="width: 1440px; height: 900px; display: flex; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; font-size: 13px; color: #1D1D1F; background: #F5F5F7">
+
+<div data-swift="Desktop (not ported)" onClick="{{closeAll}}" style="width: 880px; height: 900px; position: relative; overflow: hidden; background: {{c.desk}}">
+<div style="height: 28px; display: flex; justify-content: flex-end; align-items: center; gap: 14px; padding: 0 14px; background: {{c.menubar}}; color: {{c.text}}; font-size: 13px; font-weight: 500">
+<sc-if value="{{p.menuBarAwake}}" hint-placeholder-val="{{false}}"><span style="display: flex; align-items: center; gap: 4px"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h8v4a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zM11 7h1.5a1.5 1.5 0 0 1 0 3H11"></path></svg>{{p.tiles.awakeShort}}</span></sc-if>
+<sc-if value="{{p.menuBarPomo}}" hint-placeholder-val="{{false}}"><span style="font-variant-numeric: tabular-nums">{{p.tiles.pomoShort}}</span></sc-if>
+<button type="button" aria-label="VibeFlow" data-swift="StatusItemController.button" onClick="{{iconClick}}" onContextMenu="{{iconRightClick}}" onDragEnter="{{iconDragEnter}}" onDragOver="{{allowDrop}}" onDrop="{{dropOnIcon}}" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 22px; border-radius: 5px; background: {{iconBg}}; color: {{c.text}}">
+<svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 5v4M5 2v10M8 4v6M11 1v12M14 5v4"></path></svg>
+</button>
+<span>14:32</span>
+<span>Do 5. Nov</span>
+</div>
+
+<div style="position: absolute; left: 24px; bottom: 22px; right: 24px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 12px; color: {{c.text2}}">
+<span>Click the waveform icon to open. Right-click it for Settings. Drag an audio file from your desktop onto it.</span>
+<sc-if value="{{settingsOpen}}" hint-placeholder-val="{{false}}"><span style="padding: 6px 10px; border-radius: 8px; background: {{c.panel}}; color: {{c.text}}; border: 1px solid {{c.border}}">Settings window is open</span></sc-if>
+</div>
+
+<sc-if value="{{open}}" hint-placeholder-val="{{true}}">
+<div data-swift="PopoverView (non-activating NSPanel, 330 pt)" onClick="{{swallow}}" style="position: absolute; top: 34px; right: 120px; width: 330px; box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; gap: 12px; background: {{c.panel}}; border: 1px solid {{c.border}}; border-radius: 18px; box-shadow: 0 16px 40px rgba(0,0,0,0.28); color: {{c.text}}">
+
+<sc-if value="{{p.top.isReady}}" hint-placeholder-val="{{true}}">
+<div data-swift="TopSlotView.ready" style="display: flex; align-items: center; justify-content: space-between; height: 28px; padding: 0 4px">
+<div style="display: flex; align-items: center; gap: 8px"><span style="width: 8px; height: 8px; border-radius: 4px; background: linear-gradient(180deg, #6B70FF, #4030C7)"></span><span style="font-weight: 600">Ready</span></div>
+<button type="button" aria-label="Settings" onClick="{{openSettings}}" style="width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: {{c.text2}}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="2.2"></circle><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"></path></svg></button>
+</div>
+</sc-if>
+
+<sc-if value="{{p.top.isCard}}" hint-placeholder-val="{{false}}">
+<div data-swift="TopSlotView.card (activity or problem)" style="display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 12px; background: {{p.top.tint}}">
+<div style="display: flex; align-items: center; gap: 12px">
+<sc-if value="{{p.top.showMeter}}" hint-placeholder-val="{{false}}"><span style="display: flex; align-items: center; gap: 2px; height: 22px" aria-hidden="true"><span style="width: 3px; height: {{meter.a}}; border-radius: 2px; background: {{p.top.color}}"></span><span style="width: 3px; height: {{meter.b}}; border-radius: 2px; background: {{p.top.color}}"></span><span style="width: 3px; height: {{meter.c}}; border-radius: 2px; background: {{p.top.color}}"></span><span style="width: 3px; height: {{meter.d}}; border-radius: 2px; background: {{p.top.color}}"></span><span style="width: 3px; height: {{meter.e}}; border-radius: 2px; background: {{p.top.color}}"></span></span></sc-if>
+<sc-if value="{{p.top.showIcon}}" hint-placeholder-val="{{false}}"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="{{p.top.color}}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M8 1.8 14.6 13.5H1.4z M8 6v3.5 M8 11.6v.1"></path></svg></sc-if>
+<span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0"><span style="font-weight: 600">{{p.top.title}}</span><span class="ell" style="font-size: 12px; color: {{c.text2}}">{{p.top.sub}}</span></span>
+<sc-if value="{{p.top.buttonRight}}" hint-placeholder-val="{{false}}"><button type="button" onClick="{{topPrimary}}" style="height: 28px; padding: 0 12px; border-radius: 14px; background: {{p.top.color}}; color: {{c.onFill}}; font-size: 12px; font-weight: 600; flex: none">{{p.top.primary}}</button></sc-if>
+</div>
+<sc-if value="{{p.top.buttonBelow}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; gap: 10px; align-items: center; padding-left: 30px">
+<button type="button" onClick="{{topPrimary}}" style="height: 28px; padding: 0 14px; border-radius: 14px; background: {{p.top.color}}; color: {{c.onFill}}; font-size: 12px; font-weight: 600">{{p.top.primary}}</button>
+<sc-if value="{{p.top.hasSecondary}}" hint-placeholder-val="{{false}}"><button type="button" onClick="{{topSecondary}}" style="font-size: 12px; color: {{c.text2}}; text-decoration: underline">{{p.top.secondary}}</button></sc-if>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<div data-swift="TilesView" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; position: relative">
+<div style="display: flex; align-items: center; border-radius: 12px; background: {{c.surface}}">
+<button type="button" onClick="{{awakeToggle}}" aria-label="Keep Awake, {{p.tiles.awakeSub}}" style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 10px 0 10px 10px; text-align: left">
+<span style="width: 30px; height: 30px; border-radius: 15px; flex: none; display: flex; align-items: center; justify-content: center; background: {{p.tiles.awakeDot}}; color: {{p.tiles.awakeGlyph}}"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h8v4a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zM11 7h1.5a1.5 1.5 0 0 1 0 3H11"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 1px; min-width: 0"><span class="ell" style="font-weight: 600">Keep Awake</span><span class="ell" style="font-size: 12px; color: {{c.text2}}">{{p.tiles.awakeSub}}</span></span>
+</button>
+<button type="button" aria-label="Keep Awake durations" onClick="{{awakeMenuToggle}}" style="width: 26px; height: 50px; border-radius: 0 12px 12px 0; color: {{c.text2}}; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5"></path></svg></button>
+</div>
+<div style="display: flex; align-items: center; border-radius: 12px; background: {{c.surface}}">
+<button type="button" onClick="{{pomoToggle}}" aria-label="Pomodoro, {{p.tiles.pomoSub}}" style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 10px 0 10px 10px; text-align: left">
+<span style="width: 30px; height: 30px; border-radius: 15px; flex: none; display: flex; align-items: center; justify-content: center; background: {{p.tiles.pomoDot}}; color: {{p.tiles.pomoGlyph}}"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="9" r="5.5"></circle><path d="M8 6.5V9l1.8 1M6 1.8h4"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 1px; min-width: 0"><span class="ell" style="font-weight: 600">{{p.tiles.pomoTitle}}</span><span class="ell" style="font-size: 12px; color: {{c.text2}}; font-variant-numeric: tabular-nums">{{p.tiles.pomoSub}}</span></span>
+</button>
+<button type="button" aria-label="Pomodoro options" onClick="{{pomoMenuToggle}}" style="width: 26px; height: 50px; border-radius: 0 12px 12px 0; color: {{c.text2}}; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5"></path></svg></button>
+</div>
+
+<sc-if value="{{awakeMenu}}" hint-placeholder-val="{{false}}">
+<div role="menu" data-swift="KeepAwakeMenuItems (reused)" style="position: absolute; top: 54px; left: 30px; z-index: 3; width: 210px; box-sizing: border-box; padding: 5px 0; background: {{c.menu}}; border: 1px solid {{c.border}}; border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,0.25)">
+<div style="height: 22px; display: flex; align-items: center; padding: 0 15px; color: {{c.text2}}; font-size: 12px">{{p.tiles.awakeStatus}}</div>
+<sc-if value="{{awakeOn}}" hint-placeholder-val="{{false}}"><button type="button" class="mi" onClick="{{awakeOff}}">End Session</button></sc-if>
+<div style="height: 1px; background: {{c.border}}; margin: 5px 15px"></div>
+<sc-for list="{{durations}}" as="d" hint-placeholder-count="8"><button type="button" class="mi" onClick="{{d.pick}}"><span style="width: 12px">{{d.check}}</span>{{d.title}}</button></sc-for>
+<div style="height: 1px; background: {{c.border}}; margin: 5px 15px"></div>
+<button type="button" class="mi" onClick="{{toggleDisplaySleep}}"><span style="width: 12px">{{displaySleepCheck}}</span>Allow Display Sleep</button>
+<button type="button" class="mi" onClick="{{awakeSettings}}"><span style="width: 12px"></span>Keep Awake Settings…</button>
+</div>
+</sc-if>
+
+<sc-if value="{{pomoMenu}}" hint-placeholder-val="{{false}}">
+<div role="menu" data-swift="PomodoroMenuItems (reused)" style="position: absolute; top: 54px; right: 0; z-index: 3; width: 210px; box-sizing: border-box; padding: 5px 0; background: {{c.menu}}; border: 1px solid {{c.border}}; border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,0.25)">
+<div style="height: 22px; display: flex; align-items: center; padding: 0 15px; color: {{c.text2}}; font-size: 12px">{{p.tiles.pomoStatus}}</div>
+<sc-if value="{{p.tiles.pomoActive}}" hint-placeholder-val="{{false}}"><button type="button" class="mi" onClick="{{pomoSkip}}"><span style="width: 12px"></span>Skip to {{p.tiles.pomoNext}}</button><button type="button" class="mi" onClick="{{pomoStop}}"><span style="width: 12px"></span>Stop</button></sc-if>
+<div style="height: 1px; background: {{c.border}}; margin: 5px 15px"></div>
+<sc-for list="{{rhythms}}" as="r" hint-placeholder-count="3"><button type="button" class="mi" onClick="{{r.pick}}"><span style="width: 12px">{{r.check}}</span>{{r.title}}</button></sc-for>
+<div style="height: 1px; background: {{c.border}}; margin: 5px 15px"></div>
+<button type="button" class="mi" onClick="{{pomoSettings}}"><span style="width: 12px"></span>Pomodoro Settings…</button>
+</div>
+</sc-if>
+</div>
+
+<sc-if value="{{p.meeting.show}}" hint-placeholder-val="{{true}}">
+<div data-swift="MeetingCardView" role="button" tabindex="0" onClick="{{openCalendar}}" style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; background: {{c.surface}}; cursor: pointer">
+<span style="width: 30px; height: 30px; border-radius: 15px; flex: none; display: flex; align-items: center; justify-content: center; background: {{c.idleDot}}"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2"></rect><path d="M2 7h12M5 1.5v3M11 1.5v3"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0"><span class="ell" style="font-weight: 600">Weekly sync with the whole litigation team</span><span style="font-size: 12px; color: {{c.text2}}">09:30 · in 18 min</span></span>
+<button type="button" onClick="{{join}}" style="height: 26px; padding: 0 14px; border-radius: 13px; background: {{c.tools}}; color: {{c.onFill}}; font-size: 12px; font-weight: 600">Join</button>
+</div>
+</sc-if>
+
+<div data-swift="HistoryRowView + HistoryFlyout (child NSPanel)" onMouseEnter="{{hoverIn}}" onMouseLeave="{{hoverOut}}" style="position: relative">
+<button type="button" class="row" aria-haspopup="menu" onClick="{{hoverIn}}" style="background: {{historyBg}}"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="{{c.text2}}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 2.5v2.5H5 M8 5v3l2 1.5"></path></svg><span style="flex: 1">History</span><span style="color: {{c.text2}}">‹</span></button>
+<sc-if value="{{hover}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; right: 100%; top: -8px; padding-right: 20px">
+<div role="menu" style="width: 280px; box-sizing: border-box; padding: 6px; display: flex; flex-direction: column; gap: 1px; background: {{c.panel}}; border: 1px solid {{c.border}}; border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.24)">
+<sc-if value="{{historyEmpty}}" hint-placeholder-val="{{false}}"><div style="padding: 10px 10px; font-size: 12px; color: {{c.text2}}">Select text anywhere and press ⌥ . to hear it.</div></sc-if>
+<sc-if value="{{historyFull}}" hint-placeholder-val="{{true}}">
+<sc-for list="{{history}}" as="h" hint-placeholder-count="5"><button type="button" class="row" onClick="{{h.open}}"><span style="width: 8px; height: 8px; border-radius: 4px; flex: none; background: {{h.color}}"></span><span class="ell" style="flex: 1">{{h.text}}</span><span style="font-size: 12px; color: {{c.text2}}; flex: none">{{h.time}}</span></button></sc-for>
+</sc-if>
+<div style="height: 1px; background: {{c.border}}; margin: 4px 8px"></div>
+<button type="button" class="row" onClick="{{showAllHistory}}">Show All History…</button>
+</div>
+</div>
+</sc-if>
+</div>
+
+<div data-swift="FileRowView (drop zone)">
+<sc-if value="{{p.file.isDone}}" hint-placeholder-val="{{false}}"><button type="button" class="row" onClick="{{openTranscript}}" style="margin-bottom: 6px"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="{{c.tools}}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none"><path d="M3 8.5 6.5 12 13 4.5"></path></svg><span class="ell" style="flex: 1">{{p.file.doneName}}</span><span style="font-size: 12px; font-weight: 600; color: {{c.tools}}">Open Transcript</span></button></sc-if>
+<sc-if value="{{p.file.isRunning}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 8px; height: 40px">
+<span style="display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0"><span class="ell" style="font-size: 12px">{{p.file.runningLine}}</span><span style="height: 4px; border-radius: 2px; background: {{c.track}}; overflow: hidden"><span style="display: block; width: {{p.file.pct}}; height: 4px; background: {{c.text2}}"></span></span></span>
+<button type="button" onClick="{{stopJob}}" style="height: 24px; padding: 0 10px; border-radius: 12px; background: {{c.surface}}; font-size: 12px">Stop</button>
+</div>
+</sc-if>
+<sc-if value="{{p.file.showZone}}" hint-placeholder-val="{{true}}">
+<button type="button" onClick="{{chooseFile}}" onDragEnter="{{zoneDragEnter}}" onDragOver="{{allowDrop}}" onDragLeave="{{zoneDragLeave}}" onDrop="{{dropOnZone}}" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1.5px dashed {{p.file.edge}}; background: {{p.file.bg}}; width: 100%; box-sizing: border-box; text-align: left">
+<span style="width: 30px; height: 30px; border-radius: 15px; flex: none; display: flex; align-items: center; justify-content: center; background: {{p.file.dot}}; color: {{p.file.glyph}}"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 10.5V2.5M5 5.5l3-3 3 3M2.5 10v3.5h11V10"></path></svg></span>
+<span style="display: flex; flex-direction: column; gap: 1px; min-width: 0"><span style="font-weight: 600">{{p.file.title}}</span><span class="ell" style="font-size: 12px; color: {{p.file.subColor}}">{{p.file.sub}}</span></span>
+</button>
+</sc-if>
+</div>
+
+<div style="height: 1px; background: {{c.border}}; margin: 0 4px"></div>
+<div data-swift="FooterView" style="display: flex; align-items: center; gap: 6px; padding: 0 2px; position: relative">
+<sc-if value="{{p.footer.feedback}}" hint-placeholder-val="{{true}}"><button type="button" aria-label="Send Feedback" onClick="{{sendFeedback}}" style="width: 26px; height: 26px; border-radius: 7px; color: {{c.text2}}; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="6" height="8.5" rx="3"></rect><path d="M6 5.2V4a2 2 0 0 1 4 0v1.2 M5 8H2.5M13.5 8H11M5 11.5l-2 1.5M11 11.5l2 1.5M5.2 6.2 3.2 4.5M10.8 6.2l2-1.7 M8 8v5"></path></svg></button></sc-if>
+<sc-if value="{{p.footer.pill}}" hint-placeholder-val="{{false}}"><button type="button" onClick="{{versionClick}}" style="height: 24px; padding: 0 10px; border-radius: 12px; background: {{c.brandTint}}; color: {{c.brandText}}; font-size: 12px; font-weight: 600">{{p.footer.label}}</button></sc-if>
+<sc-if value="{{p.footer.plain}}" hint-placeholder-val="{{true}}"><button type="button" onClick="{{versionClick}}" class="ell" style="height: 24px; padding: 0 6px; border-radius: 7px; color: {{c.text2}}; font-size: 12px; max-width: 220px">{{p.footer.label}}</button></sc-if>
+<span style="flex: 1"></span>
+<button type="button" onClick="{{quit}}" style="height: 24px; padding: 0 8px; border-radius: 7px; color: {{c.text2}}; font-size: 12px">Quit</button>
+<sc-if value="{{versionMenu}}" hint-placeholder-val="{{false}}">
+<div role="menu" style="position: absolute; bottom: 30px; left: 26px; z-index: 3; width: 190px; box-sizing: border-box; padding: 5px 0; background: {{c.menu}}; border: 1px solid {{c.border}}; border-radius: 10px; box-shadow: 0 10px 28px rgba(0,0,0,0.25)">
+<button type="button" class="mi" onClick="{{checkUpdates}}">Check for Updates…</button>
+<button type="button" class="mi" onClick="{{backToStable}}">{{p.footer.stableLabel}}</button>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+</div>
+
+<div data-swift="Simulator (not ported)" style="flex: 1; min-width: 0; box-sizing: border-box; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; overflow: hidden">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 17px; font-weight: 600">Simulate the app</span><span style="font-size: 12px; color: #6E6E73">Everything on the left is clickable</span></div>
+
+<div><div class="sect">WHAT VIBEFLOW IS DOING</div><div style="display: flex; flex-wrap: wrap; gap: 6px"><sc-for list="{{activities}}" as="a" hint-placeholder-count="7"><button type="button" class="{{a.cls}}" onClick="{{a.pick}}">{{a.title}}</button></sc-for></div></div>
+
+<div><div class="sect">PROBLEMS (the most important one shows)</div><div style="display: flex; flex-wrap: wrap; gap: 6px"><sc-for list="{{problems}}" as="q" hint-placeholder-count="5"><button type="button" class="{{q.cls}}" onClick="{{q.toggle}}">{{q.title}}</button></sc-for></div></div>
+
+<div><div class="sect">CONTEXT</div><div style="display: flex; flex-wrap: wrap; gap: 6px"><sc-for list="{{contexts}}" as="x" hint-placeholder-count="8"><button type="button" class="{{x.cls}}" onClick="{{x.toggle}}">{{x.title}}</button></sc-for></div></div>
+
+<div><div class="sect">BUILD</div><div style="display: flex; flex-wrap: wrap; gap: 6px"><sc-for list="{{builds}}" as="b" hint-placeholder-count="3"><button type="button" class="{{b.cls}}" onClick="{{b.pick}}">{{b.title}}</button></sc-for></div></div>
+
+<div style="padding: 12px 14px; border-radius: 12px; background: #ffffff; border: 1px solid #E5E5EA">
+<div class="sect">PANELSTATE RULES IN EFFECT (port to VibeFlowCore)</div>
+<sc-for list="{{p.rules}}" as="rule" hint-placeholder-count="4"><div style="font-size: 12px; line-height: 18px; color: #1D1D1F">{{rule}}</div></sc-for>
+</div>
+
+<div style="flex: 1; min-height: 0; padding: 12px 14px; border-radius: 12px; background: #1D1D1F; color: #F5F5F7; overflow: hidden">
+<div class="sect" style="color: #AEAEB2">WHAT THE APP WOULD DO</div>
+<sc-for list="{{log}}" as="l" hint-placeholder-count="6"><div style="font-size: 12px; line-height: 19px; font-family: ui-monospace, 'SF Mono', Menlo, monospace"><span style="color: #8E8E93">{{l.n}}</span>  {{l.t}}</div></sc-for>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+// panelState() is the spec for VibeFlowCore PanelState: same inputs, same rules, same order.
+function panelState(s) {
+  const rules = [];
+  const ACT = {
+    listening: { title: 'Listening', sub: 'Release ⌥ - to paste', color: 'dictation', meter: true },
+    transcribing: { title: 'Transcribing', sub: 'Turning speech into text', color: 'dictation', meter: true },
+    thinking: { title: 'Thinking', sub: 'Smart read · Claude', color: 'smart', meter: true },
+    answering: { title: 'Answering', sub: 'Speaking the answer', color: 'smart', meter: true },
+    speaking: { title: 'Speaking', sub: 'ElevenLabs · Flash', color: 'read', meter: true },
+    confirm: { title: 'Long selection', sub: '42,000 characters, over the 40,000 limit', color: 'read', confirm: true }
+  };
+  const PROB = {
+    ax: { title: 'Allow Accessibility access', sub: 'VibeFlow needs it to read the text you select.', primary: 'Grant access', kind: 'setup' },
+    mic: { title: 'Allow Microphone access', sub: 'Dictation needs the microphone.', primary: 'Open Microphone settings', kind: 'setup' },
+    key: { title: 'Add your ElevenLabs key', sub: 'Reading uses the Apple voice until then.', primary: 'Open Settings > Accounts', kind: 'setup' },
+    readError: { title: 'Read failed', sub: "ElevenLabs didn't answer in time.", primary: 'Open Settings > Accounts', secondary: 'Read original instead', kind: 'failure' },
+    dictError: { title: "Couldn't paste the dictation", sub: 'The field took no text. The words are kept.', primary: 'Retry', secondary: 'Copy text', kind: 'failure' }
+  };
+  let top;
+  if (s.activity !== 'idle') {
+    const a = ACT[s.activity];
+    top = { kind: 'activity', title: a.title, sub: a.sub, colorKey: a.color, meter: !!a.meter,
+            primary: a.confirm ? 'Read anyway' : 'Stop  ⌘.', secondary: a.confirm ? 'Cancel' : null, below: !!a.confirm };
+    rules.push('Top slot: activity "' + a.title + '". An activity outranks any problem (D3, D4).');
+    if (a.confirm) rules.push('Read anyway shows only for a selection over the limit read from the menu (R4 item 4).');
+  } else {
+    const order = [['ax', !s.ax], ['mic', !s.mic], ['key', !s.key], ['readError', s.lastError === 'read'], ['dictError', s.lastError === 'dictation']];
+    const hit = order.find(o => o[1]);
+    if (hit) {
+      const p = PROB[hit[0]];
+      top = { kind: 'problem', title: p.title, sub: p.sub, colorKey: p.kind, primary: p.primary, secondary: p.secondary || null, below: true, problem: hit[0] };
+      const waiting = order.filter(o => o[1]).length - 1;
+      rules.push('Top slot: problem "' + p.title + '". Order: Accessibility, Microphone, API key, last error (D4).' + (waiting ? ' ' + waiting + ' more waiting.' : ''));
+    } else {
+      top = { kind: 'ready' };
+      rules.push('Top slot: Ready. Nothing running, nothing missing.');
+    }
+  }
+  const awakeSub = !s.awakeOn ? 'Off' : (s.awakeDur === 'Indefinitely' ? 'On' : s.awakeDur + ' left');
+  const pomoMin = Math.floor(s.pomoLeft / 60), pomoSec = s.pomoLeft % 60;
+  const clock = pomoMin + ':' + (pomoSec < 10 ? '0' : '') + pomoSec;
+  const pomo = s.pomo === 'running' ? { title: 'Focus', sub: clock + ' left' }
+    : s.pomo === 'paused' ? { title: 'Focus · paused', sub: clock + ' left' }
+    : s.pomo === 'awaiting' ? { title: 'Break?', sub: 'Click to start the break' }
+    : { title: 'Pomodoro', sub: 'Start ' + (s.rhythm === 'Long' ? '50' : s.rhythm === 'Short' ? '15' : '25') + ' min' };
+  rules.push('Keep Awake click: on with the last duration (' + s.awakeDur + '), first time Indefinitely (D11).');
+  let file;
+  if (s.job) {
+    file = { mode: 'running', line: s.job.name + ' · ' + Math.round(s.job.pct) + '%', pct: Math.round(s.job.pct) + '%' };
+    rules.push('One file at a time: a second drop is refused while a job runs (R4 item 6).');
+  } else if (s.dropMsg) {
+    file = { mode: 'refused', title: 'Not a recording', sub: s.dropMsg };
+  } else if (s.dragOver) {
+    file = { mode: 'dragging', title: 'Release to transcribe', sub: s.dragName || 'Audio or video file' };
+  } else {
+    file = { mode: 'idle', title: 'Transcribe a recording', sub: 'Drop audio or video here, or click to choose' };
+  }
+  const version = s.build === 'dev' ? 'Dev · modal-size-tabs · 2c1858c' : s.build === 'nightly' ? 'VibeFlow 1.5.0-nightly.74' : 'VibeFlow 1.5.0';
+  const footer = { feedback: s.feedback, pill: s.update && s.build !== 'dev', label: s.update && s.build !== 'dev' ? 'Update to 1.6.0' : version, nightly: s.build === 'nightly' };
+  if (!s.feedback) rules.push('Feedback icon hidden: no Sentry DSN (R4 item 8).');
+  if (footer.pill) rules.push('Footer pill only when Sparkle found an update (D7).');
+  if (s.build === 'nightly') rules.push('Nightly: clicking the version offers Back to Stable (D7, R4 item 9).');
+  if (!s.meeting) rules.push('Meeting card hidden: none left today (D5).');
+  return { top, awakeSub, pomo, file, footer, rules, meeting: s.meeting };
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      open: true, dark: false, activity: 'idle', ax: true, mic: true, key: true, lastError: null,
+      awakeOn: false, awakeDur: 'Indefinitely', displaySleep: true, awakeMenu: false,
+      pomo: 'idle', pomoLeft: 1500, rhythm: 'Classic', pomoMenu: false,
+      meeting: true, historyEmpty: false, hover: false,
+      job: null, doneName: null, dragOver: false, dragName: null, dropMsg: null,
+      build: 'release', update: false, feedback: true, versionMenu: false,
+      settingsOpen: false, log: [], n: 0, tick: 0
+    };
+  }
+  componentDidMount() {
+    this.timer = setInterval(() => {
+      const s = this.state;
+      const next = { tick: s.tick + 1 };
+      if (s.pomo === 'running') next.pomoLeft = s.pomoLeft > 0 ? s.pomoLeft - 1 : 0;
+      if (s.pomo === 'running' && s.pomoLeft <= 1) next.pomo = 'awaiting';
+      if (s.job) {
+        const pct = s.job.pct + 6;
+        if (pct >= 100) { next.job = null; next.doneName = s.job.name; } else { next.job = { name: s.job.name, pct }; }
+      }
+      this.setState(next);
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  say(t) { const n = this.state.n + 1; this.setState({ n, log: [{ n: String(n).padStart(2, '0'), t }].concat(this.state.log).slice(0, 9) }); }
+  renderVals() {
+    const s = this.state;
+    const dark = s.dark;
+    const c = dark ? {
+      desk: '#1c2230', menubar: 'rgba(0,0,0,0.35)', panel: 'rgba(40,40,46,0.98)', border: 'rgba(255,255,255,0.12)', menu: 'rgba(50,50,56,0.99)',
+      text: '#F5F5F7', text2: '#AEAEB2', surface: 'rgba(255,255,255,0.07)', idleDot: 'rgba(255,255,255,0.12)',
+      read: '#4C9BFF', smart: '#8F86FF', dictation: '#FF6B5E', tools: '#3CC59A', setup: '#FB923C', failure: '#FF6B5E',
+      onFill: '#111114', track: 'rgba(255,255,255,0.14)', brandTint: 'rgba(143,134,255,0.22)', brandText: '#C9C4FF', iconHi: 'rgba(255,255,255,0.22)'
+    } : {
+      desk: '#c7d3e3', menubar: 'rgba(255,255,255,0.55)', panel: 'rgba(236,236,241,0.98)', border: 'rgba(0,0,0,0.10)', menu: 'rgba(248,248,250,0.99)',
+      text: '#1D1D1F', text2: '#6E6E73', surface: 'rgba(255,255,255,0.85)', idleDot: 'rgba(0,0,0,0.07)',
+      read: '#0064D2', smart: '#5B4FE0', dictation: '#D93025', tools: '#0F7B5F', setup: '#C2410C', failure: '#D93025',
+      onFill: '#ffffff', track: 'rgba(0,0,0,0.08)', brandTint: 'rgba(91,79,224,0.12)', brandText: '#4030C7', iconHi: 'rgba(0,0,0,0.14)'
+    };
+    const ps = panelState(s);
+    const color = ps.top.colorKey ? c[ps.top.colorKey] : c.text;
+    const hex = color;
+    const tint = ps.top.kind === 'ready' ? 'transparent' : (dark ? 'rgba(255,255,255,0.08)' : (hex + '1A'));
+    const p = {
+      top: {
+        isReady: ps.top.kind === 'ready', isCard: ps.top.kind !== 'ready',
+        title: ps.top.title, sub: ps.top.sub, color, tint,
+        showMeter: !!ps.top.meter, showIcon: ps.top.kind === 'problem',
+        primary: ps.top.primary, secondary: ps.top.secondary, hasSecondary: !!ps.top.secondary,
+        buttonRight: ps.top.kind !== 'ready' && !ps.top.below, buttonBelow: !!ps.top.below
+      },
+      tiles: {
+        awakeSub: ps.awakeSub, awakeShort: s.awakeDur === 'Indefinitely' ? 'On' : s.awakeDur,
+        awakeDot: s.awakeOn ? c.tools : c.idleDot, awakeGlyph: s.awakeOn ? c.onFill : c.text,
+        awakeStatus: s.awakeOn ? (s.awakeDur === 'Indefinitely' ? 'On until you turn it off' : 'On for ' + s.awakeDur + ' more') : 'Off',
+        pomoTitle: ps.pomo.title, pomoSub: ps.pomo.sub,
+        pomoShort: ps.pomo.sub.split(' ')[0],
+        pomoDot: s.pomo === 'idle' ? c.idleDot : c.setup, pomoGlyph: s.pomo === 'idle' ? c.text : c.onFill,
+        pomoActive: s.pomo !== 'idle', pomoNext: s.pomo === 'awaiting' ? 'Focus' : 'Break',
+        pomoStatus: s.pomo === 'idle' ? 'Rhythm: ' + s.rhythm : ps.pomo.title + ' · ' + ps.pomo.sub
+      },
+      meeting: { show: ps.meeting },
+      file: {
+        isRunning: ps.file.mode === 'running', isDone: !!s.doneName && !s.job, doneName: (s.doneName || '') + ' transcribed',
+        showZone: ps.file.mode !== 'running', runningLine: ps.file.line, pct: ps.file.pct,
+        title: ps.file.title, sub: ps.file.sub,
+        edge: ps.file.mode === 'dragging' ? c.smart : ps.file.mode === 'refused' ? c.failure : (dark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.18)'),
+        bg: ps.file.mode === 'dragging' ? c.brandTint : 'transparent',
+        dot: ps.file.mode === 'dragging' ? c.smart : c.idleDot, glyph: ps.file.mode === 'dragging' ? c.onFill : c.text,
+        subColor: ps.file.mode === 'refused' ? c.failure : c.text2
+      },
+      footer: {
+        feedback: ps.footer.feedback, pill: ps.footer.pill, plain: !ps.footer.pill, label: ps.footer.label,
+        stableLabel: s.build === 'nightly' ? 'Back to Stable' : 'Release notes…'
+      },
+      rules: ps.rules,
+      menuBarAwake: s.awakeOn, menuBarPomo: s.pomo === 'running' || s.pomo === 'paused'
+    };
+    const set = (o) => this.setState(o);
+    const pick = (list, key, value, extra) => list.map(([v, t]) => ({ title: t, cls: 'chip' + (s[key] === v ? ' on' : ''), pick: () => { set(Object.assign({ [key]: v }, extra || {})); } }));
+    const DUR = ['Indefinitely', '15 min', '30 min', '1:00', '2:00', '3:00', '5:00', '8:00'];
+    const DUR_TITLE = { 'Indefinitely': 'Indefinitely', '15 min': '15 minutes', '30 min': '30 minutes', '1:00': '1 hour', '2:00': '2 hours', '3:00': '3 hours', '5:00': '5 hours', '8:00': '8 hours' };
+    const HIST = [
+      { kind: 'read', text: 'The indemnification clause in section 9 caps the vendor’s…', time: '2 min' },
+      { kind: 'question', text: 'What does this mean for us if the vendor is breached?', time: '14 min' },
+      { kind: 'dictation', text: 'Please send the draft to Anna by Friday', time: '1 h' },
+      { kind: 'transcript', text: 'Client call Müller GmbH.m4a', time: 'Yesterday' },
+      { kind: 'read', text: 'Release notes for 1.5.0: menu bar right-click opens…', time: 'Yesterday' }
+    ];
+    const KIND_COLOR = { read: c.read, question: c.smart, dictation: c.dictation, transcript: c.text2 };
+    const KIND_ACTION = { read: 'Plays the read again', question: 'Opens the History window on this question', dictation: 'Opens the History window on this dictation', transcript: 'Opens the transcript window' };
+    const isAudio = (name) => /\.(m4a|mp3|wav|aiff?|aac|flac|ogg|opus|caf|mp4|mov|m4v|webm|mkv)$/i.test(name || '');
+    const handleDrop = (e, where) => {
+      e.preventDefault(); e.stopPropagation();
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      const name = f ? f.name : 'Recording.m4a';
+      if (s.job) { set({ dragOver: false, open: true }); this.say('Refused "' + name + '": a file is already transcribing (one job at a time)'); return; }
+      if (!isAudio(name)) {
+        set({ dragOver: false, open: true, dropMsg: 'Only audio or video files: "' + name + '"' });
+        setTimeout(() => this.setState({ dropMsg: null }), 2600);
+        this.say('Refused "' + name + '": not audio or video');
+        return;
+      }
+      set({ dragOver: false, open: true, job: { name, pct: 0 }, doneName: null });
+      this.say('Dropped on the ' + where + ': opens the transcription options window, then transcribes "' + name + '"');
+    };
+    const activities = pick([['idle', 'Idle'], ['listening', 'Dictating'], ['transcribing', 'Transcribing'], ['thinking', 'Smart read thinking'], ['answering', 'Answering'], ['speaking', 'Reading aloud'], ['confirm', 'Long selection']], 'activity');
+    const probList = [['ax', 'No Accessibility', () => set({ ax: !s.ax }), !s.ax], ['mic', 'No Microphone', () => set({ mic: !s.mic }), !s.mic], ['key', 'No API key', () => set({ key: !s.key }), !s.key],
+      ['re', 'Read failed', () => set({ lastError: s.lastError === 'read' ? null : 'read' }), s.lastError === 'read'], ['de', 'Paste failed', () => set({ lastError: s.lastError === 'dictation' ? null : 'dictation' }), s.lastError === 'dictation']];
+    const problems = probList.map(([k, t, f, on]) => ({ title: t, cls: 'chip' + (on ? ' on' : ''), toggle: f }));
+    const ctxList = [['Meeting soon', s.meeting, () => set({ meeting: !s.meeting })], ['Empty history', s.historyEmpty, () => set({ historyEmpty: !s.historyEmpty })],
+      ['Update available', s.update, () => set({ update: !s.update })], ['Feedback on', s.feedback, () => set({ feedback: !s.feedback })],
+      ['File transcribing', !!s.job, () => set(s.job ? { job: null } : { job: { name: 'Board meeting 2026-11-04.m4a', pct: 10 }, doneName: null })],
+      ['Dark mode', s.dark, () => set({ dark: !s.dark })]];
+    const contexts = ctxList.map(([t, on, f]) => ({ title: t, cls: 'chip' + (on ? ' on' : ''), toggle: f }));
+    const builds = pick([['release', 'Release'], ['nightly', 'Nightly'], ['dev', 'Dev build']], 'build');
+    const durations = DUR.map(d => ({ title: DUR_TITLE[d], check: s.awakeOn && s.awakeDur === d ? '✓' : '', pick: () => { set({ awakeOn: true, awakeDur: d, awakeMenu: false }); this.say('Keep Awake on: ' + DUR_TITLE[d] + ' (remembered for the next tile click)'); } }));
+    const rhythms = [['Classic', 'Classic: 25 / 5'], ['Long', 'Long: 50 / 10'], ['Short', 'Short: 15 / 3']].map(([v, t]) => ({ title: t, check: s.rhythm === v ? '✓' : '', pick: () => { set({ rhythm: v, pomoMenu: false, pomoLeft: v === 'Long' ? 3000 : v === 'Short' ? 900 : 1500 }); this.say('Pomodoro rhythm: ' + t); } }));
+    const history = HIST.map(h => ({ text: h.text, time: h.time, color: KIND_COLOR[h.kind], open: () => { set({ hover: false, open: false }); this.say(KIND_ACTION[h.kind] + ', panel closes'); } }));
+    const m = (s.tick % 4);
+    const meter = { a: ['8px', '14px', '6px', '11px'][m], b: ['18px', '10px', '20px', '14px'][m], c: ['12px', '20px', '9px', '17px'][m], d: ['20px', '8px', '16px', '10px'][m], e: ['10px', '15px', '12px', '19px'][m] };
+    return {
+      c, p, meter, durations, rhythms, history, activities, problems, contexts, builds,
+      log: s.log.length ? s.log : [{ n: '--', t: 'Click anything in the panel or the menu bar' }],
+      open: s.open, hover: s.hover, awakeMenu: s.awakeMenu, pomoMenu: s.pomoMenu, versionMenu: s.versionMenu,
+      awakeOn: s.awakeOn, settingsOpen: s.settingsOpen,
+      historyEmpty: s.historyEmpty, historyFull: !s.historyEmpty,
+      historyBg: s.hover ? c.idleDot : 'transparent',
+      iconBg: s.open || s.dragOver ? c.iconHi : 'transparent',
+      displaySleepCheck: s.displaySleep ? '✓' : '',
+      closeAll: () => { if (s.open) { set({ open: false, hover: false, awakeMenu: false, pomoMenu: false, versionMenu: false }); this.say('Outside click: panel closes'); } },
+      swallow: (e) => { e.stopPropagation(); if (s.awakeMenu || s.pomoMenu || s.versionMenu) set({ awakeMenu: false, pomoMenu: false, versionMenu: false }); },
+      iconClick: (e) => { e.stopPropagation(); set({ open: !s.open, hover: false, awakeMenu: false, pomoMenu: false, versionMenu: false }); },
+      iconRightClick: (e) => { e.preventDefault(); e.stopPropagation(); set({ settingsOpen: !s.settingsOpen, open: false }); this.say(s.settingsOpen ? 'Right-click: Settings closes' : 'Right-click: Settings opens on its last tab (R3)'); },
+      iconDragEnter: (e) => { e.preventDefault(); set({ open: true, dragOver: true }); },
+      zoneDragEnter: (e) => { e.preventDefault(); set({ dragOver: true }); },
+      zoneDragLeave: () => set({ dragOver: false }),
+      allowDrop: (e) => { e.preventDefault(); },
+      dropOnIcon: (e) => handleDrop(e, 'menu bar icon'),
+      dropOnZone: (e) => handleDrop(e, 'drop zone'),
+      chooseFile: () => { set({ job: { name: 'Interview Schmidt.m4a', pct: 0 }, doneName: null }); this.say('Opens the file chooser; picked "Interview Schmidt.m4a", then the options window'); },
+      stopJob: () => { set({ job: null }); this.say('Stops the transcription'); },
+      openTranscript: () => { set({ open: false, doneName: null }); this.say('Opens the transcript window, panel closes'); },
+      openSettings: () => { set({ open: false, settingsOpen: true }); this.say('Opens Settings on its last tab, panel closes'); },
+      topPrimary: () => {
+        const t = ps.top;
+        if (t.kind === 'activity') {
+          if (s.activity === 'confirm') { set({ activity: 'speaking' }); this.say('Read anyway: reads the long selection'); }
+          else { set({ activity: 'idle' }); this.say('Stop (⌘.): stops ' + t.title.toLowerCase()); }
+        } else if (t.problem === 'ax') { set({ ax: true }); this.say('Opens System Settings > Privacy > Accessibility (granted)'); }
+        else if (t.problem === 'mic') { set({ mic: true }); this.say('Opens System Settings > Privacy > Microphone (granted)'); }
+        else if (t.problem === 'key') { set({ key: true, open: false, settingsOpen: true }); this.say('Opens Settings > Accounts, panel closes'); }
+        else if (t.problem === 'readError') { set({ lastError: null, open: false, settingsOpen: true }); this.say('Opens Settings > Accounts, panel closes'); }
+        else if (t.problem === 'dictError') { set({ lastError: null, activity: 'transcribing' }); this.say('Retries the paste'); }
+      },
+      topSecondary: () => {
+        const t = ps.top;
+        if (s.activity === 'confirm') { set({ activity: 'idle' }); this.say('Cancels the long read'); }
+        else if (t.problem === 'readError') { set({ lastError: null, activity: 'speaking' }); this.say('Reads the original text instead'); }
+        else if (t.problem === 'dictError') { set({ lastError: null }); this.say('Copies the dictated text to the clipboard'); }
+      },
+      awakeToggle: () => { set({ awakeOn: !s.awakeOn }); this.say(s.awakeOn ? 'Keep Awake off' : 'Keep Awake on: ' + DUR_TITLE[s.awakeDur] + ' (last duration)'); },
+      awakeMenuToggle: () => set({ awakeMenu: !s.awakeMenu, pomoMenu: false }),
+      awakeOff: () => { set({ awakeOn: false, awakeMenu: false }); this.say('Keep Awake: session ended'); },
+      toggleDisplaySleep: () => { set({ displaySleep: !s.displaySleep }); this.say('Allow Display Sleep ' + (s.displaySleep ? 'off' : 'on')); },
+      awakeSettings: () => { set({ awakeMenu: false, open: false, settingsOpen: true }); this.say('Opens Settings > Keep Awake'); },
+      pomoToggle: () => {
+        if (s.pomo === 'idle') { set({ pomo: 'running' }); this.say('Pomodoro: focus round starts (' + s.rhythm + ')'); }
+        else if (s.pomo === 'running') { set({ pomo: 'paused' }); this.say('Pomodoro paused'); }
+        else if (s.pomo === 'paused') { set({ pomo: 'running' }); this.say('Pomodoro resumed'); }
+        else { set({ pomo: 'running', pomoLeft: 300 }); this.say('Break starts'); }
+      },
+      pomoMenuToggle: () => set({ pomoMenu: !s.pomoMenu, awakeMenu: false }),
+      pomoSkip: () => { set({ pomo: 'awaiting', pomoMenu: false }); this.say('Skips to the next phase, waits for a click'); },
+      pomoStop: () => { set({ pomo: 'idle', pomoMenu: false, pomoLeft: s.rhythm === 'Long' ? 3000 : s.rhythm === 'Short' ? 900 : 1500 }); this.say('Pomodoro stopped'); },
+      pomoSettings: () => { set({ pomoMenu: false, open: false, settingsOpen: true }); this.say('Opens Settings > Pomodoro'); },
+      openCalendar: () => { set({ open: false }); this.say('Opens the event in Google Calendar, panel closes (R4 item 10)'); },
+      join: (e) => { e.stopPropagation(); set({ open: false }); this.say('Joins the meeting link, panel closes'); },
+      hoverIn: () => set({ hover: true }),
+      hoverOut: () => set({ hover: false }),
+      showAllHistory: () => { set({ hover: false, open: false }); this.say('Opens the History window, panel closes'); },
+      sendFeedback: () => { set({ open: false }); this.say('Opens Send Feedback…, panel closes'); },
+      versionClick: (e) => {
+        e.stopPropagation();
+        if (s.build === 'nightly') { set({ versionMenu: !s.versionMenu }); return; }
+        if (s.build === 'dev') { this.say('Dev build: shows branch and commit; updates are off in Debug'); return; }
+        if (s.update) { this.say('Installs 1.6.0 and relaunches (Sparkle)'); set({ update: false }); return; }
+        this.say('Checks for updates (Sparkle)');
+      },
+      checkUpdates: () => { set({ versionMenu: false }); this.say('Checks for nightly updates (Sparkle)'); },
+      backToStable: () => { set({ versionMenu: false }); this.say(s.build === 'nightly' ? 'Back to Stable: downloads the release and replaces the nightly' : 'Opens release notes'); },
+      quit: () => this.say('Quits VibeFlow')
+    };
+  }
+}
+</script>
+</body>
+</html>
