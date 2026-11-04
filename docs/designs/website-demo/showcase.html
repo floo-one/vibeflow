@@ -24,7 +24,7 @@
 body { margin: 0; font-family: var(--font); color: var(--text); background: var(--ground); -webkit-font-smoothing: antialiased; }
 h2, h3, p { margin: 0; }
 
-.show { max-width: 1120px; margin: 0 auto; padding: 120px 24px; display: grid; grid-template-columns: 1fr 1.1fr; gap: 72px; align-items: center; }
+.show { max-width: 1120px; margin: 0 auto; padding: 88px 24px; display: grid; grid-template-columns: 1fr 1.1fr; gap: 72px; align-items: center; }
 
 /* Text side */
 .eyebrow { font-size: 14px; font-weight: 600; color: var(--text-3); }
@@ -72,7 +72,7 @@ h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); li
 .sep { height: 1px; margin: 5px 10px; background: rgba(0,0,0,.09); }
 
 /* ---------- Voice section: the visual on the left, mirrored ---------- */
-.show.flip { grid-template-columns: 1.1fr 1fr; padding-top: 40px; }
+.show.flip { grid-template-columns: 1.1fr 1fr; }
 .flip .copy { order: 2; }
 .feat .row { display: flex; align-items: center; gap: 12px; }
 .feat .row h3 { flex: 1; }
@@ -160,7 +160,7 @@ ol.feats { counter-reset: s; }
 /* Narrow screens: the visual comes first, so it is the first thing seen. */
 @media (max-width: 900px) {
   .show { grid-template-columns: 1fr; gap: 32px; padding: 64px 20px; }
-  .show.flip { grid-template-columns: 1fr; padding-top: 24px; }
+  .show.flip { grid-template-columns: 1fr; }
   .scene, .ask-vis { order: -1; }
   /* Single column: the scenes hug their content instead of keeping a fixed shape. */
   .scene { aspect-ratio: auto; height: auto; padding: 46px 12px 14px; }
