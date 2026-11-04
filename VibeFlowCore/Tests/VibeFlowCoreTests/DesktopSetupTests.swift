@@ -81,7 +81,7 @@ private final class FakeMac: DesktopControl, DesktopWindows, AppLauncher {
         if switchable.contains(desktop) { userShows(desktop) }
     }
 
-    func tint(desktop: Int, colorHex: String, name: String) { tints.append((desktop, colorHex)) }
+    func tint(desktop: Int, role: DesktopRole) { tints.append((desktop, role.colorHex)) }
 
     // DesktopWindows
 
@@ -387,5 +387,26 @@ private final class FakeMac: DesktopControl, DesktopWindows, AppLauncher {
         Preferences(defaults: defaults).desktopRoles = roles
         #expect(Preferences(defaults: defaults).desktopRoles == roles)
         defaults.removePersistentDomain(forName: "DesktopSetupTests")
+    }
+
+    @Test func backgroundsSurviveARelaunch() throws {
+        var glow = role("Build", 3, [])
+        glow.background = .colored(.solid)
+        var picture = role("Home", 4, [])
+        picture.background = .image(path: "/System/Library/Desktop Pictures/Example.heic")
+        let data = try JSONEncoder().encode([glow, picture])
+        #expect(try JSONDecoder().decode([DesktopRole].self, from: data) == [glow, picture])
+    }
+
+    @Test func rolesSavedBeforeBackgroundsGetRadialInTheirColor() throws {
+        let old = ##"[{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","name":"Work","colorHex":"#2563EB","desktopNumber":2,"items":[]}]"##
+        let roles = try JSONDecoder().decode([DesktopRole].self, from: Data(old.utf8))
+        #expect(roles.first?.background == .colored(.radial))
+        #expect(roles.first?.colorHex == "#2563EB")
+    }
+
+    @Test func aStyleFromAnEarlierBuildBecomesRadial() throws {
+        let old = ##"{"colored":{"_0":"aurora"}}"##
+        #expect(try JSONDecoder().decode(RoleBackground.self, from: Data(old.utf8)) == .colored(.radial))
     }
 }

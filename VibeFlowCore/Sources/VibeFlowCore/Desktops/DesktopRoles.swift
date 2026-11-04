@@ -6,20 +6,37 @@ import Foundation
 public struct DesktopRole: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
     public var name: String
-    /// "#RRGGBB", used for the menu bar tag and the wallpaper tint.
+    /// "#RRGGBB": the menu bar tag, the panel badge, and the colorable backgrounds.
     public var colorHex: String
+    /// What the desktop's wallpaper shows under the role name.
+    public var background: RoleBackground
     /// 1...9, the Switch to Desktop N shortcuts macOS offers.
     public var desktopNumber: Int
     public var items: [RoleItem]
 
     public static let desktopNumbers = 1...9
 
-    public init(id: UUID = UUID(), name: String, colorHex: String, desktopNumber: Int, items: [RoleItem] = []) {
+    public init(id: UUID = UUID(), name: String, colorHex: String, background: RoleBackground = .colored(.radial),
+                desktopNumber: Int, items: [RoleItem] = []) {
         self.id = id
         self.name = name
         self.colorHex = colorHex
+        self.background = background
         self.desktopNumber = desktopNumber
         self.items = items
+    }
+
+    private enum CodingKeys: String, CodingKey { case id, name, colorHex, background, desktopNumber, items }
+
+    /// Roles saved before backgrounds existed get Apple's Radial in their color.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        colorHex = try c.decode(String.self, forKey: .colorHex)
+        background = try c.decodeIfPresent(RoleBackground.self, forKey: .background) ?? .colored(.radial)
+        desktopNumber = try c.decode(Int.self, forKey: .desktopNumber)
+        items = try c.decode([RoleItem].self, forKey: .items)
     }
 
     /// Desktop numbers used by more than one role, or outside 1...9. Settings refuses both.
@@ -32,6 +49,46 @@ public struct DesktopRole: Codable, Hashable, Sendable, Identifiable {
             }
         }
         return invalid
+    }
+}
+
+/// A role's wallpaper: a style drawn in the role color, or a picture. The role name goes on top
+/// of either, because a menu bar item looks the same on every screen.
+public enum RoleBackground: Codable, Hashable, Sendable {
+    case colored(BackgroundStyle)
+    /// A picture file (any image macOS opens, the system wallpapers included). The role color
+    /// still marks the tag and the panel badge.
+    case image(path: String)
+
+    public var style: BackgroundStyle? {
+        if case .colored(let style) = self { return style }
+        return nil
+    }
+
+    public var imagePath: String? {
+        if case .image(let path) = self { return path }
+        return nil
+    }
+}
+
+/// Wallpapers drawn from the role color alone, so changing the color recolors them.
+public enum BackgroundStyle: String, Codable, CaseIterable, Hashable, Sendable {
+    /// Apple's Radial wallpaper (macOS ships Radial Sky Blue), turned to the role color.
+    case radial
+    /// The color, flat.
+    case solid
+
+    public var title: String {
+        switch self {
+        case .radial: return "Radial"
+        case .solid: return "Solid"
+        }
+    }
+
+    /// A style this version does not know (an earlier build had more) becomes Radial, so the
+    /// roles still load.
+    public init(from decoder: Decoder) throws {
+        self = Self(rawValue: try decoder.singleValueContainer().decode(String.self)) ?? .radial
     }
 }
 

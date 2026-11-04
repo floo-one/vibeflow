@@ -111,7 +111,7 @@ struct DesktopsPane: View {
     @State private var collapsed: Set<UUID> = []
 
     /// Colors offered to new roles, in order.
-    private static let palette = ["#2F7D4F", "#2563EB", "#7C3AED", "#D97706", "#DB2777", "#0891B2"]
+    private static let palette = BackgroundPicker.colors
 
     var body: some View {
         let desktops = container.desktops
@@ -203,10 +203,10 @@ struct DesktopsPane: View {
                 get: { role.name },
                 set: { name in update { $0[index].name = name } }
             ))
-            ColorPicker("Color", selection: Binding(
-                get: { Color(nsColor: NSColor(hex: role.colorHex)) },
-                set: { color in update { $0[index].colorHex = NSColor(color).hexString } }
-            ), supportsOpacity: false)
+            BackgroundPicker(
+                role: role,
+                choose: { background in update { $0[index].background = background } },
+                recolor: { hex in update { $0[index].colorHex = hex } })
             Picker("Desktop", selection: Binding(
                 get: { role.desktopNumber },
                 set: { number in update { $0[index].desktopNumber = number } }
@@ -306,6 +306,88 @@ struct DesktopsPane: View {
                 roles[role].items.append(.app(bundleID: id))
             }
         }
+    }
+}
+
+/// The role's look: a row of backgrounds (the colorable styles in the role color, then a picture),
+/// and a row of colors that recolors the styles, the tag and the panel badge.
+struct BackgroundPicker: View {
+    let role: DesktopRole
+    let choose: (RoleBackground) -> Void
+    let recolor: (String) -> Void
+
+    /// The palette new roles take colors from, plus a few more.
+    static let colors = ["#2F7D4F", "#2563EB", "#7C3AED", "#D97706", "#DB2777", "#0891B2", "#DC2626", "#475569"]
+    private static let thumb = NSSize(width: 64, height: 40)
+
+    var body: some View {
+        LabeledContent("Background") {
+            HStack(spacing: 8) {
+                ForEach(BackgroundStyle.allCases, id: \.self) { style in
+                    swatch(.colored(style), title: style.title)
+                }
+                if let path = role.background.imagePath {
+                    swatch(.image(path: path), title: URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent)
+                }
+                Button { choosePicture() } label: {
+                    Image(systemName: "photo.badge.plus")
+                        .frame(width: Self.thumb.width, height: Self.thumb.height)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .help("Choose a picture…")
+            }
+        }
+        LabeledContent {
+            HStack(spacing: 6) {
+                ForEach(Self.colors, id: \.self) { hex in
+                    Button { recolor(hex) } label: {
+                        Circle()
+                            .fill(Color(nsColor: NSColor(hex: hex)))
+                            .frame(width: 18, height: 18)
+                            .overlay { if hex == role.colorHex.uppercased() { selectionRing(Circle()) } }
+                    }
+                    .buttonStyle(.plain)
+                    .help(hex)
+                }
+                ColorPicker("Other color", selection: Binding(
+                    get: { Color(nsColor: NSColor(hex: role.colorHex)) },
+                    set: { recolor(NSColor($0).hexString) }
+                ), supportsOpacity: false)
+                .labelsHidden()
+            }
+        } label: {
+            Text("Color")
+            Text(role.background.imagePath == nil ? "Colors the background, the tag and the panel" : "Colors the tag and the panel")
+        }
+    }
+
+    private func swatch(_ background: RoleBackground, title: String) -> some View {
+        let selected = background == role.background
+        return Button { choose(background) } label: {
+            Image(nsImage: RoleWallpaper.thumbnail(background, colorHex: role.colorHex, size: Self.thumb))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay { if selected { selectionRing(RoundedRectangle(cornerRadius: 6)) } }
+        }
+        .buttonStyle(.plain)
+        .help(title)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private func selectionRing(_ shape: some InsettableShape) -> some View {
+        shape.inset(by: -2.5).strokeBorder(Color.accentColor, lineWidth: 2)
+    }
+
+    /// Opens on the macOS wallpapers; any picture works.
+    private func choosePicture() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.image]
+        panel.directoryURL = role.background.imagePath.map { URL(fileURLWithPath: $0).deletingLastPathComponent() }
+            ?? URL(fileURLWithPath: "/System/Library/Desktop Pictures")
+        panel.message = "Choose a picture for \(role.name). Its name goes on top."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        choose(.image(path: url.path))
     }
 }
 
