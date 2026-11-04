@@ -444,7 +444,7 @@ public final class ReadSession {
             maxTokens: configuration.maxTokens(for: preset.smartReadMode, inputCharacters: text.count),
             instructions: preset.smartReadInstructions,
             assistant: session.assistant,
-            promptParts: configuration.briefPrompts
+            prompts: configuration.prompts
         )
         let token = session.token
         let client = smartRead
@@ -574,7 +574,8 @@ public final class ReadSession {
             language: context.preset.languageOverride,
             model: configuration.smartReadModel,
             maxTokens: SmartReadPrompts.answerMaxTokens,
-            instructions: context.preset.smartReadInstructions
+            instructions: context.preset.smartReadInstructions,
+            prompts: configuration.prompts
         )
         session.smartSpeed = true
         if !useApple(session), let answerVoice {
@@ -748,7 +749,7 @@ public final class ReadSession {
         let preset = session.preset
         return SpeechRequest(
             text: text,
-            voiceID: preset.elevenLabsVoiceID,
+            voiceID: session.smartSpeed ? (configuration.smartReadVoiceID ?? preset.elevenLabsVoiceID) : preset.elevenLabsVoiceID,
             speed: session.smartSpeed ? (configuration.smartReadSpeed ?? preset.speed) : preset.speed,
             language: preset.languageOverride ?? (text.isEmpty ? nil : LanguageDetector.detect(text)),
             appleVoiceByLanguage: preset.appleVoiceByLanguage,

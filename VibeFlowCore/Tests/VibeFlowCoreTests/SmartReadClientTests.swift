@@ -80,9 +80,9 @@ struct AnthropicClientTests {
     @Test func briefPicksSituationsOrTheAssistantVoice() {
         let plain = SmartReadPrompts.system(mode: .brief, language: nil, inputCharacters: 2_000)
         let ai = SmartReadPrompts.system(mode: .brief, language: nil, inputCharacters: 2_000, assistant: "Claude")
-        #expect(plain.contains(SmartReadPrompts.situationRule) && plain.contains(SmartReadPrompts.briefStyleRule))
+        #expect(plain.contains(SmartReadPrompts.situationRule) && plain.contains(SmartReadPrompts.briefOpeningRule))
         #expect(!ai.contains(SmartReadPrompts.situationRule), "an AI reply skips the situation list")
-        #expect(ai.contains(SmartReadPrompts.briefStyleRule))
+        #expect(ai.contains(SmartReadPrompts.briefOpeningRule))
         #expect(ai.contains("a reply from Claude"), "the brief relays the assistant by name")
         #expect(plain.hasPrefix(SmartReadPrompts.identity) && ai.hasPrefix(SmartReadPrompts.identity), "VibeFlow speaks as itself")
         #expect(SmartReadPrompts.askSystem(language: nil).hasPrefix(SmartReadPrompts.identity), "follow-ups too")

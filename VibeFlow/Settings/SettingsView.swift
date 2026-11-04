@@ -3,7 +3,7 @@ import SwiftUI
 /// The Settings panes in sidebar order. Title, symbol and colour live here so the menu can
 /// use the same look for the same feature.
 enum SettingsTab: Hashable, CaseIterable {
-    case general, accounts, read, smartRead, dictation, clocks, meetings, pomodoro, keepAwake
+    case general, accounts, read, smartRead, dictation, prompts, clocks, meetings, pomodoro, keepAwake
 
     var title: String {
         switch self {
@@ -12,6 +12,7 @@ enum SettingsTab: Hashable, CaseIterable {
         case .read: return "Read"
         case .smartRead: return "Smart Read"
         case .dictation: return "Dictation"
+        case .prompts: return "Prompts"
         case .clocks: return "Clocks"
         case .meetings: return "Meetings"
         case .keepAwake: return "Keep Awake"
@@ -26,6 +27,7 @@ enum SettingsTab: Hashable, CaseIterable {
         case .read: return "waveform"
         case .smartRead: return "sparkles"
         case .dictation: return "mic.fill"
+        case .prompts: return "text.bubble.fill"
         case .clocks: return "clock"
         case .meetings: return "calendar"
         case .keepAwake: return "cup.and.saucer.fill"
@@ -35,7 +37,7 @@ enum SettingsTab: Hashable, CaseIterable {
 
     var tint: Color {
         switch self {
-        case .general, .accounts: return .gray
+        case .general, .accounts, .prompts: return .gray
         case .read: return FeatureColor.read
         case .smartRead: return FeatureColor.smartRead
         case .dictation: return FeatureColor.dictation
@@ -73,6 +75,7 @@ struct SettingsView: View {
                     row(.read)
                     row(.smartRead)
                     row(.dictation)
+                    row(.prompts)
                 }
                 Section("Focus & Time") {
                     row(.clocks)
@@ -126,6 +129,7 @@ struct SettingsView: View {
         case .read: ReadPane()
         case .smartRead: SmartReadPane()
         case .dictation: DictationPane()
+        case .prompts: PromptsPane()
         case .clocks: ClocksTab()
         case .meetings: MeetingsTab()
         case .keepAwake: KeepAwakePane()

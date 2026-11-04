@@ -86,10 +86,10 @@ if let model = option("--model") { config.smartReadModel = model }
 // The prompt edits saved in VibeFlow Dev or the release (Settings > Smart Read > Prompts);
 // without the flag, the built-in defaults.
 let promptsApp = option("--prompts")
-let promptParts: BriefPromptParts = switch promptsApp {
-case "dev": Preferences.briefPrompts(in: UserDefaults(suiteName: "one.floo.vibeflow.dev") ?? .standard)
-case "prod": Preferences.briefPrompts(in: UserDefaults(suiteName: "one.floo.vibeflow") ?? .standard)
-default: BriefPromptParts()
+let promptParts: PromptLibrary = switch promptsApp {
+case "dev": Preferences.prompts(in: UserDefaults(suiteName: "one.floo.vibeflow.dev") ?? .standard)
+case "prod": Preferences.prompts(in: UserDefaults(suiteName: "one.floo.vibeflow") ?? .standard)
+default: PromptLibrary()
 }
 
 // MARK: API key: ANTHROPIC_API_KEY, else the app's Keychain item (macOS may ask once).
@@ -141,9 +141,9 @@ let maxTokens = config.maxTokens(for: .brief, inputCharacters: 0)
 let promptNote = promptParts.isEdited ? ", your \(promptsApp ?? "") prompt edits" : promptsApp.map { ", no \($0) prompt edits saved" } ?? ""
 print("Running \(fixtures.count) fixtures × \(repeats) on \(model)\(promptNote)…\n")
 
-func run(_ fixture: Fixture, client: AnthropicClient, model: String, maxTokens: Int, parts: BriefPromptParts) async -> Result {
+func run(_ fixture: Fixture, client: AnthropicClient, model: String, maxTokens: Int, parts: PromptLibrary) async -> Result {
     let request = SmartReadRequest(text: fixture.text, mode: .brief, language: LanguageDetector.detect(fixture.text),
-                                   model: model, maxTokens: maxTokens, assistant: fixture.aiReply ? "Claude" : nil, promptParts: parts)
+                                   model: model, maxTokens: maxTokens, assistant: fixture.aiReply ? "Claude" : nil, prompts: parts)
     do {
         let response = try await client.transform(request)
         let words = response.text.split(whereSeparator: \.isWhitespace).count

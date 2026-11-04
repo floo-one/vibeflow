@@ -270,17 +270,17 @@ public struct SmartReadRequest: Sendable, Equatable {
     /// The AI assistant app the text came from ("Claude"), so the brief relays it by name; nil = not an AI reply.
     public var assistant: String?
     public var aiReply: Bool { assistant != nil }
-    /// The listener's edits to the brief prompt (Settings), empty = the defaults.
-    public var promptParts: BriefPromptParts
+    /// The listener's prompt edits (Settings > Prompts), empty = the defaults.
+    public var prompts: PromptLibrary
 
     public init(text: String, mode: SmartReadMode, language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil, assistant: String? = nil,
-                promptParts: BriefPromptParts = BriefPromptParts()) {
+                prompts: PromptLibrary = PromptLibrary()) {
         self.text = text
         self.mode = mode
         self.language = language
         self.instructions = instructions
         self.assistant = assistant
-        self.promptParts = promptParts
+        self.prompts = prompts
         self.model = model
         self.maxTokens = maxTokens
     }
@@ -332,9 +332,13 @@ public struct AskRequest: Sendable, Equatable {
     public var model: String
     public var maxTokens: Int
     public var instructions: String?
+    /// The listener's prompt edits (Settings > Prompts), empty = the defaults.
+    public var prompts: PromptLibrary
 
     public init(document: String, brief: String? = nil, turns: [ConversationTurn] = [], question: String,
-                language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil) {
+                language: String? = nil, model: String, maxTokens: Int, instructions: String? = nil,
+                prompts: PromptLibrary = PromptLibrary()) {
+        self.prompts = prompts
         self.document = document
         self.brief = brief
         self.turns = turns

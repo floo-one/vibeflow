@@ -21,7 +21,7 @@ public final class AnthropicClient: SmartReadClient {
 
     public func transform(_ request: SmartReadRequest) async throws -> SmartReadResponse {
         try await complete(
-            system: SmartReadPrompts.system(mode: request.mode, language: request.language, instructions: request.instructions, inputCharacters: request.text.count, assistant: request.assistant, parts: request.promptParts),
+            system: SmartReadPrompts.system(mode: request.mode, language: request.language, instructions: request.instructions, inputCharacters: request.text.count, assistant: request.assistant, prompts: request.prompts),
             user: SmartReadPrompts.user(text: request.text),
             model: request.model,
             maxTokens: request.maxTokens
@@ -32,7 +32,7 @@ public final class AnthropicClient: SmartReadClient {
         let client = stream
         let key = secrets.read(.anthropic)
         let urlRequest = key.map {
-            Self.buildRequest(system: SmartReadPrompts.askSystem(language: request.language, instructions: request.instructions),
+            Self.buildRequest(system: SmartReadPrompts.askSystem(language: request.language, instructions: request.instructions, prompts: request.prompts),
                               messages: SmartReadPrompts.askMessages(document: request.document, brief: request.brief, turns: request.turns, question: request.question),
                               model: request.model, maxTokens: request.maxTokens, apiKey: $0, baseURL: baseURL, stream: true)
         }

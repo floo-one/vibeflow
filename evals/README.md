@@ -13,8 +13,8 @@ The key comes from `ANTHROPIC_API_KEY`, else from VibeFlow's Keychain item (macO
 Options: `--label name` names the run, `--only text` runs the fixtures whose name contains it,
 `--repeat n` runs each fixture n times (the model is not deterministic), `--model id` tries
 another model, `--fixtures dir` reads fixtures from elsewhere, `--prompts dev` or `--prompts prod`
-uses the prompt edits saved in VibeFlow Dev or the release (Settings > Smart Read > Edit
-Prompts) instead of the built-in defaults.
+uses the prompt edits saved in VibeFlow Dev or the release (Settings > Prompts)
+instead of the built-in defaults. The harness covers the brief only.
 
 ## Fixtures
 

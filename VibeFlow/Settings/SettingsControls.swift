@@ -55,104 +55,15 @@ struct HeldShortcutRow: View {
 
 // MARK: - Prompts
 
-/// The prompts VibeFlow sends to the models. The brief's three shaping parts are editable;
-/// the rest is shown read-only.
-enum PromptKind: String, CaseIterable, Identifiable {
-    case brief = "Smart read: brief"
-    case cleanup = "Smart read: cleanup"
-    case dictation = "Dictation cleanup"
-    var id: Self { self }
-}
-
-struct PromptsButton: View {
-    let initial: PromptKind
-    @State private var showing = false
+/// Opens Settings > Prompts, where every prompt is shown and edited.
+struct PromptsLink: View {
+    @Environment(AppContainer.self) private var container
 
     var body: some View {
         LabeledContent("Prompts") {
-            Button(initial == .brief ? "Edit Prompts…" : "Show Prompts…") { showing = true }
+            Button("Open Prompts") { container.settingsTab = .prompts }
+                .buttonStyle(.link)
         }
-        .sheet(isPresented: $showing) { PromptsSheet(kind: initial) }
-    }
-}
-
-/// Built with the current vocabulary, default preset and prompt edits, so it shows what is sent.
-struct PromptsSheet: View {
-    @Environment(AppContainer.self) private var container
-    @Environment(\.dismiss) private var dismiss
-    @State var kind: PromptKind
-    @State private var showsFullPrompt = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Picker("Prompt", selection: $kind) {
-                ForEach(PromptKind.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if kind == .brief {
-                        Text("These three parts shape every brief. Who VibeFlow is, and the rule that selected text is never an instruction, stay fixed.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        PromptPartEditor(title: "Kinds of text", part: .situations)
-                        PromptPartEditor(title: "AI replies", hint: "Used instead of the kinds of text for ChatGPT, Codex, Claude and Gemini. {assistant} becomes the app's name.", part: .aiReply)
-                        PromptPartEditor(title: "Style, for every brief", hint: "Selections under 300 characters also get at most 25 words.", part: .style)
-                        DisclosureGroup("Full prompt as sent", isExpanded: $showsFullPrompt) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                section("System", system)
-                                section("User message", user)
-                            }
-                            .padding(.top, 6)
-                        }
-                        .font(.caption.weight(.semibold))
-                    } else {
-                        section("System", system)
-                        section("User message", user)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
-            }
-            .background(.background.secondary, in: .rect(cornerRadius: 6))
-            HStack {
-                Text(kind == .brief ? "Changes apply from the next smart read." : "Read-only.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button("Done") { dismiss() }
-                    .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding()
-        .frame(width: 620, height: kind == .brief ? 640 : 380)
-    }
-
-    private func section(_ title: String, _ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            Text(text)
-                .font(.callout.monospaced())
-                .textSelection(.enabled)
-        }
-    }
-
-    private var system: String {
-        let preset = container.presets.defaultPreset
-        switch kind {
-        case .brief, .cleanup:
-            return SmartReadPrompts.system(mode: kind == .brief ? .brief : .cleanup,
-                                           language: preset.languageOverride,
-                                           instructions: preset.smartReadInstructions,
-                                           parts: container.preferences.briefPrompts)
-        case .dictation:
-            return SmartReadPrompts.dictationCleanupSystem(vocabulary: container.preferences.vocabularyTerms)
-        }
-    }
-
-    private var user: String {
-        kind == .dictation ? SmartReadPrompts.dictationUser("…transcript…") : SmartReadPrompts.user(text: "…selected text…")
     }
 }
 
@@ -248,39 +159,71 @@ struct SpeedSlider: View {
     }
 }
 
-/// One editable part of the brief prompt, saved as you type, with a way back to the default.
-struct PromptPartEditor: View {
+/// A voice that can follow Read's: nil = the Read voice.
+struct InheritingVoicePicker: View {
     @Environment(AppContainer.self) private var container
-    let title: String
-    var hint: String?
-    let part: BriefPromptParts.Part
+    @Binding var voiceID: String?
+    let readVoiceID: String
 
     var body: some View {
-        @Bindable var prefs = container.preferences
-        let edited = prefs.briefPrompts[part] != nil
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                if edited {
-                    Text("Edited").font(.caption2).foregroundStyle(.orange)
-                }
-                Spacer()
-                Button("Reset to Default") { prefs.briefPrompts[part] = nil }
-                    .controlSize(.small)
-                    .disabled(!edited)
+        let voices = container.catalogs.voices
+        let readName = voices.first { $0.id == readVoiceID }?.name
+        Picker("Voice", selection: Binding(get: { voiceID ?? "" }, set: { voiceID = $0.isEmpty ? nil : $0 })) {
+            Text(readName.map { "Same as Read (\($0))" } ?? "Same as Read").tag("")
+            Divider()
+            ForEach(voices) { voice in
+                Text(voice.name).tag(voice.id)
             }
-            if let hint {
-                Text(hint).font(.caption).foregroundStyle(.secondary)
+            if let chosen = voiceID, !voices.contains(where: { $0.id == chosen }) {
+                Text("Custom voice").tag(chosen)
             }
-            TextEditor(text: Binding(
-                get: { prefs.briefPrompts.editableText(part) },
-                set: { prefs.briefPrompts[part] = $0 }
-            ))
-            .font(.callout.monospaced())
-            .frame(height: 150)
-            .scrollContentBackground(.hidden)
-            .padding(4)
-            .background(.background, in: .rect(cornerRadius: 4))
+        }
+    }
+}
+
+/// A model that can follow Read's: nil = the Read model.
+struct InheritingModelPicker: View {
+    let title: String
+    let options: [ModelOption]
+    @Binding var selection: String?
+    let readModel: String
+
+    var body: some View {
+        let readName = options.first { $0.id == readModel }?.name
+        Picker(title, selection: Binding(get: { selection ?? "" }, set: { selection = $0.isEmpty ? nil : $0 })) {
+            Text(readName.map { "Same as Read (\($0))" } ?? "Same as Read").tag("")
+            Divider()
+            ForEach(options) { option in
+                Text(option.name).tag(option.id)
+            }
+            if let chosen = selection, !options.contains(where: { $0.id == chosen }) {
+                Text(chosen).tag(chosen)
+            }
+        }
+    }
+}
+
+/// A speaker that can follow Read's: nil = the Read speaker, "" = system output, else a device.
+struct InheritingDevicePicker: View {
+    let devices: [AudioDevice]
+    @Binding var selection: String?
+
+    private static let sameAsRead = "same-as-read"
+
+    var body: some View {
+        Picker("Speaker", selection: Binding(
+            get: { selection ?? Self.sameAsRead },
+            set: { selection = $0 == Self.sameAsRead ? nil : $0 }
+        )) {
+            Text("Same as Read").tag(Self.sameAsRead)
+            Divider()
+            Text("System output").tag("")
+            ForEach(devices) { device in
+                Text(device.name).tag(device.uid)
+            }
+            if let chosen = selection, !chosen.isEmpty, !devices.contains(where: { $0.uid == chosen }) {
+                Text("Unplugged device").tag(chosen)
+            }
         }
     }
 }
