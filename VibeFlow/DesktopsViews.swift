@@ -4,7 +4,7 @@ import SwiftUI
 import VibeFlowCore
 
 // Desktop Roles views (docs/designs/desktop-roles.md): the role tag in the menu bar, the
-// menu (the role tag's, with the last walk's report), and Settings > Desktops.
+// Desktops menu (the panel tile's chevron and the role tag), and Settings > Desktops.
 
 /// The menu bar item's label: the focused desktop's role as a colored tag.
 struct RoleTagLabel: View {
@@ -17,21 +17,27 @@ struct RoleTagLabel: View {
     }
 }
 
-/// The role tag's menu. (The VibeFlow menu's Desktops submenu went with the menu bar panel, #47.)
+/// The Desktops menu: behind the panel tile's chevron and on the role tag. Every action closes
+/// the panel first, since a walk switches desktops and Settings takes the front.
 struct DesktopsMenuItems: View {
     @Environment(AppContainer.self) private var container
-    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         let desktops = container.desktops
         if desktops.isPaused {
             Text("Paused: the installed VibeFlow handles desktops")
         }
-        Button(desktops.isWalking ? "Stop Setting Up" : "Set Up All") { desktops.setUpOrStop() }
+        Button(desktops.isWalking ? "Stop Setting Up" : "Set Up All") {
+            container.closePanel?()
+            desktops.setUpOrStop()
+        }
             .globalKeyboardShortcut(.setUpDesktops)
             .disabled(desktops.roles.isEmpty || desktops.isPaused)
         ForEach(desktops.roles) { role in
-            Button("Set Up \(role.name) · Desktop \(role.desktopNumber)") { desktops.setUp([role]) }
+            Button("Set Up \(role.name) · Desktop \(role.desktopNumber)") {
+                container.closePanel?()
+                desktops.setUp([role])
+            }
                 .disabled(desktops.isWalking || desktops.isPaused)
         }
         if let report = desktops.setup.lastReport {
@@ -42,7 +48,10 @@ struct DesktopsMenuItems: View {
             }
         }
         Divider()
-        Button("Desktops Settings…") { SettingsWindow.present(openSettings, container: container, tab: .desktops) }
+        Button("Desktops Settings…") {
+            container.closePanel?()
+            container.presentSettings(tab: .desktops)
+        }
     }
 }
 
