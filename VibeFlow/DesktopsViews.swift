@@ -4,7 +4,7 @@ import SwiftUI
 import VibeFlowCore
 
 // Desktop Roles views (docs/designs/desktop-roles.md): the role tag in the menu bar, the
-// Desktops submenu with the last walk's report, and Settings > Desktops.
+// menu (the role tag's, with the last walk's report), and Settings > Desktops.
 
 /// The menu bar item's label: the focused desktop's role as a colored tag.
 struct RoleTagLabel: View {
@@ -17,7 +17,7 @@ struct RoleTagLabel: View {
     }
 }
 
-/// Shared by the role tag's menu and the VibeFlow menu's Desktops submenu.
+/// The role tag's menu. (The VibeFlow menu's Desktops submenu went with the menu bar panel, #47.)
 struct DesktopsMenuItems: View {
     @Environment(AppContainer.self) private var container
     @Environment(\.openSettings) private var openSettings

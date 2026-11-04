@@ -51,7 +51,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Readable with: log show --last 2m --predicate 'subsystem == "one.floo.vibeflow"'
         // .notice persists to disk; .info is memory-only and invisible to `log show`.
         log.notice("launch: accessibility trusted=\(trusted, privacy: .public)")
+        // The VibeFlow icon and its panel (menu bar popover R1); a status item made before
+        // launch finishes never shows up.
+        if let container = Self.container { StatusItemController.install(container: container) }
     }
+
+    /// Handed over by VibeFlowApp.init, which owns the container.
+    @MainActor static var container: AppContainer?
 }
 
 enum Accessibility {

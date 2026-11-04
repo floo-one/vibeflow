@@ -114,6 +114,14 @@ final class FileTranscriptions {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        use(url, then: openOptions)
+    }
+
+    /// A file chosen in the open panel or dropped on the menu bar panel (D15): checked, then
+    /// the options window opens for it.
+    func use(_ url: URL, then openOptions: @escaping () -> Void) {
+        guard !job.isRunning else { return }
+        pickError = nil
         Task {
             do {
                 let info = try await AudioFileDecoder.probe(url)
