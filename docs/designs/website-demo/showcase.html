@@ -24,6 +24,9 @@
 [hidden] { display: none !important; }
 body { margin: 0; font-family: var(--font); color: var(--text); background: var(--ground); -webkit-font-smoothing: antialiased; }
 h2, h3, p { margin: 0; }
+html, body { overflow-x: clip; }
+h1, h2 { text-wrap: balance; }
+::selection { background: rgba(91,79,224,.22); }
 
 .show { max-width: 1120px; margin: 0 auto; padding: 88px 24px; display: grid; grid-template-columns: 1fr 1.1fr; gap: 72px; align-items: center; }
 
@@ -79,7 +82,7 @@ h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); li
 .feat .row h3 { flex: 1; }
 .keys { display: flex; gap: 3px; align-items: center; }
 .k { min-width: 24px; height: 24px; padding: 0 6px; border-radius: 6px; display: inline-grid; place-items: center; font-size: 12.5px; font-weight: 600;
-  background: #fff; border: 1px solid var(--line-2); box-shadow: 0 1.5px 0 #C7C7CC; transition: all .3s var(--ease); }
+  background: #fff; border: 1px solid var(--line-2); box-shadow: 0 1.5px 0 #C7C7CC; transition: background .3s var(--ease), border-color .3s var(--ease), color .3s var(--ease), box-shadow .3s var(--ease); }
 .keys .hold { font-size: 12px; font-weight: 500; color: var(--text-3); margin-right: 4px; }
 .feat.on .k.key { background: var(--c); border-color: var(--c); color: #fff; box-shadow: 0 1.5px 0 color-mix(in srgb, var(--c) 60%, #000); }
 
@@ -93,10 +96,10 @@ h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); li
 .notch.on .slot { opacity: 1; transform: none; transition-delay: .15s; }
 .notch .l { left: 4px; } .notch .r { right: 4px; }
 .bars { display: flex; gap: 2.5px; align-items: center; height: 16px; }
-.bars b { width: 3px; height: 4px; border-radius: 2px; background: var(--tint); animation: wv .9s ease-in-out infinite; }
+.bars b { width: 3px; height: 14px; border-radius: 2px; background: var(--tint); transform: scaleY(.3); animation: wv .9s ease-in-out infinite; }
 .bars b:nth-child(2) { animation-delay: -.25s } .bars b:nth-child(3) { animation-delay: -.5s } .bars b:nth-child(4) { animation-delay: -.7s }
 .notch[data-f="dict"] .bars b { animation-duration: .45s; }
-@keyframes wv { 0%, 100% { height: 4px; } 50% { height: 14px; } }
+@keyframes wv { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
 .notch .ic { display: none; } .notch[data-f="read"] .i-read, .notch[data-f="smart"] .i-smart, .notch[data-f="dict"] .i-dict { display: block; }
 
 .card { position: absolute; left: 9%; right: 9%; top: 74px; padding: 22px 24px; border-radius: 14px; background: #fff;
@@ -179,11 +182,11 @@ ol.feats { counter-reset: s; }
 @media (prefers-reduced-motion: reduce) {
   .menu, .mi, .feat h3::before, .notch, .notch .slot, .pill, .sel, .book, .card .body, .w, .k, .step-n { transition: none; }
   .bi.status, .bars b, .field.typing::after, .field .pasted { animation: none; }
-  .bars b { height: 10px; }
+  .bars b { transform: scaleY(.7); }
 }
 </style>
 <style>
-/* ---------- The site's menu bar ---------- */
+/* ---------- The site’s menu bar ---------- */
 body { padding-top: 44px; }
 .mb { position: fixed; z-index: 100; top: 0; left: 0; right: 0; height: 44px; display: flex; align-items: center; gap: 2px; padding: 0 12px 0 14px;
   font-size: 14px; background: rgba(255,255,255,.62); backdrop-filter: blur(24px) saturate(1.8); -webkit-backdrop-filter: blur(24px) saturate(1.8);
@@ -265,7 +268,7 @@ body { padding-top: 44px; }
         <li class="about"><span><b>VibeFlow 1.5.0</b>Free, open source, MIT</span></li>
         <li class="sep"></li>
         <li><a href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg">Download for Mac…</a></li>
-        <li><a href="https://github.com/floo-one/vibeflow/blob/main/CHANGELOG.md">What's New</a></li>
+        <li><a href="https://github.com/floo-one/vibeflow/blob/main/CHANGELOG.md">What’s New</a></li>
         <li><a href="https://github.com/floo-one/vibeflow">Source on GitHub</a></li>
       </ul>
     </div>
@@ -328,7 +331,7 @@ body { padding-top: 44px; }
   <div>
     <p class="eyebrow">New in 1.5</p>
     <h2 id="show-title">One menu.<br />Everything in reach.</h2>
-    <p class="lead">Voice, focus and the little things, grouped by what you're doing. The menu bar stays quiet until something is running.</p>
+    <p class="lead">Voice, focus and the little things, grouped by what you’re doing. The menu bar stays quiet until something is running.</p>
     <ul class="feats" id="feats">
       <li><button class="feat" data-row="transcribe" style="--c:var(--icon-bottom)">
         <h3>Transcribe any file</h3>
@@ -403,7 +406,7 @@ body { padding-top: 44px; }
       </button></li>
       <li><button class="feat" data-f="dict" style="--c:var(--dictation)">
         <div class="row"><h3>Dictation</h3><span class="keys"><span class="hold">hold</span><span class="k">⌥</span><span class="k key dk">-</span></span></div>
-        <p>Talk, let go, and it's typed where you were, cleaned up.</p>
+        <p>Talk, let go, and it’s typed where you were, cleaned up.</p>
       </button></li>
     </ul>
     <div class="get"><a class="dl" href="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg">Download for Mac</a><span>Works without any keys · no account</span></div>
@@ -440,9 +443,9 @@ body { padding-top: 44px; }
   <div class="copy">
     <p class="eyebrow">Ask back</p>
     <h2 id="ask-title">Select it.<br />Ask it.</h2>
-    <p class="lead">Stuck on a line in a book, a paper or a long thread? Select it, hold the smart read key and ask, out loud. Let go, and the answer is spoken, grounded in what you're reading.</p>
+    <p class="lead">Stuck on a line in a book, a paper or a long thread? Select it, hold the smart read key and ask, out loud. Let go, and the answer is spoken, grounded in what you’re reading.</p>
     <ol class="feats steps" id="asteps">
-      <li class="feat"><h3><span class="step-n">1</span>Select what you're reading</h3><p>A phrase, a paragraph or a whole page, in any app.</p></li>
+      <li class="feat"><h3><span class="step-n">1</span>Select what you’re reading</h3><p>A phrase, a paragraph or a whole page, in any app.</p></li>
       <li class="feat"><h3><span class="step-n">2</span>Hold <span class="keys" style="margin-left:2px"><span class="k">⌥</span><span class="k">,</span></span> and ask</h3><p>In your own words: “What does that mean?”</p></li>
       <li class="feat"><h3><span class="step-n">3</span>Let go and listen</h3><p>A short answer in a few sentences. Ask again; it remembers the text.</p></li>
     </ol>
@@ -466,7 +469,7 @@ body { padding-top: 44px; }
     <div class="card book" id="abook">
       <p class="from"><span id="asrc"><b>The Beginning of Infinity</b> · David Deutsch</span>
         <span class="akeys" id="akeys"><span class="hold">hold</span><span class="k">⌥</span><span class="k">,</span></span></p>
-      <p class="body" id="abody">Deutsch's claim is that all progress comes from one thing: the search for good explanations. A bad explanation can be bent to fit any outcome, so it tells us nothing. Good explanations are <span class="sel on" id="asel">hard to vary</span>: every detail does work, and you can't change one without breaking the whole.</p>
+      <p class="body" id="abody">Deutsch’s claim is that all progress comes from one thing: the search for good explanations. A bad explanation can be bent to fit any outcome, so it tells us nothing. Good explanations are <span class="sel on" id="asel">hard to vary</span>: every detail does work, and you can’t change one without breaking the whole.</p>
     </div>
 
     <div class="pill" id="apill">
@@ -491,37 +494,37 @@ body { padding-top: 44px; }
 // Ask section: a page from a book, a phrase selected, a question asked out loud, a short
 // spoken answer, then a follow-up. Each visitor gets one source at random (never the one
 // they saw last time); pause holds the answer on screen (the button below the scene, or a
-// click on the scene). Page texts and answers are our own wording of each author's idea,
+// click on the scene). Page texts and answers are our own wording of each author’s idea,
 // not quotations.
 (() => {
   const $ = s => document.querySelector(s);
   const SOURCES = [
     { who: 'Deutsch', title: 'The Beginning of Infinity', author: 'David Deutsch',
-      pre: "Deutsch's claim is that all progress comes from one thing: the search for good explanations. A bad explanation can be bent to fit any outcome, so it tells us nothing. Good explanations are ",
-      sel: 'hard to vary', post: ": every detail does work, and you can't change one without breaking the whole.",
+      pre: "Deutsch’s claim is that all progress comes from one thing: the search for good explanations. A bad explanation can be bent to fit any outcome, so it tells us nothing. Good explanations are ",
+      sel: 'hard to vary', post: ": every detail does work, and you can’t change one without breaking the whole.",
       qa: [
         { q: 'What does that mean?', a: "Every part of a good explanation is load-bearing. Change a detail and it stops working. A myth can swap one god for another and still “explain” the same thing, which is exactly why it explains nothing." },
-        { q: 'Give me an example.', a: "Seasons. “A goddess is sad, so it's winter” survives any rewrite. “Earth's axis is tilted” doesn't: change the tilt and you predict the wrong seasons, in the wrong hemispheres." },
+        { q: 'Give me an example.', a: "Seasons. “A goddess is sad, so it’s winter” survives any rewrite. “Earth’s axis is tilted” doesn’t: change the tilt and you predict the wrong seasons, in the wrong hemispheres." },
       ] },
     { who: 'Naval', title: 'The Almanack of Naval Ravikant', author: 'Eric Jorgenson',
-      pre: "Naval's path to wealth starts with ",
+      pre: "Naval’s path to wealth starts with ",
       sel: 'specific knowledge', post: ": what you know because you were curious, not because someone taught you. Add leverage, like code or media, and put your own name on the result.",
       qa: [
         { q: 'What does that mean?', a: "Know-how that grew out of your own curiosity, so nobody can be trained to replace you. If a course can teach it, someone cheaper will learn it too." },
-        { q: 'How do I find mine?', a: "Look at what feels like play to you but looks like work to others. That's usually where it is." },
+        { q: 'How do I find mine?', a: "Look at what feels like play to you but looks like work to others. That’s usually where it is." },
       ] },
     { who: 'Kapil Gupta', title: 'Direct Truth', author: 'Kapil Gupta',
-      pre: "Kapil Gupta distrusts every method. Techniques, routines and habits keep you busy, he argues, without changing anything. A problem doesn't need to be managed; it ends when it is ",
+      pre: "Kapil Gupta distrusts every method. Techniques, routines and habits keep you busy, he argues, without changing anything. A problem doesn’t need to be managed; it ends when it is ",
       sel: 'seen completely', post: '.',
       qa: [
-        { q: 'What does that mean?', a: "Instead of a trick to cope with a problem, you look at it until you understand exactly how you keep creating it. Once that's clear, there's nothing left to manage." },
-        { q: "Isn't a method useful, though?", a: 'In his view, a method lets you put off the looking. You practise the technique and never face the thing itself.' },
+        { q: 'What does that mean?', a: "Instead of a trick to cope with a problem, you look at it until you understand exactly how you keep creating it. Once that’s clear, there’s nothing left to manage." },
+        { q: "Isn’t a method useful, though?", a: 'In his view, a method lets you put off the looking. You practise the technique and never face the thing itself.' },
       ] },
     { who: 'Krishnamurti', title: 'Freedom from the Known', author: 'J. Krishnamurti',
       pre: 'Krishnamurti asks you to look at fear without running from it, naming it or explaining it away. Watch it that way, he says, and you find that ',
       sel: 'the observer is the observed', post: ': there is no separate you standing outside the fear.',
       qa: [
-        { q: 'What does that mean?', a: "It feels like there's a “you” who has the fear and could step outside to fix it. He means the one looking is made of the same thoughts as the fear. There's no outsider to do the fixing." },
+        { q: 'What does that mean?', a: "It feels like there’s a “you” who has the fear and could step outside to fix it. He means the one looking is made of the same thoughts as the fear. There’s no outsider to do the fixing." },
         { q: 'So what do I do?', a: 'Nothing, in his sense. You watch it fully, without judging. That kind of attention is the change.' },
       ] },
     { who: 'Hesse', title: 'Siddhartha', author: 'Hermann Hesse',
@@ -687,7 +690,7 @@ body { padding-top: 44px; }
     else stopCycle();
   }, { threshold: [0, 0.35] }).observe(document.getElementById('show'));
 
-  // German clock, like the app's menu bar
+  // German clock, like the app’s menu bar
   const fmt = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const hm = tz => new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: tz });
   const tick = () => {
@@ -722,7 +725,7 @@ body { padding-top: 44px; }
   document.addEventListener('click', e => { if (open && !e.target.closest('.dd')) set(null); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && open) { const t = open; set(null); t.focus(); } });
 
-  // Frosted bar firms up once the page scrolls; the Download pill grows once the hero's
+  // Frosted bar firms up once the page scrolls; the Download pill grows once the hero’s
   // own button has scrolled away.
   const onScroll = () => mb.classList.toggle('scrolled', scrollY > 8);
   addEventListener('scroll', onScroll, { passive: true }); onScroll();
