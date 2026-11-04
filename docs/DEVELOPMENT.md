@@ -174,11 +174,13 @@ scripts/nightly.sh --install
 
 That adds a LaunchAgent (`~/Library/LaunchAgents/one.floo.vibeflow.nightly.plist`) that
 looks at origin/main every 30 minutes. When main moved and CI passed on it, it checks the
-commit out in its own worktree (`~/Library/Caches/one.floo.vibeflow.nightly/src`) and runs
+commit out in its own worktree (`~/Library/Application Support/one.floo.vibeflow.nightly/src`) and runs
 `scripts/release.sh --nightly --publish`: the same signed, notarized DMG, with build number
 `<CURRENT_PROJECT_VERSION>.<commits on main>`, uploaded with its feed to the rolling `nightly`
 pre-release. The Mac has to be on and logged in; it catches up after sleep. Log:
-`~/Library/Logs/VibeFlow Nightly.log`.
+`~/Library/Logs/VibeFlow Nightly.log`. Not in `~/Library/Caches`: macOS and cleaner apps empty
+it, and the job loses its own script (log full of "can't open input file"). An older install
+there is moved over by the next `--install`.
 
 ```bash
 scripts/nightly.sh --status      # LaunchAgent, last published commit, recent log
