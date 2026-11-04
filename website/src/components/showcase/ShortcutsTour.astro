@@ -379,7 +379,9 @@ const first = FLAT[0];
         .to(g, { x: out - cx, ...move }, 0)
         .fromTo(stage, { x: enter }, { x: tx, ...move }, 0);
       avoid(true); // it comes in already clear of the leaving card
-      if (!jumping && active >= 0) guide(flat[active].anchor);
+      // Only for the visitor's own scrolling: not during another scripted scroll (a Voice click,
+      // a pill) and not when a jump (a menu link) flies past the tour from far away.
+      if (!jumping && active >= 0 && !gsap.isTweening(window) && Math.abs(restAt(flat[active].anchor) - scrollY) < innerHeight * 0.5) guide(flat[active].anchor);
     } else {
       // Phones: the sticky bar never moves (one steady reading line under it); only the keyboard
       // inside it swipes, forward from the right, back from the left.
