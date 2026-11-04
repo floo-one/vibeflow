@@ -280,6 +280,8 @@ body { padding-top: 44px; }
           <li><a href="#voice" style="--c:var(--read)"><span class="dot"></span>Read<span class="sc">⌥ .</span></a></li>
           <li><a href="#voice" style="--c:var(--smart)"><span class="dot"></span>Smart read<span class="sc">⌥ ,</span></a></li>
           <li><a href="#voice" style="--c:var(--dictation)"><span class="dot"></span>Dictation<span class="sc">⌥ <span class="dk">-</span></span></a></li>
+          <li class="sep"></li>
+          <li><a href="#keys">All shortcuts</a></li>
         </ul>
       </div>
       <div class="mwrap">
@@ -489,6 +491,307 @@ body { padding-top: 44px; }
   <p class="visually-hidden" id="aread" aria-live="polite"></p>
   </div>
 </section>
+
+<!-- ---------- Shortcuts: the key map, a scroll-driven tour of every voice shortcut ---------- -->
+<style>
+/* Everything is scoped to #keys and prefixed kt- so it cannot meet the showcase's own .k, .bars
+   or .steps. The keyboard is the bottom of a German MacBook; it pans and zooms to the keys of
+   the step at the reading line. Snapping is on only while the tour fills the screen. */
+#keys { --kt-page: color-mix(in srgb, var(--kt-active, var(--dictation)) 6%, var(--ground));
+  --kt-alu: #C9CACF; --kt-cap: #1C1C1E; --kt-cap-fg: #F5F5F7;
+  background: var(--kt-page); transition: background-color .6s var(--ease); }
+.kt-wrap { max-width: 1120px; margin: 0 auto; padding: 88px 24px 40px; }
+.kt-head .lead { max-width: 30rem; }
+.kt-body { margin-top: 48px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 56px; align-items: start; }
+.kt-stage { position: sticky; top: max(68px, calc(50vh - 190px)); container-type: inline-size; display: flex; flex-direction: column; gap: 16px; }
+.kt-secs { list-style: none; margin: 0; padding: 0 0 62vh; display: flex; flex-direction: column; gap: 28px; }
+
+.kt-groups { display: flex; flex-wrap: wrap; gap: 6px; }
+.kt-groups button { font: 600 13px var(--font); border: 0; border-radius: 999px; padding: 6px 12px 6px 10px; background: var(--ground); color: var(--text-3); cursor: pointer;
+  display: flex; align-items: center; gap: 7px; box-shadow: 0 0 0 1px var(--line); transition: background .3s, color .3s; }
+.kt-groups button i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.kt-groups button.on { background: var(--c); color: #fff; box-shadow: none; }
+.kt-groups button.on i { background: #fff; }
+.kt-groups button:focus-visible { outline: 2px solid var(--read); outline-offset: 2px; }
+
+.kt-screen { align-self: flex-start; max-width: 100%; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 18px 0 12px; border-radius: 999px;
+  background: rgba(22,22,26,.9); color: #fff; font-size: 14px; font-weight: 500; box-shadow: 0 10px 30px -12px rgba(0,0,0,.45); }
+.kt-ico { width: 26px; height: 26px; border-radius: 50%; background: var(--c); display: grid; place-items: center; flex: none; transition: background .3s; }
+.kt-eq { display: flex; gap: 2px; align-items: center; height: 12px; }
+.kt-eq span { width: 2px; height: 4px; border-radius: 1px; background: #fff; }
+.kt-screen[data-state="live"] .kt-eq span { animation: kt-eq .9s ease-in-out infinite; }
+.kt-eq span:nth-child(2) { animation-delay: -.6s !important; } .kt-eq span:nth-child(3) { animation-delay: -.3s !important; } .kt-eq span:nth-child(4) { animation-delay: -.75s !important; }
+@keyframes kt-eq { 0%, 100% { height: 3px; } 50% { height: 12px; } }
+.kt-check { display: none; width: 12px; height: 12px; }
+.kt-screen[data-state="done"] .kt-eq { display: none; } .kt-screen[data-state="done"] .kt-check { display: block; }
+.kt-scr { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.kt-win { --u: min(46px, calc((100cqw - 4px) / 15.45)); position: relative; overflow: hidden; padding: 2px 0 8px; }
+.kt-board { position: relative; width: max-content; transform-origin: 0 0; transition: transform .7s cubic-bezier(.2,.8,.2,1);
+  background: var(--kt-alu); border-radius: calc(var(--u) * .34); padding: calc(var(--u) * .24); display: flex; flex-direction: column; gap: calc(var(--u) * .1);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 0 0 1px #B7B8BE, 0 30px 60px -30px rgba(0,0,0,.35); }
+.kt-row { display: flex; gap: calc(var(--u) * .1); }
+.kt-k { --c: var(--text-3); position: relative; width: calc(var(--u) * var(--w, 1) - var(--u) * .1); height: var(--u); flex: none; background: var(--kt-cap);
+  color: color-mix(in srgb, var(--kt-cap-fg) 38%, transparent); border-radius: calc(var(--u) * .14); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: calc(var(--u) * .34); line-height: 1.05; box-shadow: 0 calc(var(--u) * .05) 0 rgba(0,0,0,.35); user-select: none;
+  transition: background .25s, color .25s, transform .09s ease-out, box-shadow .09s; }
+.kt-k small { font-size: calc(var(--u) * .23); opacity: .55; }
+.kt-k.mod { font-size: calc(var(--u) * .2); align-items: flex-start; justify-content: flex-end; padding: 0 0 calc(var(--u) * .1) calc(var(--u) * .13); }
+.kt-k.mod.r { align-items: flex-end; padding: 0 calc(var(--u) * .13) calc(var(--u) * .1) 0; }
+.kt-k.mod i { font-style: normal; font-size: calc(var(--u) * .27); position: absolute; top: calc(var(--u) * .08); right: calc(var(--u) * .13); opacity: .55; }
+.kt-k.mod.r i { left: calc(var(--u) * .13); right: auto; }
+.kt-k.ret2 { border-radius: 0 0 calc(var(--u) * .14) calc(var(--u) * .14); }
+.kt-row.ctx .kt-k { opacity: .5; }
+.kt-arrows { width: calc(var(--u) * 3 - var(--u) * .1); height: var(--u); display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: calc(var(--u) * .06); }
+.kt-arrows .kt-k { width: auto; height: auto; font-size: calc(var(--u) * .18); }
+.kt-arrows .lr { grid-row: 2; } .kt-arrows .up { grid-column: 2; grid-row: 1; }
+.kt-k.lit { background: var(--c); color: #fff; }
+.kt-k.lit small, .kt-k.lit i { opacity: .8; }
+.kt-k.down { transform: translateY(calc(var(--u) * .05)) scale(.97); box-shadow: 0 0 0 calc(var(--u) * .08) color-mix(in srgb, var(--c) 30%, transparent); }
+.kt-k .fill { position: absolute; inset: auto 0 0 0; height: 0; background: rgba(255,255,255,.28); border-radius: inherit; }
+.kt-k.hold .fill { animation: kt-fill 1.6s linear forwards; }
+@keyframes kt-fill { to { height: 100%; } }
+
+.kt-sec { background: var(--ground); border-radius: 22px; padding: 26px 24px 10px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent); transition: box-shadow .4s; }
+.kt-sec.on { box-shadow: 0 0 0 2px var(--c), 0 20px 40px -28px var(--c); }
+.kt-sh { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.kt-sh .lbl { display: flex; gap: 4px; }
+.kt-sh .lbl kbd { font: 700 13px var(--font); background: var(--c); color: #fff; border-radius: 6px; min-width: 24px; height: 24px; padding: 0 7px; display: inline-grid; place-items: center; }
+.kt-sh h3 { font-size: clamp(26px, 2.6vw, 32px); letter-spacing: -.02em; line-height: 1.1; font-weight: 800; color: var(--c); margin: 4px 0 0; }
+.kt-sh p { color: var(--text-2); font-size: 15px; line-height: 1.5; }
+.kt-subs { list-style: none; margin: 8px 0 0; padding: 0 0 0 18px; border-left: 2px solid color-mix(in srgb, var(--c) 25%, transparent); }
+.kt-step { position: relative; min-height: 18vh; display: flex; flex-direction: column; gap: 8px; padding: 18px 0 26px; opacity: .38; transition: opacity .35s; cursor: pointer; }
+.kt-step::before { content: ""; position: absolute; left: -25px; top: 58px; width: 12px; height: 12px; border-radius: 50%; background: var(--ground);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 40%, transparent); transition: background .3s, box-shadow .3s; }
+.kt-step.on { opacity: 1; }
+.kt-step.on::before { background: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 22%, transparent); }
+.kt-how { font-size: 12px; font-weight: 600; color: var(--text-3); }
+.kt-how em { font-style: normal; border: 1px solid var(--line-2); border-radius: 999px; padding: 0 8px; }
+.kt-step h4 { margin: 0; font-size: 19px; letter-spacing: -.01em; line-height: 1.2; font-weight: 650; }
+.kt-step p { color: var(--text-2); font-size: 15px; line-height: 1.5; max-width: 34ch; }
+.kt-combo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.kt-combo kbd { font: 600 13px var(--font); background: var(--ground-2); color: var(--text); border-radius: 7px; padding: 4px 9px; box-shadow: inset 0 -1px 0 var(--line), 0 0 0 1px var(--line); }
+.kt-combo kbd.key { background: var(--c); color: #fff; box-shadow: none; }
+.kt-combo span { color: var(--text-3); font-size: 13px; }
+.kt-combo span.then { font-weight: 600; color: var(--text-2); }
+.kt-foot { max-width: 1120px; margin: 0 auto; padding: 0 24px 72px; font-size: 13.5px; line-height: 1.5; color: var(--text-3); }
+.kt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Snap, only while the tour fills the screen (the script sets the class and scroll-padding). */
+html.kt-snap { scroll-snap-type: y mandatory; }
+.kt-head { scroll-snap-align: start; scroll-margin-top: 44px; }
+.kt-snap-at { scroll-snap-align: start; scroll-snap-stop: always; scroll-margin-top: var(--m); }
+.kt-sh.kt-snap-at { --m: 48px; } .kt-step h4.kt-snap-at { --m: 52px; }
+.kt-end { scroll-snap-align: end; }
+
+@media (max-width: 900px) {
+  .kt-wrap { padding: 64px 20px 24px; }
+  .kt-body { display: block; margin-top: 28px; }
+  .kt-stage { top: 44px; z-index: 5; background: var(--kt-page); transition: background-color .6s var(--ease); gap: 10px;
+    margin: 0 -20px; padding: 12px 20px 10px; box-shadow: 0 12px 16px -14px rgba(0,0,0,.25); }
+  .kt-win { --u: calc(100cqw / 9.4); }
+  .kt-screen { min-height: 36px; font-size: 13px; }
+  .kt-secs { padding-top: 12px; }
+  .kt-sec { padding: 20px 16px 6px; }
+  .kt-step { min-height: 20vh; }
+  .kt-sh.kt-snap-at { --m: 36px; }
+  .kt-foot { padding: 0 20px 56px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #keys, .kt-stage, .kt-board, .kt-k, .kt-step, .kt-sec, .kt-groups button { transition: none; }
+  .kt-screen .kt-eq span, .kt-k.hold .fill { animation: none !important; }
+}
+</style>
+
+<section id="keys" aria-labelledby="keys-title">
+  <div class="kt-wrap">
+    <div class="kt-head">
+      <p class="eyebrow">Shortcuts</p>
+      <h2 id="keys-title">Learn them<br />in one scroll.</h2>
+      <p class="lead">Hold Option and press the key right above it. Add Shift for the clipboard or hands-free.</p>
+    </div>
+    <div class="kt-body">
+      <div class="kt-stage" aria-live="polite">
+        <div class="kt-groups" id="kt-groups"></div>
+        <div class="kt-screen" id="kt-screen" data-state="live" aria-hidden="true">
+          <span class="kt-ico"><span class="kt-eq"><span></span><span></span><span></span><span></span></span>
+            <svg class="kt-check" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.3 5 8.7l4.5-5.2"/></svg></span>
+          <span class="kt-scr" id="kt-scr"></span>
+        </div>
+        <div class="kt-win" id="kt-win" aria-hidden="true"><div class="kt-board" id="kt-board"></div></div>
+        <p class="kt-sr" id="kt-now"></p>
+      </div>
+      <ol class="kt-secs" id="kt-secs"></ol>
+    </div>
+  </div>
+  <p class="kt-foot kt-end">Voice shortcuts are shown with the right Shift and Option, paste with the left hand; either side works the same. Every shortcut can be changed in Settings.</p>
+</section>
+
+<script>
+// Shortcuts tour: four sections (Dictation, Smart read, Read, Paste again). The step whose
+// headline sits at the reading line lights its keys, the keyboard pans and zooms to them, and
+// the presses play on a loop (the first round faster, so a quick scroll still teaches it).
+(() => {
+  const $ = id => document.getElementById(id);
+  const section = $('keys'), board = $('kt-board'), win = $('kt-win'), secsEl = $('kt-secs'), groupsEl = $('kt-groups');
+  const screen = $('kt-screen'), scr = $('kt-scr'), now = $('kt-now');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // The dictation key: "-" on German keyboards, "/" elsewhere (the showcase's .dk rule refines it).
+  const dk = /^de\b/i.test(navigator.language) ? '-' : '/';
+
+  const ROWS = [
+    [['caps','⇪',1.75],...'ASDFGHJKLÖÄ'.split('').map(c=>[c.toLowerCase(),c,1]),['#','#',1,"'"],['ret2','',1.25,'','ret2']],
+    [['shiftL','shift',1.25,'⇧','mod'],['<','<',1,'>'],...'YXCVBNM'.split('').map(c=>[c.toLowerCase(),c,1]),['comma',',',1,';'],['period','.',1,':'],['slash',dk,1,'_','dk'],['shiftR','shift',2.75,'⇧','mod r']],
+    [['fn','fn',1,'◎','mod'],['ctrl','control',1,'⌃','mod'],['optL','option',1,'⌥','mod'],['cmdL','command',1.25,'⌘','mod'],['space','',5.5],['cmdR','command',1.25,'⌘','mod r'],['optR','option',1,'⌥','mod r']],
+  ];
+  const NAME = { optL:'⌥ Option', optR:'⌥ Option', cmdL:'⌘ Command', shiftL:'⇧ Shift', shiftR:'⇧ Shift', comma:',', period:'.', slash:dk, v:'V' };
+  const SECTIONS = [
+    { id:'talk', c:'--dictation', title:'Dictation', key:['⌥', dk], blurb:'Speak, and the text appears where your cursor is.', steps:[
+      { name:'Push to talk', text:'Hold while you speak. Let go and it is typed.', parts:[{ keys:['optR','slash'], how:'hold', live:'Listening', done:'Typed into your app' }] },
+      { name:'Hands-free', text:'Press once and talk as long as you like. Press again to stop.', parts:[{ keys:['shiftR','optR','slash'], how:'toggle', live:'Recording hands-free', done:'Stopped and typed' }] },
+    ]},
+    { id:'smart', c:'--smart', title:'Smart read', key:['⌥', ','], blurb:'Select text first. The AI works on exactly that text and answers out loud.', steps:[
+      { name:'Smart read the selected text', text:'Select text anywhere, then tap. You hear what it means.', parts:[{ keys:['optR','comma'], how:'tap', live:'Thinking about the selected text' }] },
+      { name:'Ask about the selected text', text:'Select text, then hold the same keys and ask out loud. Let go to get the answer.', parts:[{ keys:['optR','comma'], how:'hold', live:'Listening to your question', done:'Answering out loud' }] },
+      { name:'Smart read the clipboard', text:'No selection needed: add Shift and it uses what you copied.', parts:[{ keys:['shiftR','optR','comma'], how:'tap', live:'Thinking about the clipboard' }] },
+      { name:'Ask about the clipboard', text:'Smart read the clipboard first. Then, with nothing selected, hold and ask.', parts:[
+        { keys:['shiftR','optR','comma'], how:'tap', live:'Thinking about the clipboard' },
+        { keys:['optR','comma'], how:'hold', live:'Listening to your question', done:'Answering out loud' }] },
+    ]},
+    { id:'read', c:'--read', title:'Read', key:['⌥', '.'], blurb:'Hear any text in a natural voice.', steps:[
+      { name:'Read the selection', text:'Select text and tap. Tap again to stop.', parts:[{ keys:['optR','period'], how:'tap', live:'Reading aloud' }] },
+      { name:'Read the clipboard', text:'Add Shift to hear what you copied.', parts:[{ keys:['shiftR','optR','period'], how:'tap', live:'Reading the clipboard' }] },
+    ]},
+    { id:'paste', c:'--tools', title:'Paste again', key:['⌥', '⌘', 'V'], blurb:'Put the last result where you need it.', steps:[
+      { name:'Last dictation', text:'Like ⌘ V with Option added: Option and Command sit side by side.', parts:[{ keys:['optL','cmdL','v'], how:'tap', done:'Dictation pasted' }] },
+      { name:'Last smart read', text:'Same, plus Shift.', parts:[{ keys:['shiftL','optL','cmdL','v'], how:'tap', done:'Answer pasted' }] },
+    ]},
+  ];
+  const HOW = { tap:'Tap', hold:'Hold', toggle:'Press to start and stop' };
+
+  // Keyboard
+  ROWS.forEach((r, n) => {
+    const row = document.createElement('div'); row.className = 'kt-row' + (n === 0 ? ' ctx' : '');
+    r.forEach(([id, lab, w, sub, kind]) => {
+      const k = document.createElement('div');
+      k.className = 'kt-k' + (kind && kind !== 'dk' ? ' ' + kind : ''); k.dataset.id = id; k.style.setProperty('--w', w);
+      if (kind && kind.startsWith('mod')) k.innerHTML = `<i>${sub}</i>${lab}`;
+      else k.innerHTML = (sub ? `<small>${sub}</small>` : '') + `<span${kind === 'dk' ? ' class="dk"' : ''}>${lab}</span>`;
+      k.insertAdjacentHTML('beforeend', '<span class="fill"></span>');
+      row.appendChild(k);
+    });
+    if (n === 2) row.insertAdjacentHTML('beforeend', '<div class="kt-arrows"><div class="kt-k up">▲</div><div class="kt-k lr">◀</div><div class="kt-k lr">▼</div><div class="kt-k lr">▶</div></div>');
+    board.appendChild(row);
+  });
+  const keyOf = id => board.querySelector(`.kt-k[data-id="${id}"]`);
+
+  // Sections and steps
+  const flat = [];
+  const combo = keys => keys.map((id, n) => `<kbd class="${n === keys.length - 1 ? 'key' : ''}${id === 'slash' ? ' dk' : ''}">${NAME[id]}</kbd>`).join('<span>+</span>');
+  SECTIONS.forEach(sec => {
+    const li = document.createElement('li'); li.className = 'kt-sec'; li.style.setProperty('--c', `var(${sec.c})`); li.dataset.sec = sec.id;
+    li.innerHTML = `<div class="kt-sh"><span class="lbl">${sec.key.map(k => `<kbd${k === dk ? ' class="dk"' : ''}>${k}</kbd>`).join('')}</span><h3>${sec.title}</h3><p>${sec.blurb}</p></div><ol class="kt-subs"></ol>`;
+    const subs = li.querySelector('.kt-subs');
+    sec.steps.forEach(s => {
+      const el = document.createElement('li'); el.className = 'kt-step';
+      const how = s.parts.length > 1 ? 'Tap, then hold' : HOW[s.parts[0].how];
+      const combos = s.parts.map((p, n) => (n && p.how === 'hold' ? '<span class="then">then hold</span>' : '') + combo(p.keys)).join('');
+      el.innerHTML = `<div class="kt-how"><em>${how}</em></div><h4>${s.name}</h4><div class="kt-combo">${combos}</div><p>${s.text}</p>`;
+      const anchor = subs.children.length ? el.querySelector('h4') : li.querySelector('.kt-sh');
+      anchor.classList.add('kt-snap-at');
+      const i = flat.length; flat.push({ s, sec, el, anchor });
+      el.addEventListener('click', () => go(i));
+      subs.appendChild(el);
+    });
+    secsEl.appendChild(li);
+  });
+  groupsEl.innerHTML = SECTIONS.map(s => `<button type="button" data-g="${s.id}" style="--c:var(${s.c})"><i></i>${s.title}</button>`).join('');
+  groupsEl.querySelectorAll('button').forEach(b => b.onclick = () => go(flat.findIndex(f => f.sec.id === b.dataset.g)));
+
+  // Reading line: under the fixed menu bar and level with the stage on wide screens, just under
+  // the sticky keyboard on phones.
+  const narrow = () => innerWidth <= 900;
+  const stage = section.querySelector('.kt-stage');
+  const snapTop = () => narrow() ? 44 + stage.offsetHeight : Math.max(68, innerHeight / 2 - 190);
+  const target = a => snapTop() + parseFloat(getComputedStyle(a).scrollMarginTop || 0);
+  function go(i) { const a = flat[i].anchor; scrollTo({ top: scrollY + a.getBoundingClientRect().top - target(a), behavior: reduce ? 'auto' : 'smooth' }); }
+
+  // Camera: zoom out only as far as needed to fit the active keys, then center them.
+  let framed = [];
+  function frame(keys) {
+    framed = keys;
+    const els = keys.map(keyOf), u = els[0].offsetHeight, pad = u * .7;
+    const minX = Math.min(...els.map(k => k.offsetLeft)), maxX = Math.max(...els.map(k => k.offsetLeft + k.offsetWidth));
+    const W = win.clientWidth, BW = board.offsetWidth, BH = board.offsetHeight;
+    const s = Math.min(1, W / (maxX - minX + 2 * pad));
+    let tx = BW * s <= W ? (W - BW * s) / 2 : W / 2 - ((minX + maxX) / 2) * s;
+    tx = Math.min(Math.max(tx, Math.min(0, W - BW * s)), Math.max(0, W - BW * s));
+    board.style.transform = `translate(${tx}px,${BH - BH * s}px) scale(${s})`;
+  }
+
+  const setScreen = (state, text, c) => { screen.dataset.state = state; scr.textContent = text; screen.style.setProperty('--c', `var(${c})`); };
+  let active = -1, run = 0, inView = false;
+  function activate(i) {
+    if (i === active) return; active = i;
+    const { s, sec } = flat[i];
+    section.style.setProperty('--kt-active', `var(${sec.c})`);
+    flat.forEach((f, n) => f.el.classList.toggle('on', n === i));
+    secsEl.querySelectorAll('.kt-sec').forEach(el => el.classList.toggle('on', el.dataset.sec === sec.id));
+    groupsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.g === sec.id));
+    board.querySelectorAll('.kt-k').forEach(k => { k.classList.remove('lit', 'down', 'hold'); k.style.removeProperty('--c'); });
+    const keys = [...new Set(s.parts.flatMap(p => p.keys))];
+    keys.forEach(id => { const k = keyOf(id); k.classList.add('lit'); k.style.setProperty('--c', `var(${sec.c})`); });
+    frame(keys);
+    now.textContent = `${s.name}: ${keys.map(id => NAME[id]).join(' + ')}`;
+    play(s, sec.c);
+  }
+
+  // Key presses: modifiers go down one after another, then the action key taps, holds or toggles.
+  async function play(s, c) {
+    const id = ++run, alive = () => id === run && inView, wait = ms => new Promise(r => setTimeout(r, ms));
+    const first = s.parts[0], last = s.parts[s.parts.length - 1];
+    if (reduce) { setScreen(last.done ? 'done' : 'live', last.done || last.live, c); return; }
+    setScreen(first.live ? 'live' : 'done', first.live || first.done, c);
+    let quick = true;
+    while (alive()) {
+      for (const p of s.parts) {
+        if (!alive()) return;
+        const ks = p.keys.map(keyOf), mods = ks.slice(0, -1), act = ks[ks.length - 1];
+        const down = async () => { for (const k of mods) { k.classList.add('down'); await wait(quick ? 70 : 150); } };
+        const up = () => mods.forEach(k => k.classList.remove('down'));
+        const tap = async () => { act.classList.add('down'); await wait(170); act.classList.remove('down'); };
+        await down(); if (!alive()) return up();
+        if (p.how === 'tap') { await tap(); setScreen(p.live ? 'live' : 'done', p.live || p.done, c); await wait(220); up(); await wait(2100); }
+        else if (p.how === 'hold') {
+          act.classList.add('down', 'hold'); setScreen('live', p.live, c); await wait(1700);
+          act.classList.remove('down', 'hold'); up(); if (!alive()) return; setScreen('done', p.done, c); await wait(1700);
+        } else {
+          await tap(); await wait(120); up(); setScreen('live', p.live, c); await wait(2200); if (!alive()) return;
+          await down(); await tap(); await wait(120); up(); setScreen('done', p.done, c); await wait(1700);
+        }
+      }
+      quick = false; await wait(500);
+    }
+  }
+
+  // Which step sits at the reading line; snapping only while the tour fills the screen.
+  function onScroll() {
+    const r = section.getBoundingClientRect();
+    const fills = r.top < innerHeight * .4 && r.bottom > innerHeight * .6;
+    document.documentElement.classList.toggle('kt-snap', fills);
+    document.documentElement.style.scrollPaddingTop = fills ? snapTop() + 'px' : '';
+    const wasInView = inView; inView = r.top < innerHeight && r.bottom > 0;
+    if (!inView) { run++; return; }
+    let best = 0, dist = Infinity;
+    flat.forEach((f, n) => { const d = Math.abs(f.anchor.getBoundingClientRect().top - target(f.anchor)); if (d < dist) { dist = d; best = n; } });
+    if (!wasInView) active = -1; // coming back: restart the loop
+    activate(best);
+  }
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', () => { onScroll(); if (framed.length) frame(framed); });
+  inView = true; activate(0); onScroll();
+})();
+</script>
 </main>
 
 <script>
