@@ -114,13 +114,18 @@ struct VibeFlowApp: App {
 }
 
 /// The VibeFlow icon (with DEV in the dev build). It is always on screen, so it also hands
-/// SwiftUI's window opener to the container for notification clicks (file transcription D10).
+/// SwiftUI's window opener to the container for notification clicks (file transcription D10)
+/// and installs right-click to open Settings (StatusItemRightClick).
 private struct MenuBarIcon: View {
     @Environment(AppContainer.self) private var container
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        icon.onAppear { container.openWindow = openWindow }
+        icon.onAppear {
+            container.openWindow = openWindow
+            StatusItemRightClick.install(openSettings: openSettings, container: container)
+        }
     }
 
     @ViewBuilder private var icon: some View {

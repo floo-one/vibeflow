@@ -26,7 +26,8 @@
 # Before --publish: bump MARKETING_VERSION and CURRENT_PROJECT_VERSION in project.yml and
 # give CHANGELOG.md a "## <version>" section; its text becomes the release notes.
 #
-# A nightly's build number is <CURRENT_PROJECT_VERSION>.<commits on main>, e.g. 3.52: above
+# A nightly is version <MARKETING_VERSION>-nightly.<commits on main>, e.g. 1.4.0-nightly.52, and
+# build <CURRENT_PROJECT_VERSION>.<commits on main>, e.g. 3.52: above
 # release 3, which it follows, and below release 4, which replaces it. Sparkle compares the
 # parts as numbers, so both channels only ever move up.
 
@@ -75,7 +76,11 @@ SPARKLE_BIN="build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin"
 
 if [[ $NIGHTLY -eq 1 ]]; then
   COMMIT="$(git rev-parse --short HEAD)"
-  NIGHTLY_BUILD="$PROJECT_BUILD.$(git rev-list --count HEAD)"
+  COUNT="$(git rev-list --count HEAD)"
+  NIGHTLY_BUILD="$PROJECT_BUILD.$COUNT"
+  # What people see (menu, Sparkle's windows, Sentry): 1.4.0-nightly.71, never a bare 1.4.0
+  # that reads like the release. The same count as the build number's second part.
+  NIGHTLY_VERSION="$VERSION-nightly.$COUNT"
   LAST_TAG="$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)"
 fi
 
@@ -176,7 +181,7 @@ fi
 # (BuildStamp), which the menu shows next to the version.
 OVERRIDES=()
 if [[ $NIGHTLY -eq 1 ]]; then
-  OVERRIDES=(CURRENT_PROJECT_VERSION="$NIGHTLY_BUILD" VF_GIT_BRANCH=main VF_GIT_COMMIT="$COMMIT"
+  OVERRIDES=(MARKETING_VERSION="$NIGHTLY_VERSION" CURRENT_PROJECT_VERSION="$NIGHTLY_BUILD" VF_GIT_BRANCH=main VF_GIT_COMMIT="$COMMIT"
     VF_BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)")
 fi
 
@@ -192,7 +197,8 @@ xcodebuild -exportArchive -archivePath "$ARCHIVE" \
 
 BUILT="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")"
-[[ "$BUILT" == "$VERSION" ]] || fail "built version $BUILT does not match project.yml $VERSION"
+EXPECTED="$VERSION"; [[ $NIGHTLY -eq 1 ]] && EXPECTED="$NIGHTLY_VERSION"
+[[ "$BUILT" == "$EXPECTED" ]] || fail "built version $BUILT is not $EXPECTED"
 if [[ $NIGHTLY -eq 1 ]]; then
   [[ "$BUILD" == "$NIGHTLY_BUILD" ]] || fail "built build number $BUILD is not $NIGHTLY_BUILD"
 fi
@@ -246,7 +252,7 @@ if [[ $NIGHTLY -eq 1 ]]; then
   # Each nightly DMG keeps its own name, so the feed never points at a file that was
   # replaced under it.
   scripts/write-appcast.sh --url "https://github.com/floo-one/vibeflow/releases/download/nightly/${DMG:t}" \
-    "$DMG" "$VERSION-nightly+$COMMIT" "$BUILD" "$NOTES" ${SPARKLE_KEY_FILE:+"$SPARKLE_KEY_FILE"} > "$APPCAST"
+    "$DMG" "$NIGHTLY_VERSION" "$BUILD" "$NOTES" ${SPARKLE_KEY_FILE:+"$SPARKLE_KEY_FILE"} > "$APPCAST"
 else
   scripts/write-appcast.sh "$DMG" "$VERSION" "$BUILD" "$NOTES" ${SPARKLE_KEY_FILE:+"$SPARKLE_KEY_FILE"} > "$APPCAST"
 fi
@@ -256,11 +262,12 @@ print
 print "Release ready: $DMG"
 
 if [[ $NIGHTLY -eq 1 && $PUBLISH -eq 1 ]]; then
-  step "Publish the nightly $NIGHTLY_BUILD ($COMMIT) to GitHub"
+  step "Publish the nightly $NIGHTLY_VERSION ($COMMIT) to GitHub"
   # One pre-release, created once and never --latest, so .../releases/latest stays the last
   # release. Its tag is not moved (a moved tag breaks everyone's git fetch --tags); the title
   # and notes name the commit. DMG first, then the feed that points at it, then old DMGs.
-  TITLE="VibeFlow nightly $VERSION ($NIGHTLY_BUILD, $COMMIT)"
+  # The Ship workflow reads the commit back from the end of this title.
+  TITLE="VibeFlow $NIGHTLY_VERSION ($COMMIT)"
   if ! gh release view nightly >/dev/null 2>&1; then
     gh release create nightly --target main --prerelease --latest=false \
       --title "$TITLE" --notes-file "$NOTES"

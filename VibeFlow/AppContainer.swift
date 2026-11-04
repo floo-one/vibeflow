@@ -59,6 +59,8 @@ final class AppContainer {
     /// Settings while it is denied.
     private(set) var microphonePermission: MicrophonePermission = .undetermined
     @ObservationIgnored private var permissionWatch: Task<Void, Never>?
+    /// Whether Escape is registered as the cancel-dictation hotkey right now.
+    @ObservationIgnored private var escapeRegistered = false
 
     init() {
         LegacyMigration.runIfNeeded()
@@ -176,6 +178,7 @@ final class AppContainer {
         KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in self?.pasteLastAnswer() }
         KeyboardShortcuts.onKeyUp(for: .focusToggle) { [weak self] in self?.focus.toggle() }
         KeyboardShortcuts.onKeyUp(for: .setUpDesktops) { [weak self] in self?.desktops.setUpOrStop() }
+        watchDictationForEscape()
 
         wireFileTranscription()
         applyColorMode()
@@ -331,7 +334,51 @@ final class AppContainer {
 
     /// Menu "Stop": whichever session is running.
     func stopAll() {
-        if !dictation.cancel() { session.stop() }
+        if !cancelDictation() { session.stop() }
+    }
+
+    /// Escape and menu Stop. A follow-up question still being transcribed also drops the smart
+    /// read waiting for it. Returns whether a dictation was cancelled.
+    @discardableResult
+    private func cancelDictation() -> Bool {
+        guard dictation.cancel() else { return false }
+        if pendingQuestion != nil {
+            pendingQuestion = nil
+            session.stop()
+        }
+        return true
+    }
+
+    // MARK: Escape cancels dictation
+
+    /// Re-arms on every dictation state change: Escape is a global hotkey only while a
+    /// dictation can be cancelled, and goes back to the frontmost app right after.
+    private func watchDictationForEscape() {
+        let cancellable = withObservationTracking {
+            dictation.state.isCancellable
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.watchDictationForEscape() }
+        }
+        escapeCancels(cancellable)
+    }
+
+    private func escapeCancels(_ on: Bool) {
+        guard on != escapeRegistered else { return }
+        escapeRegistered = on
+        guard on else {
+            KeyboardShortcuts.removeHandler(for: .cancelDictation)
+            KeyboardShortcuts.removeHandler(for: .cancelDictationHeld)
+            return
+        }
+        // Push-to-talk keeps its modifiers down, so Escape arrives as Option-Escape then.
+        let held = KeyboardShortcuts.getShortcut(for: .record)?.modifiers ?? []
+        KeyboardShortcuts.setShortcut(held.isEmpty ? nil : .init(.escape, modifiers: held), for: .cancelDictationHeld)
+        for name in [KeyboardShortcuts.Name.cancelDictation, .cancelDictationHeld] {
+            KeyboardShortcuts.onKeyDown(for: name) { [weak self] in
+                guard let self, self.cancelDictation() else { return }
+                log.notice("Dictation cancelled with Escape")
+            }
+        }
     }
 
     var isRunning: Bool { session.state != .idle || dictation.state.isBusy }
@@ -342,6 +389,7 @@ final class AppContainer {
         case .transcribing, .cleaning, .pasting: return "ellipsis.circle"
         case .idle: break
         }
+        if dictation.justCancelled, session.state == .idle { return "mic.slash" }
         if showsDictation, session.state == .idle, dictation.lastError != nil { return IconState.error.symbolName }
         // A file being transcribed shows in the menu bar the whole time, not only in the menu.
         if files.job.isRunning, session.state == .idle { return "ellipsis.circle" }

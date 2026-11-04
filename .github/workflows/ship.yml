@@ -56,9 +56,10 @@ jobs:
             echo "Release v$version (no tag yet)."
             echo "kind=release" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          # The commit of the current nightly, from its feed: 1.4.0-nightly+8cd0a1b.
-          last=$(curl -fsSL https://github.com/floo-one/vibeflow/releases/download/nightly/appcast.xml 2>/dev/null \
-            | sed -nE 's/.*<sparkle:shortVersionString>[^+]*\+([0-9a-f]+)<.*/\1/p' | head -1 || true)
+          # The commit of the current nightly, from the end of its release title:
+          # "VibeFlow 1.4.0-nightly.71 (8cd0a1b)" (older ones: "… (5.69, 8cd0a1b)").
+          last=$(gh release view nightly --json name -q .name 2>/dev/null \
+            | sed -nE 's/.*[ (]([0-9a-f]{7,40})\)$/\1/p' || true)
           if [ "${{ github.event_name }}" != workflow_dispatch ] && [ -n "$last" ] && git cat-file -e "$last^{commit}" 2>/dev/null; then
             if [ "$(git rev-parse "$last")" = "$(git rev-parse HEAD)" ]; then
               echo "The nightly is already $last."; echo "kind=none" >> "$GITHUB_OUTPUT"; exit 0
@@ -102,8 +103,20 @@ jobs:
           rm "$RUNNER_TEMP/cert.p12"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$pw" "$kc" >/dev/null
           security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
-          security find-identity -v -p codesigning "$kc" | grep -q "Developer ID Application" \
-            || { echo "::error::DEVELOPER_ID_P12 has no Developer ID Application identity"; exit 1; }
+          # A Developer ID identity is only valid with Apple's intermediate, which the runner
+          # may lack: both generations, so either certificate chains.
+          for ca in DeveloperIDG2CA DeveloperIDCA; do
+            curl -fsSL "https://www.apple.com/certificateauthority/$ca.cer" -o "$RUNNER_TEMP/$ca.cer"
+            security import "$RUNNER_TEMP/$ca.cer" -k "$kc" >/dev/null 2>&1 || true
+          done
+          if ! security find-identity -v -p codesigning "$kc" | grep -q "Developer ID Application"; then
+            echo "Identities in the signing keychain (valid or not):"
+            security find-identity -p codesigning "$kc" | sed -E 's/[0-9A-F]{40}/<sha1>/'
+            echo "Certificates in it:"
+            security find-certificate -a "$kc" | grep '"labl"' || true
+            echo "::error::DEVELOPER_ID_P12 has no valid Developer ID Application identity (no private key in the .p12, or no chain to Apple)"
+            exit 1
+          fi
 
           printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/notary.p8"
           printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle.key"

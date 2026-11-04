@@ -50,10 +50,39 @@ enum SettingsWindow {
             if sidebar.minimumThickness != sidebarWidth { sidebar.minimumThickness = sidebarWidth }
             if sidebar.maximumThickness != sidebarWidth { sidebar.maximumThickness = sidebarWidth }
             if sidebar.isCollapsed { sidebar.isCollapsed = false }
+            hideDividerCursor(of: splitView)
             return
         }
         for subview in view.subviews { pinSidebar(in: subview) }
     }
+
+    /// A pinned divider still shows the left-right resize cursor on hover, which promises a
+    /// drag that does nothing. NSSplitView adds that cursor in resetCursorRects, and SwiftUI
+    /// owns the split view, so give this one instance a subclass whose resetCursorRects adds
+    /// nothing (the way KVO subclasses an object). Other split views keep their cursor.
+    private static func hideDividerCursor(of splitView: NSSplitView) {
+        guard let base = object_getClass(splitView) else { return }
+        let baseName = NSStringFromClass(base)
+        guard !baseName.hasPrefix(pinnedPrefix) else { return }
+        // A KVO-observed object already runs on a runtime subclass; leave it alone.
+        guard base == splitView.classForCoder else { return }
+        let name = pinnedPrefix + baseName
+        let pinned: AnyClass
+        if let existing = NSClassFromString(name) {
+            pinned = existing
+        } else {
+            guard let made = objc_allocateClassPair(base, name, 0) else { return }
+            let noCursorRects: @convention(block) (NSView) -> Void = { _ in }
+            class_addMethod(made, #selector(NSView.resetCursorRects),
+                            imp_implementationWithBlock(noCursorRects), "v@:")
+            objc_registerClassPair(made)
+            pinned = made
+        }
+        object_setClass(splitView, pinned)
+        splitView.window?.invalidateCursorRects(for: splitView)
+    }
+
+    private static let pinnedPrefix = "VFPinnedSidebar_"
 
     private static var layoutObserver: NSObjectProtocol?
 
@@ -71,6 +100,11 @@ enum SettingsWindow {
                 pinSidebar(in: splitView)
             }
         }
+    }
+
+    /// Closes the Settings window if it is open.
+    static func close() {
+        NSApp.windows.first { isSettingsWindow($0) && $0.isVisible }?.performClose(nil)
     }
 
     /// True while the Settings window is on screen (feedback reports name its pane).
