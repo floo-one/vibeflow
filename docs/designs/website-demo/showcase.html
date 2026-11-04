@@ -171,7 +171,11 @@ ol.feats { counter-reset: s; }
 }
 @media (max-width: 600px) { #clock { display: none; } }
 @media (max-width: 420px) { .menu { font-size: 12.5px; } }
-@media (prefers-reduced-motion: reduce) { .menu, .mi, .feat h3::before { transition: none; } .bi.status { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .menu, .mi, .feat h3::before, .notch, .notch .slot, .pill, .sel, .book, .card .body, .w, .k, .step-n { transition: none; }
+  .bi.status, .bars b, .field.typing::after, .field .pasted { animation: none; }
+  .bars b { height: 10px; }
+}
 </style>
 <style>
 /* ---------- The site's menu bar ---------- */
@@ -616,6 +620,16 @@ body { padding-top: 44px; }
   scene.addEventListener('click', () => setPaused(!paused));
 
   render(src);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // Reduced motion: the finished moment, held still; nothing plays, so nothing to pause.
+    const { q, a } = SOURCES[src].qa[0];
+    step(2); $('#asel').classList.add('on');
+    notch.dataset.f = 'smart'; notch.classList.add('on');
+    tile.innerHTML = SPARK; lbl.textContent = `You asked “${q}”`;
+    txt.innerHTML = a.split(' ').map(w => `<span class="w said">${w}</span>`).join(' ');
+    pill.classList.add('is-on'); btn.hidden = true; scene.style.cursor = 'default';
+    return;
+  }
   new IntersectionObserver(([e]) => {
     const now = e.intersectionRatio >= 0.35;
     if (now === visible) return;
@@ -716,6 +730,17 @@ body { padding-top: 44px; }
   const words = split($('#vbody')), briefWords = split($('#vbrief'));
   const wait = ms => new Promise(r => setTimeout(r, ms));
   let run = 0, auto = 0, cycling = false, current = null;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Reduced motion: each feature is one still frame, chosen by hover or focus, never cycled.
+  function still(f) {
+    run++; current = f; reset();
+    feats.forEach(x => x.classList.toggle('on', x.dataset.f === f));
+    notch.dataset.f = f; notch.style.setProperty('--tint', TINT[f]); notch.classList.add('on');
+    if (f === 'read') words.slice(8, 14).forEach(w => w.classList.add('on'));
+    else if (f === 'smart') { card.classList.add('dim'); pill.classList.add('is-on'); briefWords.forEach(w => w.classList.add('said')); }
+    else field.textContent = REPLY;
+  }
 
   function reset() {
     words.forEach(w => w.classList.remove('on'));
@@ -725,6 +750,7 @@ body { padding-top: 44px; }
     notch.classList.remove('on');
   }
   async function play(f) {
+    if (reduced) return still(f);
     const my = ++run; current = f; reset();
     feats.forEach(x => x.classList.toggle('on', x.dataset.f === f));
     notch.dataset.f = f; notch.style.setProperty('--tint', TINT[f]);
@@ -752,7 +778,10 @@ body { padding-top: 44px; }
     await wait(f === 'read' ? 600 : 1800);
     if (my === run && cycling) play(feats[++auto % feats.length].dataset.f);
   }
-  function startCycle() { if (cycling) return; cycling = true; play(feats[auto % feats.length].dataset.f); }
+  function startCycle() {
+    if (reduced) { if (!current) still('smart'); return; }
+    if (cycling) return; cycling = true; play(feats[auto % feats.length].dataset.f);
+  }
 
   feats.forEach((f, i) => {
     const pick = () => { cycling = false; auto = i; if (current !== f.dataset.f || !notch.classList.contains('on')) play(f.dataset.f); };
@@ -766,7 +795,7 @@ body { padding-top: 44px; }
     if (now === visible) return;
     visible = now;
     if (now) setTimeout(() => { if (visible) startCycle(); }, 500);
-    else { cycling = false; run++; reset(); }
+    else if (!reduced) { cycling = false; run++; reset(); }
   }, { threshold: [0, 0.35] }).observe($('#voice'));
 })();
 </script>
