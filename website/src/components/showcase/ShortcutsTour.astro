@@ -281,8 +281,26 @@ const first = FLAT[0];
   // A step lights a little before its headline arrives, so scrolling feels answered at once.
   const early = () => Math.min(160, innerHeight * 0.2);
 
+  let jumping = false;
   function go(i: number) {
-    gsap.to(window, { scrollTo: restAt(flat[i].anchor), duration: reduce ? 0 : 0.8, ease: 'power2.inOut', overwrite: true });
+    jumping = true;
+    const off = () => { jumping = false; };
+    gsap.to(window, { scrollTo: restAt(flat[i].anchor), duration: reduce ? 0 : 0.8, ease: 'power2.inOut', overwrite: true, onComplete: off, onInterrupt: off });
+  }
+
+  // Guided stop (wide screens): while the keyboard changes sides, the visitor's scrolling pauses
+  // and the page glides to the new step in the same beat, then hands control back.
+  let held = false;
+  const SCROLL_KEYS = new Set(['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End']);
+  const block = (e: Event) => { if (held) e.preventDefault(); };
+  addEventListener('wheel', block, { passive: false });
+  addEventListener('touchmove', block, { passive: false });
+  addEventListener('keydown', (e) => { if (held && SCROLL_KEYS.has(e.key)) e.preventDefault(); });
+  function guide(anchor: HTMLElement) {
+    held = true;
+    const release = () => { held = false; };
+    gsap.delayedCall(1.2, release); // never strands the visitor
+    gsap.to(window, { scrollTo: restAt(anchor), duration: 0.6, ease: 'power2.inOut', overwrite: true, onComplete: release, onInterrupt: release });
   }
 
   // Camera: zoom out only as far as needed to fit the active keys, then center them.
@@ -361,6 +379,7 @@ const first = FLAT[0];
         .to(g, { x: out - cx, ...move }, 0)
         .fromTo(stage, { x: enter }, { x: tx, ...move }, 0);
       avoid(true); // it comes in already clear of the leaving card
+      if (!jumping && active >= 0) guide(flat[active].anchor);
     } else {
       // Phones: the sticky bar never moves (one steady reading line under it); only the keyboard
       // inside it swipes, forward from the right, back from the left.
