@@ -12,7 +12,12 @@
 .hero h1 { font-weight: 800; letter-spacing: -0.035em; line-height: 1; font-size: clamp(46px, 6.4vw, 80px); }
 .hero .lead { max-width: 34rem; font-size: 20px; }
 /* Hidden only while the GSAP entrance is known to run (scripts on, motion allowed); it fades them in. */
-@media (prefers-reduced-motion: no-preference) { .js .hero > * { visibility: hidden; } }
+@media (prefers-reduced-motion: no-preference) {
+  /* Failsafe: if the motion script never runs, the hero shows anyway after 2.5s. An animation
+     outranks GSAP's inline styles, and by then the entrance has long finished. */
+  .js .hero > * { visibility: hidden; animation: hero-failsafe 0s 2.5s forwards; }
+}
+@keyframes hero-failsafe { to { visibility: visible; } }
 .ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; }
 .ghost {
   display: inline-flex; align-items: center; min-height: 52px; padding: 0 22px; border-radius: var(--radius-pill);
