@@ -289,15 +289,26 @@ const first = FLAT[0];
 
   // Guided stop (wide screens): while the keyboard changes sides, the visitor's scrolling pauses
   // and the page glides to the new step in the same beat, then hands control back.
+  // The blocking listeners exist only during a stop: non-passive wheel/touch listeners left on the
+  // window would make every scroll on the page wait for script.
   let held = false;
   const SCROLL_KEYS = new Set(['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End']);
-  const block = (e: Event) => { if (held) e.preventDefault(); };
-  addEventListener('wheel', block, { passive: false });
-  addEventListener('touchmove', block, { passive: false });
-  addEventListener('keydown', (e) => { if (held && SCROLL_KEYS.has(e.key)) e.preventDefault(); });
+  const block = (e: Event) => e.preventDefault();
+  const blockKeys = (e: KeyboardEvent) => { if (SCROLL_KEYS.has(e.key)) e.preventDefault(); };
   function guide(anchor: HTMLElement) {
+    if (!held) {
+      addEventListener('wheel', block, { passive: false });
+      addEventListener('touchmove', block, { passive: false });
+      addEventListener('keydown', blockKeys);
+    }
     held = true;
-    const release = () => { held = false; };
+    const release = () => {
+      if (!held) return;
+      held = false;
+      removeEventListener('wheel', block);
+      removeEventListener('touchmove', block);
+      removeEventListener('keydown', blockKeys);
+    };
     gsap.delayedCall(1.2, release); // never strands the visitor
     gsap.to(window, { scrollTo: restAt(anchor), duration: 0.6, ease: 'power2.inOut', overwrite: true, onComplete: release, onInterrupt: release });
   }
