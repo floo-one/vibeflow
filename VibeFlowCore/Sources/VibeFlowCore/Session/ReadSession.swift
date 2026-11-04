@@ -199,6 +199,8 @@ public final class ReadSession {
         /// Follow-up question: the capture result and the transcript, whichever comes first.
         var questionCapture: CaptureResult?
         var question: String?
+        /// Asked about the clipboard (Shift + hold), not the selection.
+        var questionFromClipboard = false
         /// A brief or an answer: spoken at the smart read speed.
         var smartSpeed = false
         /// False for replays from History, so reading an entry again adds no new one.
@@ -523,6 +525,24 @@ public final class ReadSession {
         return session.id
     }
 
+    /// Shift + the smart read shortcut was released after a hold: the question is about the
+    /// clipboard text, so nothing is captured and no Accessibility grant is needed. Same text as
+    /// the current context continues it; other text starts a new one; an empty clipboard fails.
+    @discardableResult
+    public func beginQuestion(clipboard: String) -> SessionID? {
+        silenceSpokenError()
+        tearDown()
+        lastError = nil
+        stickyStatus = false
+        let session = Current(kind: .smartRead, origin: .question, app: nil, preset: presets.preset(for: nil))
+        session.questionFromClipboard = true
+        session.questionCapture = CaptureResult(text: clipboard)
+        current = session
+        state = .capturing
+        status = "Transcribing"
+        return session.id
+    }
+
     /// The transcript of the question that `beginQuestion` returned `id` for.
     public func ask(_ transcript: String, for id: SessionID) {
         guard let session = current, session.id == id, session.origin == .question else { return }
@@ -541,13 +561,18 @@ public final class ReadSession {
         guard let capture = session.questionCapture, let question = session.question else { return }
         let selected = capture.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
+        if session.questionFromClipboard && selected.isEmpty {
+            failQuestion("Copy text to ask about", spoken: "Copy some text first.")
+            return
+        }
         if capture.failed {
             failQuestion("Couldn't read the selection. Select the text again", spoken: "Couldn't read the selection.")
             return
         }
         if !selected.isEmpty && selected != conversation?.document {
             if selected.count > SessionConfiguration.hardMax {
-                failQuestion("Selection too long (\(formatted(selected.count)) characters, limit \(formatted(SessionConfiguration.hardMax)))", spoken: "That selection is too long.")
+                let what = session.questionFromClipboard ? "Clipboard" : "Selection"
+                failQuestion("\(what) too long (\(formatted(selected.count)) characters, limit \(formatted(SessionConfiguration.hardMax)))", spoken: session.questionFromClipboard ? "That text is too long." : "That selection is too long.")
                 return
             }
             conversation = Conversation(document: selected, preset: session.preset, createdAt: now())

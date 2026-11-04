@@ -288,4 +288,47 @@ struct QuestionTests {
         await h.settle()
         #expect(recorded.isEmpty)
     }
+
+    // MARK: Asking about the clipboard (Shift + hold)
+
+    func askClipboard(_ h: SessionHarness, _ clipboard: String, _ question: String) async {
+        let id = h.session.beginQuestion(clipboard: clipboard)
+        h.session.ask(question, for: try! #require(id))
+        await h.settle()
+    }
+
+    @Test func clipboardQuestionAsksAboutTheClipboardNotTheSelection() async throws {
+        let h = SessionHarness()
+        await askClipboard(h, "  Copied text.  ", "What is this?")
+        let request = try #require(h.smartRead.asks.first)
+        #expect(request.document == "Copied text.")
+        #expect(request.brief == nil)
+        #expect(h.capture.calls.isEmpty, "the selection is never captured")
+    }
+
+    @Test func clipboardQuestionAfterAClipboardBriefContinuesIt() async throws {
+        let h = SessionHarness()
+        h.smartRead.result = .success(SmartReadResponse(text: "A brief.", stopReason: .endTurn))
+        h.session.clipboardHotkey(.smartRead, text: "Copied text.")
+        await h.settle()
+        h.elevenLabs.last?.finish()
+        await h.settle()
+        await askClipboard(h, "Copied text.", "And?")
+        let request = try #require(h.smartRead.asks.first)
+        #expect(request.brief == "A brief.")
+    }
+
+    @Test func emptyClipboardNeverAsks() async throws {
+        let h = SessionHarness()
+        await briefed(h)
+        await askClipboard(h, " ", "What?")
+        #expect(h.smartRead.asks.isEmpty, "an empty clipboard does not fall back to the old text")
+        #expect(h.session.status == "Copy text to ask about")
+    }
+
+    @Test func clipboardQuestionNeedsNoAccessibility() async throws {
+        let h = SessionHarness { $0.accessibility.isTrusted = false }
+        await askClipboard(h, "Copied text.", "What?")
+        #expect(h.smartRead.asks.first?.document == "Copied text.")
+    }
 }
