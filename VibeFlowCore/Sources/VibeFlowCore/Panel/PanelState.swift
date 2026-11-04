@@ -46,7 +46,7 @@ public struct PanelState: Sendable, Equatable {
         /// The version Sparkle downloaded and holds for install, nil when none waits.
         public var updateWaiting: String?
         public var build: Build
-        /// "1.5.0", "1.5.0 · main 87d0257" or the Debug build stamp line.
+        /// "VibeFlow 1.5.0" for a release; only the commit ("87d0257") for a nightly or Debug build.
         public var version: String
 
         public init(readState: SessionState = .idle, readStatus: String = "Ready", readError: LastError? = nil,

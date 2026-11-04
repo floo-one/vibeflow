@@ -347,13 +347,16 @@ final class AppContainer {
 
     /// Everything PanelState decides from (docs/designs/menu-bar-popover.md, R2).
     var panelInput: PanelState.Input {
+        // One short label that never truncates: a release shows its version, a nightly or Dev
+        // build only the commit it was built from (the full line is in Settings > General).
+        let stamp = BuildStamp(info: Bundle.main.infoDictionary ?? [:])
         #if DEBUG
         let build = PanelState.Build.debug
-        let version = BuildStamp(info: Bundle.main.infoDictionary ?? [:]).map { "Dev · \($0.menuTitle())" }
-            ?? "Dev · not built by scripts/dev.sh"
+        let version = stamp?.commit ?? "Dev"
         #else
         let build: PanelState.Build = Updater.isNightly ? .nightly : .release
-        let version = "VibeFlow \(Updater.installedVersion)"
+        let release = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let version = stamp?.commit ?? "VibeFlow \(release)"
         #endif
         return PanelState.Input(
             readState: session.state, readStatus: session.status, readError: session.lastError,
