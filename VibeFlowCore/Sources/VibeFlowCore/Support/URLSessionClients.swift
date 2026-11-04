@@ -70,4 +70,9 @@ public struct URLSessionHTTPClient: HTTPClient {
         let (data, response) = try await session.data(for: request)
         return HTTPResponse(status: (response as? HTTPURLResponse)?.statusCode ?? -1, body: data)
     }
+
+    public func upload(_ request: URLRequest, fromFile file: URL) async throws -> HTTPResponse {
+        let (data, response) = try await session.upload(for: request, fromFile: file)
+        return HTTPResponse(status: (response as? HTTPURLResponse)?.statusCode ?? -1, body: data)
+    }
 }

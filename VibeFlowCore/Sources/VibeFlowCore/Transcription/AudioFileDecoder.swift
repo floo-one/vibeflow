@@ -172,6 +172,31 @@ public enum AudioFileDecoder {
         }
     }
 
+    // MARK: Audio only
+
+    /// A video's audio track as a temporary m4a (about 1 MB per minute), so an upload never
+    /// carries the picture (eng review R6). Audio files are returned as they are; the caller
+    /// deletes the result only when it differs from `url`.
+    public static func audioOnly(_ url: URL, info: AudioFileInfo,
+                                 directory: URL = FileManager.default.temporaryDirectory) async throws -> URL {
+        guard info.hasVideo else { return url }
+        let asset = AVURLAsset(url: url)
+        guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else {
+            throw AudioFileError.unreadable(url.lastPathComponent)
+        }
+        let target = directory.appendingPathComponent("\(tempPrefix)\(UUID().uuidString).m4a")
+        do {
+            try await session.export(to: target, as: .m4a)
+        } catch is CancellationError {
+            try? FileManager.default.removeItem(at: target)
+            throw CancellationError()
+        } catch {
+            try? FileManager.default.removeItem(at: target)
+            throw AudioFileError.unreadable(error.localizedDescription)
+        }
+        return target
+    }
+
     // MARK: Pieces
 
     /// Splits an envelope into pieces of at most `maxWindows`, each cut at the quietest window in

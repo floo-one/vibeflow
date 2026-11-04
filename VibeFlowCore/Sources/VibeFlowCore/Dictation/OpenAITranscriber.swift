@@ -7,7 +7,10 @@ import Foundation
 public final class OpenAITranscriber: Transcriber {
     public static let groqBaseURL = URL(string: "https://api.groq.com/openai/v1")!
     public static let defaultModel = "whisper-large-v3"
+    /// Dictation: a clip of up to 2 minutes.
     public static let timeout: TimeInterval = 10
+    /// File transcription: a 10-minute, 19.2 MB piece (design D5).
+    public static let fileTimeout: TimeInterval = 60
 
     private let http: any HTTPClient
     private let baseURL: URL
@@ -15,13 +18,16 @@ public final class OpenAITranscriber: Transcriber {
     private let apiKey: @Sendable () -> String?
     /// Custom endpoints may run without a key (local servers); Groq always needs one.
     private let keyRequired: Bool
+    private let requestTimeout: TimeInterval
 
     public init(http: any HTTPClient, baseURL: URL = OpenAITranscriber.groqBaseURL, model: String = OpenAITranscriber.defaultModel,
-                keyRequired: Bool = true, apiKey: @escaping @Sendable () -> String?) {
+                keyRequired: Bool = true, timeout: TimeInterval = OpenAITranscriber.timeout,
+                apiKey: @escaping @Sendable () -> String?) {
         self.http = http
         self.baseURL = baseURL
         self.model = model
         self.keyRequired = keyRequired
+        self.requestTimeout = timeout
         self.apiKey = apiKey
     }
 
@@ -53,7 +59,8 @@ public final class OpenAITranscriber: Transcriber {
     private func verboseJSON(_ audio: RecordedAudio, language: String?) async throws -> Data {
         let key = apiKey()
         if keyRequired && key == nil { throw TranscriptionFailure.unauthorized }
-        let request = Self.buildRequest(audio: audio, language: language, model: model, baseURL: baseURL, apiKey: key)
+        let request = Self.buildRequest(audio: audio, language: language, model: model, baseURL: baseURL, apiKey: key,
+                                        timeout: requestTimeout)
 
         let response: HTTPResponse
         do {
@@ -81,7 +88,8 @@ public final class OpenAITranscriber: Transcriber {
         }
     }
 
-    static func buildRequest(audio: RecordedAudio, language: String?, model: String, baseURL: URL, apiKey: String?) -> URLRequest {
+    static func buildRequest(audio: RecordedAudio, language: String?, model: String, baseURL: URL, apiKey: String?,
+                             timeout: TimeInterval = OpenAITranscriber.timeout) -> URLRequest {
         let boundary = "vibeflow-\(UUID().uuidString)"
         var request = URLRequest(url: baseURL.appendingPathComponent("audio/transcriptions"))
         request.httpMethod = "POST"
