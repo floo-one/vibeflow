@@ -6,6 +6,8 @@
 .hero-icon { margin-bottom: 8px; filter: drop-shadow(0 18px 28px rgba(64, 48, 199, 0.35)); }
 .hero h1 { font-weight: 800; letter-spacing: -0.035em; line-height: 1; font-size: clamp(46px, 6.4vw, 80px); }
 .hero .lead { max-width: 34rem; font-size: 20px; }
+/* Hidden only while the GSAP entrance is known to run (scripts on, motion allowed); it fades them in. */
+@media (prefers-reduced-motion: no-preference) { .js .hero > * { visibility: hidden; } }
 .ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; }
 .ghost {
   display: inline-flex; align-items: center; min-height: 52px; padding: 0 22px; border-radius: var(--radius-pill);

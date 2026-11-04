@@ -90,7 +90,7 @@ const first = FLAT[0];
       </ol>
     </div>
   </div>
-  <p class="kt-foot kt-end">Voice shortcuts are shown with the right Shift and Option, paste with the left hand; either side works the same. Every shortcut can be changed in Settings.</p>
+  <p class="kt-foot">Voice shortcuts are shown with the right Shift and Option, paste with the left hand; either side works the same. Every shortcut can be changed in Settings.</p>
 </section>
 
 <style is:global>
@@ -136,7 +136,7 @@ const first = FLAT[0];
 
   .kt-win { --u: min(46px, calc((100cqw - 4px) / 15.45)); position: relative; overflow: hidden; padding: 2px 0 8px; }
   .kt-board {
-    position: relative; width: max-content; transform-origin: 0 0; transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+    position: relative; width: max-content; transform-origin: 0 0;
     background: var(--kt-alu); border-radius: calc(var(--u) * 0.34); padding: calc(var(--u) * 0.24); display: flex; flex-direction: column; gap: calc(var(--u) * 0.1);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 0 0 1px #B7B8BE, 0 30px 60px -30px rgba(0, 0, 0, 0.35);
   }
@@ -193,13 +193,11 @@ const first = FLAT[0];
   .kt-combo span.then { font-weight: 600; color: var(--text-2); }
   .kt-foot { max-width: 1120px; margin: 0 auto; padding: 0 24px 72px; font-size: 13.5px; line-height: 1.5; color: var(--text-3); }
 
-  /* Snap, only while the tour fills the screen (the script sets the class and scroll-padding). */
-  html.kt-snap { scroll-snap-type: y mandatory; }
-  .kt-head { scroll-snap-align: start; scroll-margin-top: var(--bar-h); }
-  .kt-snap-at { scroll-snap-align: start; scroll-snap-stop: always; scroll-margin-top: var(--m); }
+  /* Snap points: GSAP ScrollTrigger snaps each headline to the reading line while the tour fills
+     the screen; scroll-margin-top is how far below the line it rests (read by the script). */
+  .kt-snap-at { scroll-margin-top: var(--m); }
   .kt-sh.kt-snap-at { --m: 48px; }
   .kt-step h4.kt-snap-at { --m: 52px; }
-  .kt-end { scroll-snap-align: end; }
 
   @media (max-width: 900px) {
     .kt-wrap { padding: 64px 20px 24px; }
@@ -217,13 +215,14 @@ const first = FLAT[0];
     .kt-foot { padding: 0 20px 56px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    #keys, .kt-stage, .kt-board, .kt-k, .kt-step, .kt-sec, .kt-groups button { transition: none; }
+    #keys, .kt-stage, .kt-k, .kt-step, .kt-sec, .kt-groups button { transition: none; }
     .kt-screen .kt-eq span, .kt-k.hold .fill { animation: none !important; }
   }
 </style>
 
 <script>
   import { FLAT, KEY_NAME } from '../../data/shortcuts';
+  import { gsap, ScrollTrigger, EASE, MOTION } from '../../scripts/motion';
 
   const $ = (id: string) => document.getElementById(id)!;
   const section = $('keys'), board = $('kt-board'), win = $('kt-win'), secsEl = $('kt-secs'), groupsEl = $('kt-groups');
@@ -245,19 +244,23 @@ const first = FLAT[0];
   });
 
   // Reading line: under the fixed menu bar and level with the stage on wide screens, just under
-  // the sticky keyboard on phones.
+  // the sticky keyboard on phones. Each headline rests its scroll-margin below it.
   const BAR = 44;
   const narrow = () => innerWidth <= 900;
   const snapTop = () => (narrow() ? BAR + stage.offsetHeight : Math.max(68, innerHeight / 2 - 190));
   const target = (a: HTMLElement) => snapTop() + parseFloat(getComputedStyle(a).scrollMarginTop || '0');
+  // Where the page is scrolled when a headline rests on the reading line.
+  const restAt = (a: HTMLElement) => a.getBoundingClientRect().top + scrollY - target(a);
+  // A step lights a little before its headline arrives, so scrolling feels answered at once.
+  const early = () => Math.min(160, innerHeight * 0.2);
+
   function go(i: number) {
-    const a = flat[i].anchor;
-    scrollTo({ top: scrollY + a.getBoundingClientRect().top - target(a), behavior: reduce ? 'auto' : 'smooth' });
+    gsap.to(window, { scrollTo: restAt(flat[i].anchor), duration: reduce ? 0 : 0.8, ease: 'power2.inOut', overwrite: true });
   }
 
   // Camera: zoom out only as far as needed to fit the active keys, then center them.
   let framed: string[] = [];
-  function frame(keys: string[]) {
+  function frame(keys: string[], animate = true) {
     framed = keys;
     const els = keys.map(keyOf), u = els[0].offsetHeight, pad = u * 0.7;
     const minX = Math.min(...els.map((k) => k.offsetLeft)), maxX = Math.max(...els.map((k) => k.offsetLeft + k.offsetWidth));
@@ -265,7 +268,7 @@ const first = FLAT[0];
     const s = Math.min(1, W / (maxX - minX + 2 * pad));
     let tx = BW * s <= W ? (W - BW * s) / 2 : W / 2 - ((minX + maxX) / 2) * s;
     tx = Math.min(Math.max(tx, Math.min(0, W - BW * s)), Math.max(0, W - BW * s));
-    board.style.transform = `translate(${tx}px,${BH - BH * s}px) scale(${s})`;
+    gsap.to(board, { x: tx, y: BH - BH * s, scale: s, duration: animate && !reduce ? 0.7 : 0, ease: EASE, overwrite: true });
   }
 
   const setScreen = (state: 'live' | 'done', text: string, c: string) => {
@@ -319,22 +322,8 @@ const first = FLAT[0];
     }
   }
 
-  // Which step sits at the reading line; snapping only while the tour fills the screen.
-  function onScroll() {
-    const r = section.getBoundingClientRect();
-    const fills = r.top < innerHeight * 0.4 && r.bottom > innerHeight * 0.6;
-    document.documentElement.classList.toggle('kt-snap', fills);
-    document.documentElement.style.scrollPaddingTop = fills ? snapTop() + 'px' : '';
-    const wasInView = inView;
-    inView = r.top < innerHeight && r.bottom > 0;
-    if (!inView) { run++; return; }
-    let best = 0, dist = Infinity;
-    flat.forEach((f, n) => { const d = Math.abs(f.anchor.getBoundingClientRect().top - target(f.anchor)); if (d < dist) { dist = d; best = n; } });
-    if (!wasInView) active = -1; // coming back: restart the loop
-    activate(best);
-  }
   // Just enough room below the last step for it to reach the reading line while the keyboard
-  // stays put; anything more is empty page.
+  // stays put; anything more is empty page. Runs before ScrollTrigger measures.
   const lastSec = secsEl.lastElementChild as HTMLElement;
   function pad() {
     const a = flat[flat.length - 1].anchor;
@@ -343,9 +332,57 @@ const first = FLAT[0];
     secsEl.style.paddingBottom = Math.max(24, Math.ceil(stageTop + stage.offsetHeight - listEndAtLine + 24)) + 'px';
   }
   pad();
-  addEventListener('scroll', onScroll, { passive: true });
-  addEventListener('resize', () => { pad(); onScroll(); if (framed.length) frame(framed); });
-  inView = true;
+  ScrollTrigger.addEventListener('refreshInit', pad);
+  ScrollTrigger.addEventListener('refresh', () => { if (framed.length) frame(framed, false); });
+
+  // The key presses play only while the tour is on screen; coming back restarts the loop.
+  ScrollTrigger.create({
+    trigger: section, start: 'top bottom', end: 'bottom top',
+    onToggle: (self) => {
+      inView = self.isActive;
+      if (!inView) { run++; return; }
+      const back = Math.max(active, 0);
+      active = -1; activate(back);
+    },
+  });
+
+  // Each step owns the stretch from its headline to the next one's, measured at the reading line.
+  flat.forEach((f, i) => {
+    const next = flat[i + 1]?.anchor;
+    ScrollTrigger.create({
+      trigger: f.anchor,
+      start: () => `top ${target(f.anchor) + early()}px`,
+      endTrigger: next ?? section,
+      end: next ? () => `top ${target(next) + early()}px` : 'bottom top',
+      onToggle: (self) => { if (self.isActive) activate(i); },
+      onLeaveBack: () => { if (i === 0) activate(0); },
+    });
+  });
+
+  // Snap: while the tour fills the screen, scrolling settles with a headline on the reading line,
+  // one step per gesture. Outside the tour the page scrolls freely. No snapping for reduced motion.
+  gsap.matchMedia().add(MOTION, () => {
+    let points: number[] = [];
+    const first = flat[0].anchor, last = flat[flat.length - 1].anchor;
+    ScrollTrigger.create({
+      trigger: first,
+      start: () => `top ${target(first)}px`,
+      endTrigger: last,
+      end: () => `top ${target(last)}px`,
+      onRefresh: (self) => {
+        const span = self.end - self.start || 1;
+        points = flat.map((f) => gsap.utils.clamp(0, 1, (restAt(f.anchor) - self.start) / span));
+      },
+      snap: {
+        snapTo: (value: number) => gsap.utils.snap(points, value),
+        directional: true,
+        duration: { min: 0.25, max: 0.7 },
+        delay: 0.08,
+        ease: 'power2.inOut',
+      },
+    });
+  });
+
+  inView = section.getBoundingClientRect().top < innerHeight;
   activate(0);
-  onScroll();
 </script>
