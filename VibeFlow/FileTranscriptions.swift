@@ -72,7 +72,8 @@ final class FileTranscriptions {
             : nil
         let summaryModel = preferences.smartReadModel
         let summarizer = secrets.read(.anthropic) != nil
-            ? ClaudeTranscriptSummarizer(client: AnthropicClient(http: http, secrets: secrets), model: { summaryModel })
+            ? ClaudeTranscriptSummarizer(client: AnthropicClient(http: http, secrets: secrets), model: { summaryModel },
+                                         prompts: preferences.prompts)
             : nil
         return .init(pieces: groq, call: scribe, onDevice: AppleTranscriber.isAvailable ? AppleTranscriber() : nil,
                      summarizer: summarizer)

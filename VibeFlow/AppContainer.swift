@@ -48,6 +48,8 @@ final class AppContainer {
     let keepAwake: KeepAwake
     /// Which settings tab is showing; "Add key" buttons jump to Keys.
     var settingsTab: SettingsTab = .general
+    /// The page the Context window shows.
+    var contextPage: ContextPage = .feature(.brief)
     /// True after the record shortcut, false after a read: which session the menu's status
     /// line and icon describe.
     private(set) var showsDictation = false
@@ -137,7 +139,8 @@ final class AppContainer {
                 return DictationSetupFactory.make(vocabulary: preferences.vocabularyTerms,
                                                   transcriptionModel: preferences.transcriptionModel,
                                                   cleanupModel: preferences.cleanupModel,
-                                                  secrets: secrets, http: http, onDevice: onDevice, microphoneUID: microphone)
+                                                  secrets: secrets, http: http, onDevice: onDevice, microphoneUID: microphone,
+                                                  prompts: preferences.prompts)
             },
             stopReading: { session.stop() }, // D3
             readIsCapturing: { session.state == .capturing },
@@ -255,7 +258,7 @@ final class AppContainer {
     /// Held past the threshold: stop any read (the dictation side does it, D3) and record.
     private func questionHoldStarted() {
         if dictationCancelledByRead() { return }
-        applyReadSettings()
+        applyReadSettings(smart: true)
         showsDictation = true // microphone problems show as dictation errors
         dictation.startQuestion { [weak self] result in self?.questionTranscribed(result) }
     }
@@ -280,7 +283,7 @@ final class AppContainer {
     /// History: read an entry aloud again (the answer, for a question).
     func readAgain(_ entry: HistoryEntry) {
         if dictationCancelledByRead() { return }
-        applyReadSettings()
+        applyReadSettings(smart: entry.kind == .question)
         session.readAgain(entry.text)
     }
 
@@ -384,31 +387,32 @@ final class AppContainer {
         keepAwake.keepsDisplayOn = on
     }
 
-    /// The models and speaker chosen in Settings, applied right before each read.
-    private func applyReadSettings() {
+    /// The models and speaker chosen in Settings, applied right before each read. A smart read
+    /// uses Smart Read's own voice model and speaker when they are set.
+    private func applyReadSettings(smart: Bool) {
         session.configuration = preferences.sessionConfiguration
-        elevenLabs.model = preferences.voiceModel
-        player.outputDeviceUID = preferences.speakerUID
+        elevenLabs.model = smart ? (preferences.smartReadVoiceModel ?? preferences.voiceModel) : preferences.voiceModel
+        player.outputDeviceUID = smart ? preferences.smartReadOutputDeviceUID : preferences.speakerUID
     }
 
     /// Shortcut and menu "Read selection": the menu does not take focus, so the selection
     /// is still the frontmost app's.
     func hotkey(_ kind: ReadKind) {
         if dictationCancelledByRead() { return }
-        applyReadSettings()
+        applyReadSettings(smart: kind == .smartRead)
         session.hotkey(kind)
     }
 
     private func clipboardHotkey(_ kind: ReadKind) {
         if dictationCancelledByRead() { return }
-        applyReadSettings()
+        applyReadSettings(smart: kind == .smartRead)
         session.clipboardHotkey(kind, text: NSPasteboard.general.string(forType: .string) ?? "")
     }
 
     /// Menu reads use the clipboard text and the default preset.
     func menuRead(_ kind: ReadKind) {
         if dictationCancelledByRead() { return }
-        applyReadSettings()
+        applyReadSettings(smart: kind == .smartRead)
         let text = NSPasteboard.general.string(forType: .string) ?? ""
         session.menuRead(kind, text: text)
     }

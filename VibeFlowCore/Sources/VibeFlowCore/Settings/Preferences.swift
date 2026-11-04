@@ -47,6 +47,10 @@ public final class Preferences {
         static let voiceModel = "voiceModel"
         static let smartReadModel = "smartReadModel"
         static let smartReadSpeed = "smartRead.speed"
+        static let prompts = "prompts.library"
+        static let smartReadVoiceID = "smartRead.voiceID"
+        static let smartReadVoiceModel = "smartRead.voiceModel"
+        static let smartReadSpeaker = "smartRead.speaker"
         static let historyRetention = "history.retention"
         static let transcriptionModel = "dictation.transcriptionModel"
         static let cleanupModel = "dictation.cleanupModel"
@@ -91,6 +95,30 @@ public final class Preferences {
     /// Speed for briefs and follow-up answers, separate from the read speed (Settings > Smart Read).
     public var smartReadSpeed: Double {
         didSet { defaults.set(smartReadSpeed, forKey: Key.smartReadSpeed) }
+    }
+    /// Smart Read's own ElevenLabs voice, nil = the Read voice.
+    public var smartReadVoiceID: String? {
+        didSet { defaults.set(smartReadVoiceID, forKey: Key.smartReadVoiceID) }
+    }
+    /// Smart Read's own ElevenLabs model, nil = the Read model.
+    public var smartReadVoiceModel: String? {
+        didSet { defaults.set(smartReadVoiceModel, forKey: Key.smartReadVoiceModel) }
+    }
+    /// Smart Read's own speaker: nil = the Read speaker, "" = system output, else a device UID.
+    public var smartReadSpeaker: String? {
+        didSet { defaults.set(smartReadSpeaker, forKey: Key.smartReadSpeaker) }
+    }
+    /// The output device a smart read plays on, nil = system output.
+    public var smartReadOutputDeviceUID: String? {
+        switch smartReadSpeaker {
+        case nil: speakerUID
+        case "": nil
+        case let uid?: uid
+        }
+    }
+    /// Prompt edits (Settings > Prompts); parts left alone follow the built-in defaults.
+    public var prompts: PromptLibrary {
+        didSet { defaults.set(try? JSONEncoder().encode(prompts), forKey: Key.prompts) }
     }
     /// Groq Whisper model for dictation.
     public var transcriptionModel: String {
@@ -176,6 +204,10 @@ public final class Preferences {
         voiceModel = defaults.string(forKey: Key.voiceModel) ?? ModelOptions.voice[0].id
         smartReadModel = defaults.string(forKey: Key.smartReadModel) ?? ModelOptions.smartRead[0].id
         smartReadSpeed = defaults.object(forKey: Key.smartReadSpeed) as? Double ?? 1.0
+        prompts = Self.prompts(in: defaults)
+        smartReadVoiceID = defaults.string(forKey: Key.smartReadVoiceID)
+        smartReadVoiceModel = defaults.string(forKey: Key.smartReadVoiceModel)
+        smartReadSpeaker = defaults.string(forKey: Key.smartReadSpeaker)
         historyRetention = defaults.string(forKey: Key.historyRetention).flatMap(HistoryRetention.init(storageValue:)) ?? .default
         transcriptionModel = defaults.string(forKey: Key.transcriptionModel) ?? ModelOptions.transcription[0].id
         cleanupModel = defaults.string(forKey: Key.cleanupModel) ?? ModelOptions.cleanup[0].id
@@ -218,6 +250,14 @@ public final class Preferences {
         var config = SessionConfiguration()
         config.smartReadModel = smartReadModel
         config.smartReadSpeed = smartReadSpeed
+        config.prompts = prompts
+        config.terms = vocabularyTerms
+        config.smartReadVoiceID = smartReadVoiceID
         return config
+    }
+
+    /// Also read by the vf-eval harness, so a prompt edit can be tried on the fixtures.
+    public nonisolated static func prompts(in defaults: UserDefaults) -> PromptLibrary {
+        defaults.data(forKey: Key.prompts).flatMap { try? JSONDecoder().decode(PromptLibrary.self, from: $0) } ?? PromptLibrary()
     }
 }

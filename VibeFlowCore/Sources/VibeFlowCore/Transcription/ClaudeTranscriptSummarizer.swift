@@ -10,15 +10,18 @@ public struct ClaudeTranscriptSummarizer: TranscriptSummarizer {
 
     private let client: AnthropicClient
     private let model: @Sendable () -> String
+    /// The listener's prompt edits, captured when the file starts.
+    private let prompts: PromptLibrary
 
-    public init(client: AnthropicClient, model: @escaping @Sendable () -> String) {
+    public init(client: AnthropicClient, model: @escaping @Sendable () -> String, prompts: PromptLibrary = PromptLibrary()) {
         self.client = client
+        self.prompts = prompts
         self.model = model
     }
 
     public func summarize(_ transcript: Transcript) async throws -> Transcript.Summary {
         let response = try await client.complete(
-            system: SmartReadPrompts.callSummarySystem(),
+            system: SmartReadPrompts.callSummarySystem(prompts: prompts),
             user: SmartReadPrompts.callSummaryUser(transcript),
             model: model(), maxTokens: SmartReadPrompts.callSummaryMaxTokens, timeout: Self.timeout)
         guard response.stopReason != .maxTokens else { throw SmartReadFailure.other("the summary was cut off") }

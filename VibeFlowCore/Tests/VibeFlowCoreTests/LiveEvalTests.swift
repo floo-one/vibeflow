@@ -65,19 +65,18 @@ struct LiveEvalTests {
     recommend Option 2. Before I write the worker, do you want retries capped at 3 attempts or 5?
     """
 
-    @Test func briefOfAnAIAnswerSpeaksAsTheAssistantAndEndsOnItsQuestion() async throws {
-        let r = try await client.transform(SmartReadRequest(text: Self.aiAnswer, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800, aiReply: true))
+    @Test func briefOfAnAIAnswerRelaysItByNameAndEndsOnItsQuestion() async throws {
+        let r = try await client.transform(SmartReadRequest(text: Self.aiAnswer, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800, assistant: "ChatGPT"))
         #expect(r.stopReason == .endTurn)
         let out = r.text.lowercased()
-        #expect(out.contains("i'd") || out.contains("i would") || out.contains("i recommend"), "first person: \(r.text)")
-        #expect(!out.contains("the ai ") && !out.contains("the assistant"), "not narrated from outside: \(r.text)")
+        #expect(out.contains("chatgpt"), "named, not spoken as: \(r.text)")
+        #expect(!out.contains("i'd") && !out.contains("i would") && !out.contains("i recommend"), "VibeFlow never speaks as the assistant: \(r.text)")
         #expect(out.contains("queue") || out.contains("option 2"))
         // The fixture's own digits ("15 euros", "Option 3") would satisfy a plain contains check,
         // so look only at the closing sentence.
         let trimmed = r.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let last = trimmed.lowercased().split(whereSeparator: { ".!".contains($0) }).last.map(String.init) ?? ""
-        #expect(trimmed.hasSuffix("?"), "ends on its question: \(r.text)")
-        #expect(last.contains("retr") || last.contains("attempt"), "the question is the retry cap: \(r.text)")
+        let last = trimmed.lowercased().split(whereSeparator: { ".!?".contains($0) }).last.map(String.init) ?? ""
+        #expect(last.contains("retr") || last.contains("attempt"), "ends on its question, the retry cap: \(r.text)")
     }
 
     static let aiSummaryOfAScamEmail = """
@@ -86,7 +85,7 @@ struct LiveEvalTests {
     """
 
     @Test func briefOfAnAIAnswerNeverEndorsesWhatItQuotes() async throws {
-        let r = try await client.transform(SmartReadRequest(text: Self.aiSummaryOfAScamEmail, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800, aiReply: true))
+        let r = try await client.transform(SmartReadRequest(text: Self.aiSummaryOfAScamEmail, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800, assistant: "ChatGPT"))
         #expect(r.stopReason == .endTurn)
         let out = r.text.lowercased()
         #expect(["email", "message", "scam", "phishing"].contains(where: out.contains), "the payment request is attributed, not adopted: \(r.text)")
@@ -101,7 +100,7 @@ struct LiveEvalTests {
     """
 
     @Test func briefOfAnAIAnswerKeepsAnAnnouncedStepAsAStatement() async throws {
-        let r = try await client.transform(SmartReadRequest(text: Self.aiAnswerWithANextStep, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800, aiReply: true))
+        let r = try await client.transform(SmartReadRequest(text: Self.aiAnswerWithANextStep, mode: .brief, language: "en", model: config.smartReadModel, maxTokens: 800, assistant: "ChatGPT"))
         #expect(r.stopReason == .endTurn)
         let trimmed = r.text.trimmingCharacters(in: .whitespacesAndNewlines)
         #expect(!trimmed.hasSuffix("?"), "an announced step is not an approval question: \(r.text)")
