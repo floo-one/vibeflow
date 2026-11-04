@@ -48,9 +48,11 @@
 .feat:focus-visible { outline-offset: 4px; border-radius: 4px; }
 .feat-row { display: flex; align-items: center; gap: 12px; }
 .feat-row h3 { flex: 1; }
-/* Scroll-driven Voice: a hairline under each feature fills as the scroll plays its beat. */
+/* Scroll-driven Voice: a hairline under each feature fills as the scroll plays its beat; Ask back
+   (.timed) fills its steps over the time each moment takes. */
 .scrub .feat { cursor: pointer; }
-.scrub .feat::after {
+.timed .feat { --c: var(--smart); }
+.scrub .feat::after, .timed .feat::after {
   content: ""; position: absolute; left: 0; bottom: -1px; height: 2px; width: 100%; background: var(--c);
   transform: scaleX(var(--p, 0)); transform-origin: left; border-radius: 1px;
 }

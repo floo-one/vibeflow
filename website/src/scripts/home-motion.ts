@@ -80,7 +80,7 @@ gsap.matchMedia().add(MOTION, () => {
   }
 
   const items = gsap.utils.toArray<HTMLElement>(
-    '.kt-head, .show .copy, .show .scene, .ask-vis, .section-head, .cards > *, .extra, .table-box, .privacy-table, .faq, .final-inner > :not(svg)',
+    '.kt-head, .show .copy, .show .scene:not(#ascene), .ask-vis, .section-head, .cards > *, .extra, .table-box, .privacy-table, .faq, .final-inner > :not(svg)',
   );
   gsap.set(items, { autoAlpha: 0, y: 36 });
   ScrollTrigger.batch(items, {

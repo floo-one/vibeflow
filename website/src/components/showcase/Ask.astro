@@ -55,6 +55,7 @@ const first = ASK_SOURCES[0];
 
 <script>
   import { ASK_SOURCES } from '../../data/ask-sources';
+  import { gsap, MOTION } from '../../scripts/motion';
 
   const $ = (id: string) => document.getElementById(id)!;
   const section = $('ask'), scene = $('ascene'), book = $('abook'), notch = $('anotch'), pill = $('apill');
@@ -62,8 +63,19 @@ const first = ASK_SOURCES[0];
   const steps = [...section.querySelectorAll('#asteps .feat')];
   const MIC = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
   const SPARK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/></svg>';
-  const step = (n: number) => steps.forEach((s, i) => s.classList.toggle('on', i === n));
+  // Steps: the current one lights up and its line fills over the time its moment takes.
+  let fill: gsap.core.Tween | null = null;
+  const step = (n: number, ms = 0) => {
+    steps.forEach((s, i) => s.classList.toggle('on', i === n));
+    fill?.kill(); fill = null;
+    steps.forEach((s, i) => (s as HTMLElement).style.setProperty('--p', i < n ? '1' : '0'));
+    if (n >= 0 && ms > 0 && moving) {
+      fill = gsap.fromTo(steps[n], { '--p': 0 }, { '--p': 1, duration: ms / 1000, ease: 'none' });
+      if (paused) fill.pause();
+    }
+  };
   const sel = () => document.getElementById('asel');
+  const moving = matchMedia(MOTION).matches;
   let run = 0, visible = false, paused = false, skip = false;
   let phase: '' | 'ask' | 'think' | 'answer' | 'read' = '';
 
@@ -91,6 +103,7 @@ const first = ASK_SOURCES[0];
     if (p === paused) return;
     paused = p;
     waiters.forEach((w) => (p ? w.hold() : w.go()));
+    if (p) fill?.pause(); else fill?.resume();
     btn.setAttribute('aria-pressed', String(p));
     $('apause-t').textContent = p ? 'Play' : 'Pause';
     scene.classList.toggle('paused', p);
@@ -116,21 +129,29 @@ const first = ASK_SOURCES[0];
     while (my === run) {
       const s = ASK_SOURCES[src];
       reset();
-      book.classList.add('swap'); await wait(350); if (my !== run) return;
-      render(src); book.classList.remove('swap');
+      // The page turns in: out to the left edge, the page comes back facing you.
+      if (moving) {
+        gsap.to(book, { rotationY: -75, autoAlpha: 0, duration: 0.35, ease: 'power2.in', transformPerspective: 900, transformOrigin: '0% 50%' });
+        await wait(350); if (my !== run) return;
+        render(src);
+        gsap.fromTo(book, { rotationY: 75, autoAlpha: 0 }, { rotationY: 0, autoAlpha: 1, duration: 0.6, ease: 'power3.out', transformPerspective: 900, transformOrigin: '0% 50%' });
+      } else {
+        book.classList.add('swap'); await wait(350); if (my !== run) return;
+        render(src); book.classList.remove('swap');
+      }
       await wait(700); if (my !== run) return;
-      step(0); sel()?.classList.add('on');
+      step(0, 1500); sel()?.classList.add('on');
       await wait(1500);
       for (const [i, { q, a }] of s.qa.entries()) {
         if (my !== run) return;
         // Hold the key and ask
         phase = 'ask'; skip = false;
-        step(1); keys.classList.add('down');
+        const qw = q.split(' ');
+        step(1, 400 + qw.length * 270 + 450); keys.classList.add('down');
         notch.dataset.f = 'dict'; notch.classList.add('on');
         tile.innerHTML = MIC; lbl.textContent = i ? 'Ask again · it remembers the text' : 'Listening · let go to ask';
         txt.textContent = ''; pill.classList.add('is-on');
         await wait(400);
-        const qw = q.split(' ');
         for (let k = 1; k <= qw.length; k++) {
           if (my !== run) return;
           txt.textContent = `“${qw.slice(0, skip ? qw.length : k).join(' ')}”`;
@@ -140,7 +161,7 @@ const first = ASK_SOURCES[0];
         await wait(450); if (my !== run) return;
         // Let go: think, then answer
         phase = 'think'; skip = false;
-        keys.classList.remove('down'); step(2);
+        keys.classList.remove('down'); step(2, 700 + a.split(' ').length * 165 + 2200);
         notch.dataset.f = 'smart'; tile.innerHTML = SPARK; lbl.textContent = 'Thinking';
         await wait(700); if (my !== run) return;
         phase = 'answer'; lbl.textContent = 'Answer';
@@ -174,6 +195,15 @@ const first = ASK_SOURCES[0];
     btn.hidden = false;
     btn.addEventListener('click', () => setPaused(!paused));
     scene.addEventListener('click', () => setPaused(!paused));
+    section.classList.add('timed');
+    // Depth: as the section passes, the Mac screen tilts from leaning back to upright and past,
+    // and the book page floats a little faster than the screen behind it.
+    gsap.matchMedia().add(MOTION, () => {
+      const st = { trigger: section, start: 'top bottom', end: 'bottom top', scrub: 0.6 };
+      gsap.fromTo(scene, { rotationX: 9, y: 36, transformPerspective: 1400, transformOrigin: '50% 100%' },
+        { rotationX: -5, y: -36, ease: 'none', scrollTrigger: st });
+      gsap.fromTo(book, { yPercent: 6 }, { yPercent: -6, ease: 'none', scrollTrigger: { ...st } });
+    });
     new IntersectionObserver(([e]) => {
       const now = e.intersectionRatio >= 0.35;
       if (now === visible) return;
