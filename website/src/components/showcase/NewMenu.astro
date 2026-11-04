@@ -1,0 +1,123 @@
+---
+// New in 1.5: the VibeFlow menu as the hero of the section. Hover or focus a feature and its
+// row lights up, and its menu bar item appears; until then the features take turns.
+// The menu itself is the part to replace when the new pop-up menu bar design exists.
+import Flag from '../Flag.astro';
+import Glyph from './Glyph.astro';
+import Get from './Get.astro';
+import { VERSION } from '../../data/site';
+
+const feats = [
+  { row: 'transcribe', c: 'var(--icon-bottom)', title: 'Transcribe any file', text: 'Calls and meetings come back with speakers, a summary and action items.' },
+  { row: 'focus', status: 'focus', c: 'var(--tools)', title: 'Pomodoro', text: 'Focus and break rounds, a chime between them, and your streak.' },
+  { row: 'awake', status: 'awake', c: 'var(--tools)', title: 'Keep Awake', text: 'Keeps your Mac awake for an hour, a day or until you stop it.' },
+  { row: 'feedback', c: 'var(--smart)', title: 'Send Feedback', text: 'A bug, an idea or some love. You see exactly what gets sent.' },
+];
+const clocks = [
+  { country: 'DE', tz: 'Europe/Berlin', at: '09:41' },
+  { country: 'TH', tz: 'Asia/Bangkok', at: '15:41' },
+  { country: 'US', tz: 'America/New_York', at: '03:41' },
+] as const;
+const cup = '<path d="M4 9h14v6a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6z"/><path d="M18 11h1.5a2.5 2.5 0 0 1 0 5H18M8 3v2M12 3v2"/>';
+const timer = '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/>';
+---
+<section class="show" id="show" aria-labelledby="show-title">
+  <div>
+    <p class="eyebrow">New in 1.5</p>
+    <h2 id="show-title">One menu.<br />Everything in reach.</h2>
+    <p class="lead">Voice, focus and the little things, grouped by what you’re doing. The menu bar stays quiet until something is running.</p>
+    <ul class="feats" id="feats">
+      {feats.map((f) => (
+        <li><button class="feat" type="button" data-row={f.row} data-status={f.status} style={`--c: ${f.c}`}>
+          <h3>{f.title}</h3>
+          <p>{f.text}</p>
+        </button></li>
+      ))}
+    </ul>
+    <Get note={`Free · ${VERSION} · updates itself`} />
+  </div>
+
+  <div class="scene" id="scene" role="img" aria-label="The VibeFlow menu in the macOS menu bar, grouped into Voice, Focus and Time, and Utilities">
+    <div class="bar" aria-hidden="true">
+      <div class="bi status" id="st-focus" hidden>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" set:html={timer} />24:12
+      </div>
+      <div class="bi status" id="st-awake" hidden>
+        <svg width="15" height="14" viewBox="0 0 26 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" set:html={cup} />1:00
+      </div>
+      <div class="bi clocks">
+        {clocks.map((c) => <span class="clk"><Flag country={c.country} /><span data-tz={c.tz}>{c.at}</span></span>)}
+      </div>
+      <div class="bi open"><Glyph /></div>
+      <div class="bi bar-date" data-date>Do. 5. Nov. 09:41</div>
+    </div>
+
+    <div class="menu" aria-hidden="true">
+      <div class="mh">Voice</div>
+      <div class="mi">Read selection<span class="sc">⌥ .</span></div>
+      <div class="mi">Smart read selection<span class="sc">⌥ ,</span></div>
+      <div class="mi">Hold to dictate<span class="sc">⌥ <span class="dk">-</span></span></div>
+      <div class="mi" data-row="transcribe">Transcribe File…<span class="new">New</span></div>
+      <div class="sep"></div>
+      <div class="mh">Focus &amp; Time</div>
+      <div class="mi" data-row="focus"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" set:html={timer} />Pomodoro<span class="new">New</span></div>
+      <div class="mi"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>Standup · 10:00</div>
+      <div class="sep"></div>
+      <div class="mh">Utilities</div>
+      <div class="mi" data-row="awake"><svg width="15" height="15" viewBox="0 0 26 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" set:html={cup} />Keep Awake<span class="new">New</span></div>
+      <div class="sep"></div>
+      <div class="mi" data-row="feedback">Send Feedback…<span class="new">New</span></div>
+      <div class="mi">Settings…<span class="sc">⌘ ,</span></div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const section = document.getElementById('show')!;
+  const scene = document.getElementById('scene')!;
+  const feats = [...section.querySelectorAll<HTMLElement>('.feat')];
+  const rows = [...section.querySelectorAll<HTMLElement>('.mi[data-row]')];
+  let current: HTMLElement | null = null;
+  let auto = 0;
+  let timer: ReturnType<typeof setInterval> | null = null;
+
+  function select(feat: HTMLElement) {
+    if (current === feat) return;
+    current = feat;
+    feats.forEach((f) => f.classList.toggle('on', f === feat));
+    rows.forEach((r) => r.classList.toggle('on', r.dataset.row === feat.dataset.row));
+    for (const s of ['focus', 'awake']) document.getElementById('st-' + s)!.hidden = feat.dataset.status !== s;
+  }
+
+  // Gently cycles through the features until the visitor points at one.
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const cycle = () => select(feats[auto++ % feats.length]);
+  const startCycle = () => { if (reduced || timer) return; cycle(); timer = setInterval(cycle, 2600); };
+  const stopCycle = () => { if (timer) clearInterval(timer); timer = null; };
+
+  feats.forEach((f) => {
+    f.addEventListener('mouseenter', () => { stopCycle(); select(f); });
+    f.addEventListener('focus', () => { stopCycle(); select(f); });
+  });
+  document.getElementById('feats')!.addEventListener('mouseleave', () => {
+    auto = current ? feats.indexOf(current) + 1 : 0;
+    setTimeout(() => { if (!section.querySelector('.feat:hover')) startCycle(); }, 1200);
+  });
+
+  new IntersectionObserver(([e]) => {
+    if (e.intersectionRatio >= 0.35) { scene.classList.add('in'); setTimeout(startCycle, 700); }
+    else stopCycle();
+  }, { threshold: [0, 0.35] }).observe(section);
+
+  // The clocks and the date, in German like the app's menu bar
+  const date = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const tick = () => {
+    const now = new Date();
+    section.querySelectorAll<HTMLElement>('[data-date]').forEach((el) => { el.textContent = date.format(now).replace(/,/g, ''); });
+    section.querySelectorAll<HTMLElement>('[data-tz]').forEach((el) => {
+      el.textContent = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: el.dataset.tz }).format(now);
+    });
+  };
+  tick();
+  setInterval(tick, 15000);
+</script>

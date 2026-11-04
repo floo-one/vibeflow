@@ -1,0 +1,184 @@
+---
+// Ask back: a page from a book, a phrase selected, a question asked out loud, a short spoken
+// answer, then a follow-up. One source per visitor (src/data/ask-sources.ts); the page renders
+// the first one so it reads without scripts. Pause holds the answer on screen.
+import Get from './Get.astro';
+import Glyph from './Glyph.astro';
+import Notch from './Notch.astro';
+import { ASK_SOURCES } from '../../data/ask-sources';
+
+const first = ASK_SOURCES[0];
+---
+<section class="show" id="ask" aria-labelledby="ask-title">
+  <div class="copy">
+    <p class="eyebrow">Ask back</p>
+    <h2 id="ask-title">Select it.<br />Ask it.</h2>
+    <p class="lead">Stuck on a line in a book, a paper or a long thread? Select it, hold the smart read key and ask, out loud. Let go, and the answer is spoken, grounded in what you’re reading.</p>
+    <ol class="feats steps" id="asteps">
+      <li class="feat"><h3><span class="step-n">1</span>Select what you’re reading</h3><p>A phrase, a paragraph or a whole page, in any app.</p></li>
+      <li class="feat"><h3><span class="step-n">2</span>Hold <span class="keys"><span class="k">⌥</span><span class="k">,</span></span> and ask</h3><p>In your own words: “What does that mean?”</p></li>
+      <li class="feat"><h3><span class="step-n">3</span>Let go and listen</h3><p>A short answer in a few sentences. Ask again; it remembers the text.</p></li>
+    </ol>
+    <Get note="Smart read needs an Anthropic key · pay as you go" />
+  </div>
+
+  <div class="ask-vis">
+    <div class="scene vscene" id="ascene" aria-hidden="true">
+      <div class="bar">
+        <span class="bar-app">Books</span>
+        <Notch id="anotch" icons={['smart', 'dict']} tint="#9D95FF" />
+        <span style="padding-right: 8px"><Glyph /></span>
+      </div>
+
+      <div class="card book" id="abook">
+        <p class="from">
+          <span id="asrc"><b>{first.title}</b><span class="by">{first.author}</span></span>
+          <span class="akeys" id="akeys"><span class="hold">hold</span><span class="k">⌥</span><span class="k">,</span></span>
+        </p>
+        <p class="body" id="abody">{first.pre}<span class="sel on" id="asel">{first.sel}</span>{first.post}</p>
+      </div>
+
+      <div class="pill" id="apill">
+        <span class="tile" id="atile"></span>
+        <span><span class="plbl" id="albl"></span><span id="atxt"></span></span>
+      </div>
+    </div>
+
+    <button class="apause" id="apause" type="button" aria-pressed="false" hidden>
+      <svg class="i-pause" width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><rect x="2" y="1.5" width="3" height="9" rx="1" /><rect x="7" y="1.5" width="3" height="9" rx="1" /></svg>
+      <svg class="i-play" width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M3 1.8v8.4a.6.6 0 0 0 .9.5l7-4.2a.6.6 0 0 0 0-1L3.9 1.3a.6.6 0 0 0-.9.5z" /></svg>
+      <span id="apause-t">Pause</span>
+    </button>
+    <p class="visually-hidden" id="aread" aria-live="polite"></p>
+  </div>
+</section>
+
+<script>
+  import { ASK_SOURCES } from '../../data/ask-sources';
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const section = $('ask'), scene = $('ascene'), book = $('abook'), notch = $('anotch'), pill = $('apill');
+  const lbl = $('albl'), txt = $('atxt'), keys = $('akeys'), tile = $('atile'), btn = $('apause'), live = $('aread');
+  const steps = [...section.querySelectorAll('#asteps .feat')];
+  const MIC = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+  const SPARK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/></svg>';
+  const step = (n: number) => steps.forEach((s, i) => s.classList.toggle('on', i === n));
+  const sel = () => document.getElementById('asel');
+  let run = 0, visible = false, paused = false, skip = false;
+  let phase: '' | 'ask' | 'think' | 'answer' | 'read' = '';
+
+  // One source per visitor, different from the one this browser showed last time.
+  const KEY = 'vf-ask-source';
+  let last = -1;
+  try { last = Number(localStorage.getItem(KEY) ?? -1); } catch {}
+  let src = Math.floor(Math.random() * ASK_SOURCES.length);
+  if (src === last) src = (src + 1) % ASK_SOURCES.length;
+  try { localStorage.setItem(KEY, String(src)); } catch {}
+
+  // A wait that stops counting while paused.
+  interface Waiter { go(): void; hold(): void }
+  const waiters = new Set<Waiter>();
+  const wait = (ms: number) => new Promise<void>((res) => {
+    let left = ms, t0 = 0, timer: ReturnType<typeof setTimeout> | undefined;
+    const w: Waiter = {
+      go() { t0 = performance.now(); timer = setTimeout(() => { waiters.delete(w); res(); }, left); },
+      hold() { clearTimeout(timer); left = Math.max(0, left - (performance.now() - t0)); },
+    };
+    waiters.add(w);
+    if (!paused) w.go();
+  });
+  function setPaused(p: boolean) {
+    if (p === paused) return;
+    paused = p;
+    waiters.forEach((w) => (p ? w.hold() : w.go()));
+    btn.setAttribute('aria-pressed', String(p));
+    $('apause-t').textContent = p ? 'Play' : 'Pause';
+    scene.classList.toggle('paused', p);
+    // Pausing mid-sentence shows the whole sentence, so it can be read.
+    if (p && (phase === 'ask' || phase === 'answer')) {
+      skip = true;
+      if (phase === 'answer') txt.querySelectorAll('.w').forEach((w) => w.classList.add('said'));
+    }
+  }
+
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  function render(i: number) {
+    const s = ASK_SOURCES[i];
+    $('asrc').innerHTML = `<b>${esc(s.title)}</b><span class="by">${esc(s.author)}</span>`;
+    $('abody').innerHTML = `${esc(s.pre)}<span class="sel" id="asel">${esc(s.sel)}</span>${esc(s.post)}`;
+  }
+  function reset() {
+    step(-1); phase = ''; skip = false;
+    sel()?.classList.remove('on'); pill.classList.remove('is-on'); keys.classList.remove('down'); notch.classList.remove('on');
+  }
+
+  async function loop(my: number) {
+    while (my === run) {
+      const s = ASK_SOURCES[src];
+      reset();
+      book.classList.add('swap'); await wait(350); if (my !== run) return;
+      render(src); book.classList.remove('swap');
+      await wait(700); if (my !== run) return;
+      step(0); sel()?.classList.add('on');
+      await wait(1500);
+      for (const [i, { q, a }] of s.qa.entries()) {
+        if (my !== run) return;
+        // Hold the key and ask
+        phase = 'ask'; skip = false;
+        step(1); keys.classList.add('down');
+        notch.dataset.f = 'dict'; notch.classList.add('on');
+        tile.innerHTML = MIC; lbl.textContent = i ? 'Ask again · it remembers the text' : 'Listening · let go to ask';
+        txt.textContent = ''; pill.classList.add('is-on');
+        await wait(400);
+        const qw = q.split(' ');
+        for (let k = 1; k <= qw.length; k++) {
+          if (my !== run) return;
+          txt.textContent = `“${qw.slice(0, skip ? qw.length : k).join(' ')}”`;
+          if (skip) break;
+          await wait(270);
+        }
+        await wait(450); if (my !== run) return;
+        // Let go: think, then answer
+        phase = 'think'; skip = false;
+        keys.classList.remove('down'); step(2);
+        notch.dataset.f = 'smart'; tile.innerHTML = SPARK; lbl.textContent = 'Thinking';
+        await wait(700); if (my !== run) return;
+        phase = 'answer'; lbl.textContent = 'Answer';
+        txt.innerHTML = a.split(' ').map((w) => `<span class="w">${esc(w)}</span>`).join(' ');
+        live.textContent = `${q} ${a}`;
+        for (const w of txt.querySelectorAll('.w')) {
+          if (my !== run) return;
+          if (skip) break;
+          w.classList.add('said'); await wait(165);
+        }
+        txt.querySelectorAll('.w').forEach((w) => w.classList.add('said'));
+        phase = 'read';
+        await wait(2200); if (my !== run) return;
+        notch.classList.remove('on');
+        pill.classList.remove('is-on'); await wait(600);
+      }
+      await wait(300);
+    }
+  }
+
+  render(src);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // Reduced motion: the finished moment, held still; nothing plays, so nothing to pause.
+    const { q, a } = ASK_SOURCES[src].qa[0];
+    step(2); sel()?.classList.add('on');
+    notch.dataset.f = 'smart'; notch.classList.add('on');
+    tile.innerHTML = SPARK; lbl.textContent = `You asked “${q}”`;
+    txt.innerHTML = a.split(' ').map((w) => `<span class="w said">${esc(w)}</span>`).join(' ');
+    pill.classList.add('is-on'); scene.style.cursor = 'default';
+  } else {
+    btn.hidden = false;
+    btn.addEventListener('click', () => setPaused(!paused));
+    scene.addEventListener('click', () => setPaused(!paused));
+    new IntersectionObserver(([e]) => {
+      const now = e.intersectionRatio >= 0.35;
+      if (now === visible) return;
+      visible = now;
+      if (now) loop(++run); else { run++; setPaused(false); reset(); }
+    }, { threshold: [0, 0.35] }).observe(section);
+  }
+</script>

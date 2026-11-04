@@ -2,14 +2,15 @@
 import Base from '../layouts/Base.astro';
 import AppIcon from '../components/AppIcon.astro';
 import DownloadButton from '../components/DownloadButton.astro';
-import Keyboard from '../components/Keyboard.astro';
-import Keycaps from '../components/Keycaps.astro';
-import FeatureCard from '../components/FeatureCard.astro';
-import ShortcutRow from '../components/ShortcutRow.astro';
+import NewMenu from '../components/showcase/NewMenu.astro';
+import Voice from '../components/showcase/Voice.astro';
+import Ask from '../components/showcase/Ask.astro';
+import ShortcutsTour from '../components/showcase/ShortcutsTour.astro';
 import ToolCard from '../components/ToolCard.astro';
 import Faq from '../components/Faq.astro';
 import Flag from '../components/Flag.astro';
-import { CHANGELOG_URL, REPO_URL, VERSION, url } from '../data/site';
+import { CHANGELOG_URL, DMG_URL, REPO_URL, VERSION, url } from '../data/site';
+import '../styles/showcase.css';
 
 const extras = [
   { title: 'Notch indicator', text: 'Small black wings at the notch while VibeFlow listens, thinks or speaks. Macs without a notch get the same shape in the menu bar.' },
@@ -45,95 +46,29 @@ const faq = [
 ];
 ---
 <Base
-  title="VibeFlow: hear anything, say anything"
-  description="A free, open-source Mac menu bar app. Option and the three keys right above it read, explain and dictate in every app. No account, no subscription, no telemetry."
+  title="VibeFlow: everything your Mac was missing"
+  description="Hear any text, ask it a question, dictate, transcribe a call, focus, keep awake. One small, free and open-source Mac app. No account, no subscription, no telemetry."
   path=""
   page="home"
 >
-  <!-- Hero -->
-  <section id="top" class="wrap hero">
-    <div class="hero-text">
-      <p class="eyebrow">Free and open source · macOS 15 or later</p>
-      <h1 class="display">Hear anything.<br />Say anything.</h1>
-      <p class="intro">A small Mac menu bar app. Option and the three keys right above it give your Mac a voice: one explains, one reads, one types what you say. A few quiet tools come with it.</p>
-      <div class="ctas">
-        <DownloadButton icon />
-        <a class="ghost" href={REPO_URL}>Source on GitHub</a>
-      </div>
-      <p class="muted">Signed and notarized by Apple. Updates itself. No account, no subscription, no telemetry.</p>
-    </div>
-    <div class="hero-kb">
-      <Keyboard />
+  <section class="hero" id="top">
+    <span class="hero-icon"><AppIcon size={96} /></span>
+    <p class="eyebrow">Free and open source · macOS 15 or later</p>
+    <h1>Everything your Mac <br />was missing.</h1>
+    <p class="lead">Hear any text, ask it a question, dictate, transcribe a call, focus, keep awake. One small app, free and open source.</p>
+    <div class="ctas">
+      <a class="hero-dl" id="hero-dl" href={DMG_URL}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+        Download for Mac
+      </a>
+      <a class="ghost" href={REPO_URL}>Source on GitHub</a>
     </div>
   </section>
 
-  <!-- Grammar strip -->
-  <section class="strip" aria-label="How the shortcuts work">
-    <div class="wrap grammar">
-      <div class="g"><Keycaps keys={['⌥', 'key']} /><span>the selection, or dictate</span></div>
-      <div class="g"><Keycaps keys={['⇧', '⌥', 'key']} /><span>the clipboard instead</span></div>
-      <div class="g"><Keycaps keys={['hold']} /><span>and talk: ask, or dictate</span></div>
-      <p class="muted">Tap the same key again to stop. Every shortcut can be changed.</p>
-    </div>
-  </section>
-
-  <!-- Voice -->
-  <section id="voice" class="wrap voice" aria-labelledby="voice-title">
-    <div class="section-head">
-      <p class="eyebrow">Voice</p>
-      <h2 id="voice-title" class="h2 h2-lg">Three keys. Works in every app.</h2>
-      <p class="lead">No window to open and no box to paste into. Select text in Mail, Safari, Slack, a PDF or ChatGPT and press a key.</p>
-    </div>
-    <div class="cards cards-310">
-      <FeatureCard title="Read" subtitle="Selected text, aloud" color="var(--read)">
-        <svg slot="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4" /></svg>
-        <Fragment slot="text">A natural ElevenLabs voice, usually in well under a second. Tables, links and Markdown are rewritten for listening. Without a key, the best Apple voice on your Mac reads instead.</Fragment>
-        <ShortcutRow label="Read selection" hint="Tap again to stop" keys={['⌥', '.']} />
-        <ShortcutRow label="Read clipboard" keys={['⇧', '⌥', '.']} />
-      </FeatureCard>
-
-      <FeatureCard title="Smart read" subtitle="A spoken brief, then ask about it" color="var(--smart)">
-        <svg slot="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z" /><path d="M18.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" /></svg>
-        <Fragment slot="text">Claude tells you what the text means in a few spoken sentences: what an email wants and by when, a contract's money and deadlines, an error's likely fix. Hold the key to ask a follow-up out loud.</Fragment>
-        <ShortcutRow label="Smart read selection" keys={['⌥', ',']} />
-        <ShortcutRow label="Ask a follow-up" hint="Hold, speak, let go" keys={['hold', '⌥', ',']} />
-        <ShortcutRow label="Smart read clipboard" keys={['⇧', '⌥', ',']} />
-        <ShortcutRow label="Paste again" keys={['⇧', '⌃', '⌥', 'V']} />
-      </FeatureCard>
-
-      <FeatureCard title="Dictation" subtitle="Speak, it types" color="var(--dictation)">
-        <svg slot="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
-        <Fragment slot="text">Hold, talk, let go. Your words are transcribed, cleaned up and pasted where you were typing, in about 0.8 seconds. Punctuation, casing and misheard words are fixed for you. The key is the one right of the period: - on German keyboards, / on US.</Fragment>
-        <ShortcutRow label="Dictate" hint="Hold, speak, let go: it is pasted" keys={['hold', '⌥', '-']} />
-        <ShortcutRow label="Hands-free" hint="Tap again to stop" keys={['⇧', '⌥', '-']} />
-        <ShortcutRow label="Paste again" keys={['⌃', '⌥', 'V']} />
-      </FeatureCard>
-    </div>
-  </section>
-
-  <!-- AI replies band -->
-  <section class="band-outer" aria-labelledby="ai-title">
-    <div class="band">
-      <div class="band-text">
-        <p class="band-eyebrow"><span class="dot" aria-hidden="true"></span>Smart read, made for AI chat</p>
-        <h2 id="ai-title" class="h2">Stop reading walls of AI text. Listen to them.</h2>
-        <p class="band-lead">In the ChatGPT, Claude, Codex and Gemini apps, smart read speaks the reply as that assistant, in first person, and ends on what it needs from you. Then hold the key and answer back by voice.</p>
-        <ul class="band-list">
-          <li>Leads with what matters, keeps numbers and dates exactly</li>
-          <li>Warnings about data, security or money are never dropped</li>
-          <li>The answer starts speaking after its first sentence</li>
-        </ul>
-      </div>
-      <div class="chat" role="group" aria-label="Example: a long AI reply and what smart read says instead">
-        <div class="bubble me">Can you refactor the auth module to use the new token service?</div>
-        <div class="bubble ai">I've moved token refresh into TokenService and updated 14 call sites… <span class="more">(1,200 more words)</span></div>
-        <div class="spoken">
-          <span class="tile spoken-tile" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linejoin="round"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z" /></svg></span>
-          <span>“I moved token refresh into one place and touched fourteen files. Two tests fail on the old mock. Should I update the mock, or keep the old path for now?”</span>
-        </div>
-      </div>
-    </div>
-  </section>
+  <NewMenu />
+  <Voice />
+  <Ask />
+  <ShortcutsTour />
 
   <!-- Tools -->
   <section id="tools" class="wrap tools" aria-labelledby="tools-title">
@@ -182,7 +117,7 @@ const faq = [
   </section>
 
   <!-- Pricing -->
-  <section id="keys" class="wrap pricing" aria-labelledby="pricing-title">
+  <section id="pricing" class="wrap pricing" aria-labelledby="pricing-title">
     <div class="section-head">
       <p class="eyebrow">Pricing</p>
       <h2 id="pricing-title" class="h2">Free. Works without any keys. Better with them.</h2>
@@ -232,7 +167,7 @@ const faq = [
   <section class="final" aria-labelledby="final-title">
     <div class="wrap final-inner">
       <AppIcon size={72} />
-      <h2 id="final-title" class="final-title">Give your Mac a voice.</h2>
+      <h2 id="final-title" class="final-title">Try it. It’s free.</h2>
       <p class="lead">Free, open source, and it keeps itself up to date.</p>
       <DownloadButton size="lg" />
       <p class="muted">Version {VERSION} · macOS 15 or later · <a href={CHANGELOG_URL}>What's new</a></p>
@@ -241,55 +176,17 @@ const faq = [
 </Base>
 
 <style>
-  /* Hero */
-  .hero { padding-top: 80px; padding-bottom: 64px; display: flex; flex-wrap: wrap; align-items: center; gap: 56px; }
-  .hero-text { flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 22px; }
-  .hero-kb { flex: 1 1 500px; min-width: 0; }
-  .ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-  .ghost {
-    display: inline-flex; align-items: center; min-height: 52px; padding: 0 22px;
-    border-radius: var(--radius-pill); border: 1px solid var(--line-2);
-    color: var(--text); text-decoration: none; font-size: 17px; font-weight: 600;
+  /* Hero download: the menu bar's Download pill watches it (#hero-dl). */
+  .hero-dl {
+    display: inline-flex; align-items: center; gap: 9px; min-height: 52px; padding: 0 24px; border-radius: var(--radius-pill);
+    background: var(--dark); color: #FFFFFF; font-weight: 600; font-size: 17px; text-decoration: none; transition: transform 0.2s var(--ease), background 0.2s;
   }
-  .ghost:hover { color: var(--text); background: var(--ground-2); }
+  .hero-dl:hover { color: #FFFFFF; background: #000000; transform: translateY(-1px); }
+  .hero-dl:focus-visible { outline-offset: 3px; }
 
-  /* Grammar strip */
-  .strip { background: var(--ground-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-  .grammar {
-    padding-top: 28px; padding-bottom: 28px; display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 20px 32px; align-items: center;
-  }
-  .g { display: flex; align-items: center; gap: 14px; font-size: 16px; font-weight: 600; }
-
-  /* Voice and Tools */
-  .voice { padding-top: 104px; padding-bottom: 40px; display: flex; flex-direction: column; gap: 44px; }
-  .h2-lg { font-size: clamp(32px, 4vw, 48px); line-height: 1.05; }
   .tools { padding-top: 96px; padding-bottom: 40px; display: flex; flex-direction: column; gap: 40px; }
   .cards { display: grid; gap: 20px; }
-  .cards-310 { grid-template-columns: repeat(auto-fit, minmax(min(310px, 100%), 1fr)); }
   .cards-340 { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
-
-  /* Dark band */
-  .band-outer { padding: 40px var(--gutter); }
-  .band {
-    max-width: var(--max); margin: 0 auto; border-radius: 28px; background: var(--dark); color: var(--dark-text);
-    padding: clamp(28px, 5vw, 64px); display: flex; flex-wrap: wrap; gap: 48px; align-items: center;
-  }
-  .band-text { flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
-  .band-eyebrow { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #A9A2FF; }
-  .dot { width: 10px; height: 10px; border-radius: 5px; background: #8F86FF; }
-  .band-lead { font-size: 17px; line-height: 1.6; color: var(--dark-text-2); }
-  .band-list { padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 16px; color: #E5E5EA; }
-  .chat { flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-  .bubble { padding: 14px 18px; font-size: 15px; line-height: 1.5; }
-  .me { align-self: flex-end; max-width: 85%; border-radius: 18px 18px 4px 18px; background: #3A3A3F; }
-  .ai { max-width: 92%; border-radius: 18px 18px 18px 4px; background: var(--dark-2); color: var(--dark-text-2); line-height: 1.55; }
-  .ai .more { color: #A1A1A6; }
-  .spoken {
-    display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 16px;
-    background: var(--dark-2); border: 1px solid var(--smart); font-size: 15px; line-height: 1.5;
-  }
-  .spoken-tile { width: 32px; height: 32px; border-radius: 8px; background: var(--smart); }
 
   /* Tool mockups */
   .mb-item {
@@ -343,8 +240,7 @@ const faq = [
   .final-title { font-weight: 800; font-size: clamp(34px, 4.6vw, 56px); line-height: 1.04; letter-spacing: -0.03em; }
 
   @media (max-width: 520px) {
-    .hero { padding-top: 48px; gap: 40px; }
-    .voice, .tools, .pricing, .privacy { padding-top: 72px; }
-    .band-outer { padding-left: 12px; padding-right: 12px; }
+    .tools, .pricing, .privacy { padding-top: 72px; }
   }
+  @media (prefers-reduced-motion: reduce) { .hero-dl { transition: none; } }
 </style>

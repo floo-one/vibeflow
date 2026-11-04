@@ -1,0 +1,146 @@
+---
+// Voice: the three keys. Each feature plays its moment on an email in the scene (Read
+// highlights it word by word, Smart read speaks a brief, Dictation types a reply), then the
+// next one follows. With reduced motion each feature is one still frame.
+import Glyph from './Glyph.astro';
+import Get from './Get.astro';
+import Notch from './Notch.astro';
+
+const feats = [
+  { f: 'read', c: 'var(--read)', title: 'Read', key: '.', text: 'Any selected text, in a natural voice, in under a second.' },
+  { f: 'smart', c: 'var(--smart)', title: 'Smart read', key: ',', text: 'What it means, in a few spoken sentences. Hold the key to ask back.' },
+  { f: 'dict', c: 'var(--dictation)', title: 'Dictation', key: '-', hold: true, text: 'Talk, let go, and it’s typed where you were, cleaned up.' },
+];
+---
+<section class="show flip" id="voice" aria-labelledby="voice-title">
+  <div class="copy">
+    <p class="eyebrow">Voice</p>
+    <h2 id="voice-title">Three keys.<br />Every app.</h2>
+    <p class="lead">Option and the three keys right above it. Select text anywhere, press one, and your Mac talks back. Or talk, and it types.</p>
+    <ul class="feats" id="vfeats">
+      {feats.map((x) => (
+        <li><button class="feat" type="button" data-f={x.f} style={`--c: ${x.c}`}>
+          <div class="feat-row">
+            <h3>{x.title}</h3>
+            <span class="keys">
+              {x.hold && <span class="hold">hold</span>}
+              <span class="k">⌥</span><span class:list={['k key', { dk: x.f === 'dict' }]}>{x.key}</span>
+            </span>
+          </div>
+          <p>{x.text}</p>
+        </button></li>
+      ))}
+    </ul>
+    <Get note="Works without any keys · no account" />
+  </div>
+
+  <div class="scene vscene" id="vscene" role="img" aria-label="An email in a Mac window: Read highlights it word by word, Smart read speaks a one-line brief, Dictation types a reply">
+    <div class="bar" aria-hidden="true">
+      <span class="bar-app">Mail</span>
+      <Notch id="vnotch" icons={['read', 'smart', 'dict']} />
+      <span style="padding-right: 8px"><Glyph /></span>
+    </div>
+
+    <div class="card" id="vcard" aria-hidden="true">
+      <p class="from"><b>Lena Hoffmann</b> · Lisbon offsite</p>
+      <p class="body" id="vbody">Three things I need from you by Friday: your arrival time, any dietary needs, and whether you want to join the boat trip on Thursday.</p>
+      <div class="field" id="vfield"></div>
+    </div>
+
+    <div class="pill" id="vpill" aria-hidden="true">
+      <span class="tile"><svg width="15" height="15" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z" /></svg></span>
+      <span id="vbrief">Lena needs three answers by Friday: when you land, what you eat, and yes or no to the boat.</span>
+    </div>
+  </div>
+</section>
+
+<script>
+  type F = 'read' | 'smart' | 'dict';
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  const section = $('voice');
+  const feats = [...section.querySelectorAll<HTMLElement>('.feat')];
+  const notch = $('vnotch'), card = $('vcard'), field = $('vfield'), pill = $('vpill');
+  const TINT: Record<F, string> = { read: '#4C9BFF', smart: '#9D95FF', dict: '#FF6B5E' };
+  const REPLY = 'Friday works. I land Thursday at 9, no dietary needs, and yes to the boat!';
+  const split = (el: HTMLElement) => {
+    el.innerHTML = (el.textContent ?? '').split(' ').map((w) => `<span class="w">${w}</span>`).join(' ');
+    return [...el.querySelectorAll<HTMLElement>('.w')];
+  };
+  const words = split($('vbody')), briefWords = split($('vbrief'));
+  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let run = 0, auto = 0, cycling = false, visible = false;
+  let current: F | null = null;
+  const fOf = (el: HTMLElement) => el.dataset.f as F;
+
+  function reset() {
+    words.forEach((w) => w.classList.remove('on'));
+    briefWords.forEach((w) => w.classList.remove('said'));
+    pill.classList.remove('is-on'); card.classList.remove('dim');
+    field.textContent = ''; field.classList.remove('typing');
+    notch.classList.remove('on');
+  }
+  function mark(f: F) {
+    feats.forEach((x) => x.classList.toggle('on', fOf(x) === f));
+    notch.dataset.f = f; notch.style.setProperty('--tint', TINT[f]);
+  }
+
+  // Reduced motion: each feature is one still frame, chosen by hover or focus, never cycled.
+  function still(f: F) {
+    run++; current = f; reset(); mark(f);
+    notch.classList.add('on');
+    if (f === 'read') words.slice(8, 14).forEach((w) => w.classList.add('on'));
+    else if (f === 'smart') { card.classList.add('dim'); pill.classList.add('is-on'); briefWords.forEach((w) => w.classList.add('said')); }
+    else field.textContent = REPLY;
+  }
+
+  async function play(f: F) {
+    if (reduced) return still(f);
+    const my = ++run; current = f; reset(); mark(f);
+    await wait(200); if (my !== run) return;
+    notch.classList.add('on');
+    if (f === 'read') {
+      for (let i = 0; i < words.length; i++) {
+        if (my !== run) return;
+        words.forEach((w, j) => w.classList.toggle('on', j === i));
+        await wait(185);
+      }
+      words.forEach((w) => w.classList.remove('on'));
+    } else if (f === 'smart') {
+      card.classList.add('dim');
+      await wait(700); if (my !== run) return; // thinking
+      pill.classList.add('is-on');
+      for (const w of briefWords) { if (my !== run) return; w.classList.add('said'); await wait(210); }
+    } else {
+      field.classList.add('typing');
+      await wait(1800); if (my !== run) return; // listening while the key is held
+      field.classList.remove('typing');
+      field.innerHTML = `<span class="pasted">${REPLY}</span>`;
+    }
+    await wait(500); if (my === run) notch.classList.remove('on');
+    await wait(f === 'read' ? 600 : 1800);
+    if (my === run && cycling) play(fOf(feats[++auto % feats.length]));
+  }
+  function startCycle() {
+    if (reduced) { if (!current) still('smart'); return; }
+    if (cycling) return;
+    cycling = true; play(fOf(feats[auto % feats.length]));
+  }
+
+  feats.forEach((el, i) => {
+    const pick = () => { cycling = false; auto = i; if (current !== fOf(el) || !notch.classList.contains('on')) play(fOf(el)); };
+    el.addEventListener('mouseenter', pick);
+    el.addEventListener('focus', pick);
+  });
+  $('vfeats').addEventListener('mouseleave', () => setTimeout(() => {
+    if (!section.querySelector('.feat:hover')) { auto++; startCycle(); }
+  }, 1600));
+
+  new IntersectionObserver(([e]) => {
+    const now = e.intersectionRatio >= 0.35;
+    if (now === visible) return;
+    visible = now;
+    if (now) setTimeout(() => { if (visible) startCycle(); }, 500);
+    else if (!reduced) { cycling = false; run++; reset(); }
+  }, { threshold: [0, 0.35] }).observe(section);
+</script>
