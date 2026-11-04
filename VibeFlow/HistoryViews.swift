@@ -26,10 +26,32 @@ enum HistoryWindow {
 // MARK: - Formatting
 
 enum HistoryFormat {
-    /// One line for the menu: "Q: Which option…" or the start of the text read.
+    /// One line for the menu: "Q: Which option…", "File: sales-call.m4a" or the start of the text read.
     static func menuTitle(_ entry: HistoryEntry) -> String {
-        let line = entry.kind == .question ? "Q: \(entry.question ?? "")" : entry.text
+        let line: String
+        switch entry.kind {
+        case .question: line = "Q: \(entry.question ?? "")"
+        case .transcription: line = "File: \(entry.sourceFileName ?? "transcript")"
+        case .read: line = entry.text
+        }
         return shorten(line, to: 60)
+    }
+
+    /// The list row's first line.
+    static func rowTitle(_ entry: HistoryEntry) -> String {
+        switch entry.kind {
+        case .question: entry.question ?? ""
+        case .transcription: entry.sourceFileName ?? "Transcript"
+        case .read: entry.text
+        }
+    }
+
+    static func symbol(_ entry: HistoryEntry) -> String {
+        switch entry.kind {
+        case .question: "questionmark.bubble"
+        case .transcription: "waveform.badge.mic"
+        case .read: entry.smart ? "sparkles" : "speaker.wave.2"
+        }
     }
 
     static func shorten(_ text: String, to length: Int) -> String {
@@ -41,6 +63,22 @@ enum HistoryFormat {
         switch entry.kind {
         case .question: return "Question"
         case .read: return entry.smart ? "Smart read" : "Read"
+        case .transcription: return "Transcript"
+        }
+    }
+}
+
+/// The History list's filter (canvas board 3): Transcripts are documents among the reads.
+enum HistoryFilter: String, CaseIterable, Identifiable {
+    case all = "All", reads = "Reads", questions = "Questions", transcripts = "Transcripts"
+    var id: String { rawValue }
+
+    func includes(_ entry: HistoryEntry) -> Bool {
+        switch self {
+        case .all: true
+        case .reads: entry.kind == .read
+        case .questions: entry.kind == .question
+        case .transcripts: entry.kind == .transcription
         }
     }
 }
@@ -49,24 +87,36 @@ enum HistoryFormat {
 
 struct HistoryView: View {
     @Environment(AppContainer.self) private var container
+    @State private var filter: HistoryFilter = .all
 
     var body: some View {
         @Bindable var container = container
-        let entries = container.history.entries
+        let entries = container.history.entries.filter(filter.includes)
         NavigationSplitView {
             List(selection: $container.historySelection) {
                 ForEach(entries) { entry in
-                    HistoryRow(entry: entry, source: container.appName(for: entry.sourceBundleID))
+                    HistoryRow(entry: entry, source: source(of: entry))
                         .tag(entry.id)
                         .contextMenu {
                             Button("Delete") { delete(entry) }
                         }
                 }
             }
+            .safeAreaInset(edge: .top) {
+                Picker("Show", selection: $filter) {
+                    ForEach(HistoryFilter.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+            }
             .overlay {
                 if entries.isEmpty {
                     ContentUnavailableView("No History Yet", systemImage: "clock.arrow.circlepath",
-                                           description: Text("Texts you read aloud and questions you ask show up here."))
+                                           description: Text(filter == .transcripts
+                                                             ? "Files you transcribe show up here."
+                                                             : "Texts you read aloud and questions you ask show up here."))
                 }
             }
             .onDeleteCommand {
@@ -75,12 +125,16 @@ struct HistoryView: View {
             .navigationSplitViewColumnWidth(min: 220, ideal: 260)
         } detail: {
             if let id = container.historySelection, let entry = entries.first(where: { $0.id == id }) {
-                HistoryDetail(entry: entry, source: container.appName(for: entry.sourceBundleID)) { delete(entry) }
+                HistoryDetail(entry: entry, source: source(of: entry)) { delete(entry) }
             } else {
                 Text("Select an entry").foregroundStyle(.secondary)
             }
         }
         .frame(minWidth: 560, minHeight: 360)
+    }
+
+    private func source(of entry: HistoryEntry) -> String {
+        entry.kind == .transcription ? "File" : container.appName(for: entry.sourceBundleID)
     }
 
     private func delete(_ entry: HistoryEntry) {
@@ -95,10 +149,10 @@ private struct HistoryRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(HistoryFormat.shorten(entry.kind == .question ? entry.question ?? "" : entry.text, to: 80))
+            Text(HistoryFormat.shorten(HistoryFormat.rowTitle(entry), to: 80))
                 .lineLimit(2)
             HStack(spacing: 4) {
-                Image(systemName: entry.kind == .question ? "questionmark.bubble" : (entry.smart ? "sparkles" : "speaker.wave.2"))
+                Image(systemName: HistoryFormat.symbol(entry))
                 Text("\(HistoryFormat.kindLabel(entry)) · \(source) · \(entry.date.formatted(.relative(presentation: .named)))")
             }
             .font(.caption)
@@ -110,11 +164,47 @@ private struct HistoryRow: View {
 
 private struct HistoryDetail: View {
     @Environment(AppContainer.self) private var container
+    @Environment(\.openWindow) private var openWindow
     let entry: HistoryEntry
     let source: String
     let onDelete: () -> Void
 
     var body: some View {
+        if entry.kind == .transcription {
+            transcriptDetail
+        } else {
+            readDetail
+        }
+    }
+
+    /// A transcript lives in its own window; History shows its start and opens it.
+    private var transcriptDetail: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Transcript of \(entry.sourceFileName ?? "a file"), \(entry.date.formatted(date: .abbreviated, time: .shortened))")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ScrollView {
+                Text(entry.text + (entry.text.count >= HistoryEntry.excerptLength ? "…" : ""))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            HStack {
+                Button("Open Transcript", systemImage: "doc.text") {
+                    if let id = entry.transcriptID { TranscriptWindow.present(openWindow, container: container, transcript: id) }
+                }
+                .keyboardShortcut(.defaultAction)
+                Button("Copy", systemImage: "doc.on.doc") {
+                    if let id = entry.transcriptID, let t = try? container.files.store.load(id) { container.copy(t.plainText) }
+                }
+                Spacer()
+                Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
+                    .help("Deletes the transcript too")
+            }
+        }
+        .padding()
+    }
+
+    private var readDetail: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("\(HistoryFormat.kindLabel(entry)) from \(source), \(entry.date.formatted(date: .abbreviated, time: .shortened))")
                 .font(.caption)
@@ -186,12 +276,22 @@ struct HistorySettings: View {
             Text("History")
         }
         .confirmationDialog("Clear all history?", isPresented: $confirmClear) {
-            Button("Clear History", role: .destructive) {
+            let transcripts = container.history.transcriptCount
+            Button(transcripts > 0 ? "Clear Reads and Questions" : "Clear History", role: .destructive) {
                 container.historySelection = nil
                 container.history.clear()
             }
+            if transcripts > 0 {
+                // Eng review R5: transcripts are documents; clearing them is its own choice.
+                Button("Also Delete \(transcripts) Transcript\(transcripts == 1 ? "" : "s")", role: .destructive) {
+                    container.historySelection = nil
+                    container.history.clear(includingTranscripts: true)
+                }
+            }
         } message: {
-            Text("Every saved read and answer is deleted from this Mac. This cannot be undone.")
+            Text(container.history.transcriptCount > 0
+                 ? "Reads and answers are deleted from this Mac. Transcripts stay unless you delete them too. This cannot be undone."
+                 : "Every saved read and answer is deleted from this Mac. This cannot be undone.")
         }
     }
 }

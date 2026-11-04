@@ -223,6 +223,18 @@ public struct HTTPResponse: Sendable {
 /// URLSession.data behind a protocol, for single-shot JSON APIs (Anthropic Messages).
 public protocol HTTPClient: Sendable {
     func send(_ request: URLRequest) async throws -> HTTPResponse
+    /// Sends `file` as the request body. The live client streams it from disk, so a long
+    /// recording never sits in memory (file transcription, eng review R6).
+    func upload(_ request: URLRequest, fromFile file: URL) async throws -> HTTPResponse
+}
+
+extension HTTPClient {
+    /// Default for test clients: the file becomes `httpBody`. The live client overrides this.
+    public func upload(_ request: URLRequest, fromFile file: URL) async throws -> HTTPResponse {
+        var request = request
+        request.httpBody = try Data(contentsOf: file)
+        return try await send(request)
+    }
 }
 
 // MARK: - 5. SessionClock (timeouts and confirm windows)
@@ -419,6 +431,72 @@ public struct Transcription: Sendable, Equatable {
         self.text = text
         self.noSpeechProbabilities = noSpeechProbabilities
     }
+}
+
+/// One Whisper segment of a file transcription: times in seconds from the start of the audio
+/// that was sent.
+public struct WhisperSegment: Sendable, Equatable {
+    public var start: Double
+    public var end: Double
+    public var text: String
+    public var noSpeechProbability: Double
+
+    public init(start: Double, end: Double, text: String, noSpeechProbability: Double) {
+        self.start = start
+        self.end = end
+        self.text = text
+        self.noSpeechProbability = noSpeechProbability
+    }
+}
+
+/// One stretch of a file transcript from a whole-file engine (design D3, D5): times in seconds
+/// from the start of the file. `speaker` is the engine's id ("speaker_0"), or "channel_0" /
+/// "channel_1" in multichannel mode, and nil when the engine cannot tell speakers apart.
+public struct SpeakerSegment: Sendable, Equatable {
+    public var speaker: String?
+    public var start: Double
+    public var end: Double
+    public var text: String
+
+    public init(speaker: String?, start: Double, end: Double, text: String) {
+        self.speaker = speaker
+        self.start = start
+        self.end = end
+        self.text = text
+    }
+}
+
+public struct FileTranscriptionOptions: Sendable, Equatable {
+    /// nil = let the engine decide (design D3, "Detect automatically").
+    public var speakers: Int?
+    /// BCP-47 or ISO 639 hint; nil = detect.
+    public var language: String?
+    /// Label channel 0 and 1 instead of guessing voices (eng review D7).
+    public var multichannel: Bool
+
+    public init(speakers: Int? = nil, language: String? = nil, multichannel: Bool = false) {
+        self.speakers = speakers
+        self.language = language
+        self.multichannel = multichannel
+    }
+}
+
+/// An engine that takes a whole file in one go: ElevenLabs Scribe for calls, Apple on-device.
+public protocol FileTranscriber: Sendable {
+    func transcribe(file: URL, options: FileTranscriptionOptions) async throws -> [SpeakerSegment]
+}
+
+/// The memo engine's per-piece call (design D5): Groq Whisper through OpenAITranscriber.
+public protocol PieceTranscriber: Sendable {
+    func transcribeSegments(_ audio: RecordedAudio, language: String?) async throws -> [WhisperSegment]
+}
+
+extension OpenAITranscriber: PieceTranscriber {}
+
+/// Summary and action items for a finished transcript (design D7). The live implementation
+/// asks Claude for structured output; the job validates the result against the transcript.
+public protocol TranscriptSummarizer: Sendable {
+    func summarize(_ transcript: Transcript) async throws -> Transcript.Summary
 }
 
 /// Transcription failures, classified for the fallback table in the design.

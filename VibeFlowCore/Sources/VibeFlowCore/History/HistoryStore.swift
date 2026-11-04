@@ -4,14 +4,16 @@ import OSLog
 
 private let log = Logger(subsystem: "one.floo.vibeflow", category: "history")
 
-/// One thing VibeFlow did for the user: a text it read aloud, or a follow-up question with
-/// Claude's answer.
+/// One thing VibeFlow did for the user: a text it read aloud, a follow-up question with
+/// Claude's answer, or a transcribed file.
 public struct HistoryEntry: Codable, Identifiable, Equatable, Sendable {
     public enum Kind: String, Codable, Sendable {
         /// A read or smart read of a selection or the clipboard.
         case read
         /// A follow-up question and its answer.
         case question
+        /// A transcribed file (file transcription D8); the transcript itself is its own file.
+        case transcription
     }
 
     public var id: UUID
@@ -27,11 +29,16 @@ public struct HistoryEntry: Codable, Identifiable, Equatable, Sendable {
     public var sourceBundleID: String?
     /// The start of the text the question was about, for `.question` entries.
     public var documentExcerpt: String?
+    /// The transcript file, for `.transcription` entries.
+    public var transcriptID: UUID?
+    /// "sales-call.m4a", for `.transcription` entries.
+    public var sourceFileName: String?
 
     public static let excerptLength = 200
 
     public init(id: UUID = UUID(), kind: Kind, date: Date, text: String, question: String? = nil, smart: Bool = false,
-                sourceBundleID: String? = nil, documentExcerpt: String? = nil) {
+                sourceBundleID: String? = nil, documentExcerpt: String? = nil, transcriptID: UUID? = nil,
+                sourceFileName: String? = nil) {
         self.id = id
         self.kind = kind
         self.date = date
@@ -40,6 +47,14 @@ public struct HistoryEntry: Codable, Identifiable, Equatable, Sendable {
         self.smart = smart
         self.sourceBundleID = sourceBundleID
         self.documentExcerpt = documentExcerpt
+        self.transcriptID = transcriptID
+        self.sourceFileName = sourceFileName
+    }
+
+    /// `text` is the transcript's first 200 characters; the window loads the rest by id.
+    public static func transcription(_ transcript: Transcript) -> HistoryEntry {
+        HistoryEntry(kind: .transcription, date: transcript.date, text: transcript.excerpt,
+                     transcriptID: transcript.id, sourceFileName: transcript.sourceFileName)
     }
 
     public static func read(_ text: String, smart: Bool, from bundleID: String?, at date: Date) -> HistoryEntry {
@@ -102,14 +117,49 @@ public final class HistoryStore {
 
     @ObservationIgnored private let fileURL: URL?
     @ObservationIgnored private let now: () -> Date
+    /// Where transcription entries keep their transcripts; deleting an entry deletes its file.
+    @ObservationIgnored private let transcripts: TranscriptStore?
 
     /// `fileURL` nil keeps the history in memory only (previews and tests).
-    public init(fileURL: URL?, retention: HistoryRetention = .default, now: @escaping () -> Date = Date.init) {
+    public init(fileURL: URL?, retention: HistoryRetention = .default, transcripts: TranscriptStore? = nil,
+                now: @escaping () -> Date = Date.init) {
         self.fileURL = fileURL
         self.retention = retention
+        self.transcripts = transcripts
         self.now = now
         load()
         if prune() { save() }
+    }
+
+    public var transcriptCount: Int { entries.filter { $0.kind == .transcription }.count }
+
+    /// Adds a transcript's entry, or refreshes it when the transcript is saved again (summary).
+    public func upsertTranscript(_ transcript: Transcript) {
+        let entry = HistoryEntry.transcription(transcript)
+        if let index = entries.firstIndex(where: { $0.transcriptID == transcript.id }) {
+            entries[index].text = entry.text
+            entries[index].sourceFileName = entry.sourceFileName
+            save()
+        } else {
+            add(entry)
+        }
+    }
+
+    /// Launch sweep (eng review R5): a transcript file without an entry (saved, then the app
+    /// quit before History was written) gets its entry back.
+    public func adoptOrphanTranscripts() {
+        guard let transcripts else { return }
+        let known = Set(entries.compactMap(\.transcriptID))
+        var adopted = false
+        for id in transcripts.storedIDs() where !known.contains(id) {
+            guard let transcript = try? transcripts.load(id) else { continue }
+            entries.append(HistoryEntry.transcription(transcript))
+            adopted = true
+        }
+        if adopted {
+            entries.sort { $0.date > $1.date }
+            save()
+        }
     }
 
     /// ~/Library/Application Support/VibeFlow/history.json
@@ -124,39 +174,71 @@ public final class HistoryStore {
         save()
     }
 
+    /// Deletes an entry; a transcription entry takes its transcript file with it (R5).
     public func delete(_ id: HistoryEntry.ID) {
-        let before = entries.count
+        guard let entry = entries.first(where: { $0.id == id }) else { return }
         entries.removeAll { $0.id == id }
-        if entries.count != before { save() }
-    }
-
-    public func clear() {
-        entries = []
         save()
+        deleteTranscript(of: entry)
     }
 
-    /// Applies the retention limit. Returns whether anything was removed.
+    /// Clears reads and questions. Transcripts stay unless `includingTranscripts`, because they
+    /// are documents, not a log (R5); Settings asks first.
+    public func clear(includingTranscripts: Bool = false) {
+        let removed = includingTranscripts ? entries : entries.filter { $0.kind != .transcription }
+        entries = includingTranscripts ? [] : entries.filter { $0.kind == .transcription }
+        save()
+        removed.forEach(deleteTranscript)
+    }
+
+    private func deleteTranscript(of entry: HistoryEntry) {
+        guard let id = entry.transcriptID, let transcripts else { return }
+        do { try transcripts.delete(id) } catch {
+            log.notice("Transcript not deleted: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Applies the retention limit to reads and questions; transcripts are kept until deleted
+    /// (eng review R5). Returns whether anything was removed.
     @discardableResult
     private func prune() -> Bool {
         let before = entries.count
         switch retention {
         case .entries(let n):
-            if entries.count > n { entries.removeLast(entries.count - n) }
+            var kept = 0
+            entries.removeAll { entry in
+                guard entry.kind != .transcription else { return false }
+                kept += 1
+                return kept > n
+            }
         case .days(let n):
             let cutoff = now().addingTimeInterval(-Double(n) * 86_400)
-            entries.removeAll { $0.date < cutoff }
+            entries.removeAll { $0.kind != .transcription && $0.date < cutoff }
         }
         return entries.count != before
     }
 
+    /// Entries this version cannot decode (a kind from a newer VibeFlow) are skipped, not the
+    /// whole file, so a newer build sharing history.json never empties it here.
     private func load() {
         guard let fileURL, FileManager.default.fileExists(atPath: fileURL.path) else { return }
         do {
             let data = try Data(contentsOf: fileURL)
-            entries = try Self.decoder.decode([HistoryEntry].self, from: data).sorted { $0.date > $1.date }
+            let lossy = try Self.decoder.decode([Lossy].self, from: data)
+            entries = lossy.compactMap(\.entry).sorted { $0.date > $1.date }
+            if lossy.count != entries.count {
+                log.notice("History: skipped \(lossy.count - self.entries.count, privacy: .public) entries from a newer version")
+            }
         } catch {
             log.notice("History unreadable, starting empty: \(error.localizedDescription, privacy: .public)")
             entries = []
+        }
+    }
+
+    private struct Lossy: Decodable {
+        let entry: HistoryEntry?
+        init(from decoder: Decoder) throws {
+            entry = try? HistoryEntry(from: decoder)
         }
     }
 

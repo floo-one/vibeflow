@@ -14,7 +14,8 @@ public enum OnDeviceModelState: Sendable, Equatable {
 
 /// Apple on-device dictation via SpeechAnalyzer + SpeechTranscriber (macOS 26, D8). DictationTranscriber was probed on 2026-10-03 and only emitted volatile, never final, results for a file, and rendered "four thousand francs" as "Fr.4000"; SpeechTranscriber with the transcription preset returns final segments with correct text.
 /// Transcribes a finished recording from a temporary file; never touches the network.
-public final class AppleTranscriber: Transcriber {
+/// Also the offline engine for whole files (file transcription D5): one pass, no speakers.
+public final class AppleTranscriber: Transcriber, FileTranscriber {
     public init() {}
 
     public static var isAvailable: Bool {
@@ -26,11 +27,36 @@ public final class AppleTranscriber: Transcriber {
         guard #available(macOS 26.0, *) else {
             throw TranscriptionFailure.unavailable("On-device dictation needs macOS 26")
         }
-        return try await Self.transcribe26(audio, language: language)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("vibeflow-\(UUID().uuidString).wav")
+        defer { try? FileManager.default.removeItem(at: url) }
+        do {
+            try audio.wav.write(to: url)
+        } catch {
+            throw TranscriptionFailure.unavailable(error.localizedDescription)
+        }
+        let segments = try await Self.analyze(wavAt: url, language: language)
+        let text = segments.map(\.text).joined()
+        return Transcription(text: text.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
+    /// A whole audio or video file: decoded to 16 kHz mono first (AVAudioFile reads no video),
+    /// then one pass in the system language unless `options.language` says otherwise (design Q3).
+    public func transcribe(file: URL, options: FileTranscriptionOptions) async throws -> [SpeakerSegment] {
+        guard #available(macOS 26.0, *) else {
+            throw TranscriptionFailure.unavailable("On-device transcription needs macOS 26")
+        }
+        let decoded = try await AudioFileDecoder.decode(file)
+        defer { decoded.remove() }
+        return try await Self.analyze(wavAt: decoded.wavURL, language: options.language).map {
+            SpeakerSegment(speaker: nil, start: $0.start, end: $0.end,
+                           text: $0.text.trimmingCharacters(in: .whitespacesAndNewlines))
+        }.filter { !$0.text.isEmpty }
+    }
+
+    /// Final results of SpeechTranscriber for a WAV, in order, with their time ranges. Text is
+    /// returned as the analyzer gives it (dictation joins it with no separator, as before).
     @available(macOS 26.0, *)
-    private static func transcribe26(_ audio: RecordedAudio, language: String?) async throws -> Transcription {
+    static func analyze(wavAt url: URL, language: String?) async throws -> [SpeakerSegment] {
         let wanted = Locale(identifier: language ?? Locale.current.identifier)
         guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: wanted) else {
             throw TranscriptionFailure.unavailable("No on-device model for \(wanted.identifier)")
@@ -40,27 +66,25 @@ public final class AppleTranscriber: Transcriber {
             throw TranscriptionFailure.assetsMissing(language: locale.identifier)
         }
 
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("vibeflow-\(UUID().uuidString).wav")
-        defer { try? FileManager.default.removeItem(at: url) }
         do {
-            try audio.wav.write(to: url)
             let file = try AVAudioFile(forReading: url)
             let analyzer = SpeechAnalyzer(modules: [transcriber])
 
-            async let collected: String = {
-                var text = ""
+            async let collected: [SpeakerSegment] = {
+                var segments: [SpeakerSegment] = []
                 for try await result in transcriber.results where result.isFinal {
-                    text += String(result.text.characters)
+                    let range = result.range
+                    segments.append(SpeakerSegment(speaker: nil, start: range.start.seconds,
+                                                   end: range.end.seconds, text: String(result.text.characters)))
                 }
-                return text
+                return segments
             }()
             if let end = try await analyzer.analyzeSequence(from: file) {
                 try await analyzer.finalizeAndFinish(through: end)
             } else {
                 await analyzer.cancelAndFinishNow()
             }
-            let text = try await collected
-            return Transcription(text: text.trimmingCharacters(in: .whitespacesAndNewlines))
+            return try await collected
         } catch let failure as TranscriptionFailure {
             throw failure
         } catch {

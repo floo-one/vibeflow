@@ -111,14 +111,21 @@ public final class AnthropicClient: SmartReadClient {
 
     /// One Messages API call with a system prompt and a single user message. Shared by smart
     /// read and dictation cleanup (D4: Anthropic as the optional cleanup provider).
-    public func complete(system: String, user: String, model: String, maxTokens: Int) async throws -> SmartReadResponse {
-        try await complete(system: system, messages: [ChatMessage(role: .user, content: user)], model: model, maxTokens: maxTokens)
+    public func complete(system: String, user: String, model: String, maxTokens: Int,
+                         timeout: TimeInterval = AnthropicClient.timeout) async throws -> SmartReadResponse {
+        try await complete(system: system, messages: [ChatMessage(role: .user, content: user)], model: model, maxTokens: maxTokens,
+                           timeout: timeout)
     }
 
+    /// Smart read and follow-ups: short inputs, fast replies.
+    public static let timeout: TimeInterval = 25
+
     /// One Messages API call with a system prompt and alternating user and assistant messages.
-    public func complete(system: String, messages: [ChatMessage], model: String, maxTokens: Int) async throws -> SmartReadResponse {
+    public func complete(system: String, messages: [ChatMessage], model: String, maxTokens: Int,
+                         timeout: TimeInterval = AnthropicClient.timeout) async throws -> SmartReadResponse {
         guard let key = secrets.read(.anthropic) else { throw SmartReadFailure.unauthorized }
-        let urlRequest = Self.buildRequest(system: system, messages: messages, model: model, maxTokens: maxTokens, apiKey: key, baseURL: baseURL)
+        let urlRequest = Self.buildRequest(system: system, messages: messages, model: model, maxTokens: maxTokens, apiKey: key, baseURL: baseURL,
+                                           timeout: timeout)
 
         let response: HTTPResponse
         do {
@@ -143,13 +150,14 @@ public final class AnthropicClient: SmartReadClient {
         return SmartReadResponse(text: text, stopReason: Self.stopReason(message.stop_reason))
     }
 
-    static func buildRequest(system: String, messages: [ChatMessage], model: String, maxTokens: Int, apiKey: String, baseURL: URL, stream: Bool = false) -> URLRequest {
+    static func buildRequest(system: String, messages: [ChatMessage], model: String, maxTokens: Int, apiKey: String, baseURL: URL, stream: Bool = false,
+                             timeout: TimeInterval = AnthropicClient.timeout) -> URLRequest {
         var req = URLRequest(url: baseURL.appendingPathComponent("/v1/messages"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         req.setValue(apiVersion, forHTTPHeaderField: "anthropic-version")
-        req.timeoutInterval = 25
+        req.timeoutInterval = timeout
         var body: [String: Any] = [
             "model": model,
             "max_tokens": maxTokens,
