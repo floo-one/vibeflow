@@ -46,6 +46,8 @@
 	<string>rf85YJNkBmW+elZ2A221ehTLacC6jKKGjqVgDyQve9s=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>21600</integer>
+	<key>SentryDSN</key>
+	<string>$(SENTRY_DSN)</string>
 	<key>VFBuildDate</key>
 	<string>$(VF_BUILD_DATE)</string>
 	<key>VFGitBranch</key>

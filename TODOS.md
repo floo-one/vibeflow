@@ -179,3 +179,37 @@
 **Effort:** S
 **Priority:** P3
 
+
+## Feedback
+
+### Link feedback to the crash that preceded it
+
+**What:** When feedback is sent within 10 minutes of a captured crash or error, pass that event's id as `associatedEventId` so Sentry shows the note on the crash.
+
+**Why:** Deferred in the feedback eng review (D2, 2026-11-02). Today a note and its crash are two items you match by install id.
+
+**Pros:** "It just crashed" notes become actionable from one Sentry screen.
+
+**Cons:** Persisted last-event id plus a time-window rule, both to test.
+
+**Context:** docs/designs/feedback.md (F9, R-ledger D2). Start in FeedbackSender: remember the event id in `beforeSend`, keep it across relaunch, read it when the form opens.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** the feedback PR shipped and a first real crash-plus-note pair.
+
+### Show and send a screenshot in the feedback preview
+
+**What:** Optional window screenshot that appears in the "What gets sent" preview, and send exactly those bytes.
+
+**Why:** Dropped from the first version (D9, 2026-11-02) because pixels bypassed the text preview and Settings shows the Google email and calendar names.
+
+**Pros:** Layout and visual bugs arrive with a picture.
+
+**Cons:** Needs an image preview, a decision on which window to capture, and care with panes that show account data.
+
+**Context:** docs/designs/feedback.md (R6). `NSView.cacheDisplay` on the window's content view needs no screen-recording permission; check how the sidebar's visual effect view renders.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** the feedback PR shipped; a visual bug that was hard to describe.
