@@ -101,9 +101,13 @@ const feats = [
     field.textContent = ''; field.classList.remove('typing');
     notch.classList.remove('on');
   }
+  // While the scroll plays the beats, the page ground takes each feature's colour.
+  const GROUND: Record<F, string> = { read: '#F1F6FE', smart: '#F4F2FE', dict: '#FEF3F2' };
   function mark(f: F) {
     feats.forEach((x) => x.classList.toggle('on', fOf(x) === f));
     notch.dataset.f = f; notch.style.setProperty('--tint', TINT[f]);
+    // The page tracker (home-motion.ts) paints the ground; it reads this while Voice is centred.
+    if (scrubbing) { section.dataset.ground = GROUND[f]; dispatchEvent(new Event('vf:ground')); }
   }
 
   // Reduced motion: each feature is one still frame, chosen by hover or focus, never cycled.

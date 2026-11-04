@@ -14,6 +14,7 @@
   --menu-blue: #2F6FE8; /* macOS menu highlight, darkened for 4.6:1 with white */
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --bar-h: 44px;
+  --page: #FFFFFF;
 }
 
 /* Reset */
@@ -25,7 +26,7 @@ html, body { overflow-x: clip; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body {
   margin: 0;
-  background: var(--ground);
+  background: var(--page); /* the page ground; the homepage tints it per section (home-motion.ts) */
   color: var(--text);
   font-family: var(--font);
   font-size: 16px;

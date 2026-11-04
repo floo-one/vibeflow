@@ -4,6 +4,36 @@
 // the hero while this is known to run (.js and no-preference).
 import { gsap, ScrollTrigger, EASE, MOTION } from './motion';
 
+// The page ground takes on each section's colour as it reaches the middle of the screen: white for
+// the hero, a soft tint of the feature colour after it (the Shortcuts tour and the two dark bands
+// paint their own). Voice shifts it per beat itself. Reduced motion switches without the fade.
+const GROUNDS: [string, string][] = [
+  ['.hero', '#FFFFFF'], ['#voice', '#F1F6FE'], ['#ask', '#F4F2FE'], ['#show', '#F5F4FC'],
+  ['#tools', '#EFF7F3'], ['.extras', '#EFF7F3'], ['#pricing', '#FFFFFF'], ['#faq', '#FFFFFF'],
+];
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const paintGround = (color: string) => {
+  document.documentElement.dataset.ground = color; // shared with Voice, which paints its beats
+  gsap.to(document.documentElement, { '--page': color, duration: still ? 0 : 0.8, ease: 'power2.out', overwrite: 'auto' });
+};
+// One tracker for the whole page, so a jump (End key, a menu link) still lands on the right colour:
+// whichever listed section sits at 55% of the screen paints the ground; in between (the tour, the
+// dark bands) the last colour stays.
+const grounds = GROUNDS.map(([sel, color]) => [document.querySelector(sel), color] as const).filter(([el]) => el);
+const pick = () => {
+  const line = innerHeight * 0.55;
+  for (const [el, color] of grounds) {
+    const r = el!.getBoundingClientRect();
+    if (r.top <= line && r.bottom > line) {
+      const want = (el as HTMLElement).dataset.ground || color; // Voice sets its beat's colour here
+      if (document.documentElement.dataset.ground !== want) paintGround(want);
+      return;
+    }
+  }
+};
+ScrollTrigger.create({ start: 0, end: 'max', onUpdate: pick, onRefresh: pick });
+addEventListener('vf:ground', pick);
+
 gsap.matchMedia().add(MOTION, () => {
   const hero = document.querySelector<HTMLElement>('.hero');
   if (hero) {
