@@ -164,20 +164,27 @@ final class LiveClipboardSource: ClipboardSourcing {
 
 // MARK: - Dictation cues on NSSound
 
-/// Short system sounds when the microphone opens and closes, like FreeFlow. Loaded once and
-/// restarted on each cue so a quick press-release-press still plays every sound.
+/// Short system sounds when the microphone opens and closes, like FreeFlow, and a lower one
+/// when a dictation is cancelled, so a cancel never sounds like a finished dictation. Loaded
+/// once and restarted on each cue so a quick press-release-press still plays every sound.
 @MainActor
 final class DictationSounds {
     private let started = NSSound(named: "Tink")
     private let stopped = NSSound(named: "Pop")
+    private let cancelled = NSSound(named: "Bottle")
 
     init() {
         started?.volume = 0.5
         stopped?.volume = 0.5
+        cancelled?.volume = 0.5
     }
 
     func play(_ cue: DictationCue) {
-        let sound = cue == .recordingStarted ? started : stopped
+        let sound = switch cue {
+        case .recordingStarted: started
+        case .recordingStopped: stopped
+        case .cancelled: cancelled
+        }
         sound?.stop()
         sound?.play()
     }
