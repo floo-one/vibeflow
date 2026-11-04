@@ -166,7 +166,7 @@ const first = FLAT[0];
   .kt-k.hold .fill { animation: kt-fill 1.6s linear forwards; }
   @keyframes kt-fill { to { height: 100%; } }
 
-  .kt-sec { background: var(--ground); border-radius: 22px; padding: 26px 24px 10px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent); transition: box-shadow 0.4s; }
+  .kt-sec { position: relative; background: var(--ground); border-radius: 22px; padding: 26px 24px 10px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent); transition: box-shadow 0.4s; }
   .kt-sec.on { box-shadow: 0 0 0 2px var(--c), 0 20px 40px -28px var(--c); }
   .kt-sh { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
   .kt-sh .lbl { display: flex; gap: 4px; }
@@ -198,6 +198,30 @@ const first = FLAT[0];
   .kt-snap-at { scroll-margin-top: var(--m); }
   .kt-sh.kt-snap-at { --m: 48px; }
   .kt-step h4.kt-snap-at { --m: 52px; }
+
+  /* Wide screens with scripts: one line down the middle, the sections alternate left and right
+     of it, and the keyboard holds the other half, leaving the screen to change sides. Without
+     scripts the plain two columns above stay. */
+  @media (min-width: 901px) {
+    .js .kt-body { --kt-gutter: 44px; grid-template-columns: 1fr; gap: 0; }
+    .js .kt-stage, .js .kt-secs { grid-area: 1 / 1; }
+    .js .kt-stage { z-index: 2; width: calc(50% - var(--kt-gutter)); justify-self: end; }
+    .js .kt-secs { position: relative; }
+    .js .kt-secs::before {
+      content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; border-radius: 1px;
+      background: linear-gradient(to bottom, transparent, var(--line-2) 64px, var(--line-2) calc(100% - 64px), transparent);
+    }
+    .js .kt-sec { width: calc(50% - var(--kt-gutter)); }
+    .js .kt-sec:nth-child(even) { margin-left: auto; }
+    /* Each section's node on the line, level with its title */
+    .js .kt-sec::after {
+      content: ""; position: absolute; top: 34px; width: 14px; height: 14px; border-radius: 50%;
+      background: var(--ground); box-shadow: 0 0 0 2px var(--c); transition: background 0.3s, box-shadow 0.3s;
+    }
+    .js .kt-sec:nth-child(odd)::after { right: calc(-1 * var(--kt-gutter) - 7px); }
+    .js .kt-sec:nth-child(even)::after { left: calc(-1 * var(--kt-gutter) - 7px); }
+    .js .kt-sec.on::after { background: var(--c); box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 22%, transparent); }
+  }
 
   @media (max-width: 900px) {
     .kt-wrap { padding: 64px 20px 24px; }
@@ -296,19 +320,15 @@ const first = FLAT[0];
   }
 
   // Poses: each section puts the keyboard somewhere new, so the long tour keeps changing shape.
-  // Wide screens: Smart read swaps the columns and drops the keyboard low, Read swaps back with it
-  // high, Paste again goes right and low. The keyboard never crosses the cards: it slides out and
-  // fades, the list moves over, then it slides in on its new side. Phones: every section swipes
-  // the keyboard in from the side, and Smart read drops it to the bottom of the screen.
+  // Wide screens: the sections alternate left and right of the center line and the keyboard holds
+  // the other half; to change sides it leaves the screen on its side and comes back in from the
+  // opposite edge. Phones: every section swipes the keyboard in from the side, and Smart read
+  // drops it to the bottom of the screen.
   const secIds = [...new Set(flat.map((f) => f.sec.id))];
   const secOf = (a: HTMLElement) => secIds.indexOf(a.closest<HTMLElement>('.kt-sec')!.dataset.sec!);
   const body = section.querySelector<HTMLElement>('.kt-body')!;
-  const DESK = [{ side: 0, v: 0 }, { side: 1, v: 1 }, { side: 0, v: -1 }, { side: 1, v: 1 }];
   const PHONE_LOW = [false, true, false, false];
   const phoneLow = (n: number) => PHONE_LOW[n % PHONE_LOW.length];
-  // v: -1 tucks the keyboard under the menu bar, 1 rests it near the bottom, 0 keeps it level
-  // with the reading line.
-  const deskY = (v: number) => (v < 0 ? 68 - deskTop() : v > 0 ? Math.max(0, innerHeight - 32 - deskTop() - stage.offsetHeight) : 0);
   let mode: 'off' | 'desk' | 'phone' = 'off', posed = -1;
   let poseTl: gsap.core.Timeline | null = null;
 
@@ -319,21 +339,18 @@ const first = FLAT[0];
     poseTl?.kill();
     const instant = now || first || reduce;
     if (mode === 'desk') {
-      const p = DESK[n % DESK.length], gap = parseFloat(getComputedStyle(body).columnGap) || 0;
-      const sx = p.side ? secsEl.offsetWidth + gap : 0, sy = deskY(p.v), lx = p.side ? -(stage.offsetWidth + gap) : 0;
-      if (instant) { gsap.set(stage, { x: sx, y: sy, autoAlpha: 1 }); gsap.set(secsEl, { x: lx }); return; }
+      // Even sections sit left of the line, so the keyboard takes the right (x 0, its CSS place).
+      const tx = n % 2 === 0 ? 0 : -(body.clientWidth - stage.offsetWidth);
       const cx = gsap.getProperty(stage, 'x') as number;
-      poseTl = gsap.timeline();
-      if (Math.abs(cx - sx) < 1) {
-        poseTl.to(stage, { y: sy, autoAlpha: 1, duration: 0.8, ease: 'power3.inOut' });
-        return;
-      }
-      const dir = sx > cx ? 1 : -1;
-      poseTl
-        .to(stage, { x: cx - dir * 40, autoAlpha: 0, duration: 0.28, ease: 'power2.in' })
-        .to(secsEl, { x: lx, duration: 0.6, ease: 'power3.inOut' }, 0.08)
-        .set(stage, { x: sx + dir * 72, y: sy }, 0.4)
-        .to(stage, { x: sx, autoAlpha: 1, duration: 0.65, ease: 'power3.out' }, 0.62);
+      if (instant || Math.abs(cx - tx) < 1) { gsap.set(stage, { x: tx }); return; }
+      const r = stage.getBoundingClientRect(), toLeft = tx < cx;
+      const out = toLeft ? cx + (innerWidth - r.left) + 24 : cx - r.right - 24;
+      const landLeft = r.left + (tx - cx);
+      const enter = toLeft ? tx - (landLeft + r.width) - 24 : tx + (innerWidth - landLeft) + 24;
+      poseTl = gsap.timeline()
+        .to(stage, { x: out, duration: 0.3, ease: 'power2.in' })
+        .set(stage, { x: enter })
+        .to(stage, { x: tx, duration: 0.7, ease: 'power3.out' });
     } else {
       const low = phoneLow(n), sy = low ? Math.max(0, innerHeight - BAR - stage.offsetHeight) : 0;
       stage.classList.toggle('low', low);
@@ -398,12 +415,13 @@ const first = FLAT[0];
   // stays put; anything more is empty page. Runs before ScrollTrigger measures.
   const lastSec = secsEl.lastElementChild as HTMLElement;
   function pad() {
+    // Center line: sections are spaced by more than the keyboard's height, so it always has a gap
+    // to change sides in.
+    secsEl.style.rowGap = mode === 'desk' ? `${stage.offsetHeight + 140}px` : '';
     const a = flat[flat.length - 1].anchor;
     const stageTop = narrow() ? BAR : deskTop();
-    // A keyboard posed low in the last section needs that much more room before the tour ends.
-    const low = mode === 'desk' ? Math.max(0, deskY(DESK[(secIds.length - 1) % DESK.length].v)) : 0;
     const listEndAtLine = target(a) + (lastSec.getBoundingClientRect().bottom - a.getBoundingClientRect().top);
-    secsEl.style.paddingBottom = Math.max(24, Math.ceil(stageTop + stage.offsetHeight + low - listEndAtLine + 24)) + 'px';
+    secsEl.style.paddingBottom = Math.max(24, Math.ceil(stageTop + stage.offsetHeight - listEndAtLine + 24)) + 'px';
   }
   pad();
   ScrollTrigger.addEventListener('refreshInit', pad);
@@ -420,14 +438,19 @@ const first = FLAT[0];
     },
   });
 
+  // On the center line a new section takes over while the gap before it passes the keyboard, so
+  // the keyboard has left before a card on its side could reach it.
+  const opens = (i: number) => i === 0 || flat[i - 1].sec.id !== flat[i].sec.id;
+  const lead = (i: number) => (mode === 'desk' && opens(i) ? stage.offsetHeight + 48 : early());
+
   // Each step owns the stretch from its headline to the next one's, measured at the reading line.
   flat.forEach((f, i) => {
     const next = flat[i + 1]?.anchor;
     ScrollTrigger.create({
       trigger: f.anchor,
-      start: () => `top ${target(f.anchor) + early()}px`,
+      start: () => `top ${target(f.anchor) + lead(i)}px`,
       endTrigger: next ?? section,
-      end: next ? () => `top ${target(next) + early()}px` : 'bottom top',
+      end: next ? () => `top ${target(next) + lead(i + 1)}px` : 'bottom top',
       onToggle: (self) => { if (self.isActive) activate(i); },
       onLeaveBack: () => { if (i === 0) activate(0); },
     });
