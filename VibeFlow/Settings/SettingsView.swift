@@ -3,7 +3,7 @@ import SwiftUI
 /// The Settings panes in sidebar order. Title, symbol and colour live here so the menu can
 /// use the same look for the same feature.
 enum SettingsTab: Hashable, CaseIterable {
-    case general, accounts, usage, read, smartRead, dictation, clocks, meetings, pomodoro, keepAwake
+    case general, accounts, usage, read, smartRead, dictation, clocks, meetings, pomodoro, keepAwake, desktops
 
     var title: String {
         switch self {
@@ -17,6 +17,7 @@ enum SettingsTab: Hashable, CaseIterable {
         case .meetings: return "Meetings"
         case .keepAwake: return "Keep Awake"
         case .pomodoro: return "Pomodoro"
+        case .desktops: return "Desktops"
         }
     }
 
@@ -32,6 +33,7 @@ enum SettingsTab: Hashable, CaseIterable {
         case .meetings: return "calendar"
         case .keepAwake: return "cup.and.saucer.fill"
         case .pomodoro: return "timer"
+        case .desktops: return "rectangle.3.group"
         }
     }
 
@@ -42,7 +44,7 @@ enum SettingsTab: Hashable, CaseIterable {
         case .smartRead: return FeatureColor.smartRead
         case .dictation: return FeatureColor.dictation
         case .clocks, .meetings, .pomodoro: return FeatureColor.tools
-        case .keepAwake: return FeatureColor.utilities
+        case .keepAwake, .desktops: return FeatureColor.utilities
         }
     }
 }
@@ -84,6 +86,7 @@ struct SettingsView: View {
                 }
                 Section("Utilities") {
                     row(.keepAwake)
+                    row(.desktops)
                 }
             }
             .navigationSplitViewColumnWidth(SettingsWindow.sidebarWidth)
@@ -134,6 +137,7 @@ struct SettingsView: View {
         case .meetings: MeetingsTab()
         case .keepAwake: KeepAwakePane()
         case .pomodoro: PomodoroPane()
+        case .desktops: DesktopsPane()
         }
     }
 }

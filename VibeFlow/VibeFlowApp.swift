@@ -55,6 +55,13 @@ struct VibeFlowApp: App {
             KeepAwakeLabel(now: clock.now)
                 .environment(container)
         }
+        MenuBarExtra(isInserted: roleTagInserted) {
+            DesktopsMenuItems()
+                .environment(container)
+        } label: {
+            RoleTagLabel()
+                .environment(container)
+        }
         Settings {
             SettingsView()
                 .environment(container)
@@ -104,6 +111,12 @@ struct VibeFlowApp: App {
     /// Shown while a keep-awake session runs; started from the VibeFlow menu.
     private var keepAwakeInserted: Binding<Bool> {
         Binding(get: { container.keepAwake.isActive }, set: { _ in })
+    }
+
+    /// Shown, when turned on in Settings > Desktops, while the focused screen shows a desktop
+    /// that has a role. Off by default: the item looks the same on every screen's menu bar.
+    private var roleTagInserted: Binding<Bool> {
+        Binding(get: { container.preferences.desktopRoleTag && container.desktops.currentRole != nil }, set: { _ in })
     }
 
     /// Shown while there is at least one clock; the Clocks tab is the only way to change that.

@@ -226,6 +226,56 @@ Follow-ups to docs/designs/file-transcription.md (eng review 2026-11-04). Build 
 **Priority:** P3
 
 
+## Desktops
+
+### Drift fixing for Desktop Roles
+
+**What:** A dot on the role tag when a role's window sits on another desktop; a click sends it home.
+
+**Why:** The third gap from the 2026-11-02 office hours ("fix drift later"); v1 only does the morning setup and the glance.
+
+**Context:** docs/designs/desktop-roles.md. Reuses DesktopSetup's inventory and planner. macOS blocks moving windows between Spaces with SIP on, so "send home" may have to close and reopen the window in place; check that first.
+
+**Effort:** M
+**Priority:** P2
+**Depends on:** Desktop Roles v1 morning walk.
+
+### Clock out when switching to Personal
+
+**What:** Entering the Personal role hides work apps (Slack, Mail) and turns on a Focus.
+
+**Why:** Makes the desktops a line between work and home, not only a layout.
+
+**Context:** Out of scope for v1 (premise 6 in docs/designs/desktop-roles.md). There is no public API to set a Focus; it would go through a user Shortcut.
+
+**Effort:** S
+**Priority:** P3
+**Depends on:** Desktop Roles v1.
+
+### Per-role VibeFlow context
+
+**What:** A role also switches VibeFlow's own context: dictation vocabulary, project links, a "resume here" note.
+
+**Why:** Codex's "coolest version" in the office hours second opinion.
+
+**Context:** docs/designs/desktop-roles.md, Cross-Model Perspective. Shape it after two weeks of using v1 roles.
+
+**Effort:** M
+**Priority:** P3
+**Depends on:** Desktop Roles v1 in daily use.
+
+### Snapshot-first role setup
+
+**What:** Arrange a desktop by hand and choose "Remember as Comms"; VibeFlow records apps, Chrome profile and tabs.
+
+**Why:** Setup by doing instead of filling in a form (Approach C in the design).
+
+**Context:** docs/designs/desktop-roles.md, Approaches Considered. Tab URLs need the Automation permission per browser. Sits on the v1 engine.
+
+**Effort:** L
+**Priority:** P3
+**Depends on:** Desktop Roles v1.
+
 ## Feedback
 
 ### Link feedback to the crash that preceded it
