@@ -22,7 +22,7 @@
 
    ```bash
    xcodegen generate
-   xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug -derivedDataPath build/DerivedData build
+   xcodebuild -project Maagical.xcodeproj -scheme Maagical -configuration Debug -derivedDataPath build/DerivedData build
    ```
 
 4. Grant Accessibility when asked, and Microphone on the first dictation, then add your keys
@@ -58,13 +58,13 @@ Accessibility permission on every rebuild; remove the old entry and grant it aga
 
 ## Test
 
-The logic lives in the `VibeFlowCore` Swift package behind small protocols (pasteboard,
+The logic lives in the `MaagicalCore` Swift package behind small protocols (pasteboard,
 accessibility, speech provider, audio player, audio recorder, transcriber, clock, smart read
 client, secrets), so everything from both state machines to the paste and Copy fallbacks is
 tested with in-memory fakes:
 
 ```bash
-cd VibeFlowCore && swift test
+cd MaagicalCore && swift test
 ```
 
 Live goldens that call the real Anthropic API (injection resistance, brief keeps
@@ -106,7 +106,7 @@ not work). Both go into the login keychain, nothing into the repo.
 
 Crash reports and Send Feedback go to Sentry (organization `floo-one`, project `vibeflow`,
 EU region; docs/designs/feedback.md). The app only carries the send-only DSN, committed in
-`Config/VibeFlow.xcconfig`. `release.sh` uploads each build's debug symbols so crash stack
+`Config/Maagical.xcconfig`. `release.sh` uploads each build's debug symbols so crash stack
 traces are readable; that needs `sentry-cli` and an organization auth token
 (floo-one.sentry.io/settings/auth-tokens/) in the login keychain:
 
@@ -122,7 +122,7 @@ Installed copies update themselves with [Sparkle](https://sparkle-project.org): 
 release is signed with a private EdDSA key, and the app checks it against its public key,
 `SUPublicEDKey` in `project.yml`. The private key lives in the login keychain under the
 Sparkle account `vibeflow`. Sparkle's tools appear after the first build (or
-`xcodebuild -resolvePackageDependencies -project VibeFlow.xcodeproj -scheme VibeFlow -derivedDataPath build/DerivedData`):
+`xcodebuild -resolvePackageDependencies -project Maagical.xcodeproj -scheme Maagical -derivedDataPath build/DerivedData`):
 
 ```bash
 SPARKLE=build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin
@@ -239,7 +239,7 @@ since `--publish` refuses to build without the Google client.
 
 Upcoming meetings sign in to Google with a "Desktop app" OAuth client. Its ID and secret are
 built into the app (Google treats a desktop client's secret as public) but never committed:
-they live in the gitignored `Config/Google.xcconfig`, which `Config/VibeFlow.xcconfig`
+they live in the gitignored `Config/Google.xcconfig`, which `Config/Maagical.xcconfig`
 includes when it exists. Without it the app builds as usual and Settings > Meetings says
 "Not configured in this build" (CI builds this way).
 
@@ -292,7 +292,7 @@ pnpm dlx playwright@1.64.1 screenshot --viewport-size=1200,630 http://localhost:
 ## Clocks data
 
 The time zone list comes from [vvo/tzdb](https://github.com/vvo/tzdb) (MIT, Copyright
-CodeAgain SASU), trimmed into `VibeFlowCore/Sources/VibeFlowCore/Clock/Resources/`. Refresh
+CodeAgain SASU), trimmed into `MaagicalCore/Sources/MaagicalCore/Clock/Resources/`. Refresh
 it with `python3 scripts/update-time-zones.py`.
 
 ## Design docs

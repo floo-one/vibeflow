@@ -217,13 +217,13 @@ A new window like History (brought to the front explicitly, VibeFlow has no Dock
 
 "Transcript ready" through a notifier shared with the Pomodoro timer (eng review D1): permission is
 asked the first time a file is transcribed; clicking opens the transcript window. Clicks route
-through a pure `NotificationRoute` in VibeFlowCore (`.startFocusPhase`, `.openTranscript`, `.none`)
+through a pure `NotificationRoute` in MaagicalCore (`.startFocusPhase`, `.openTranscript`, `.none`)
 so the Pomodoro Start button is pinned by tests (eng review R4). Partial results
 say so ("Stopped at 30:00: Groq hourly limit").
 
 ## Architecture
 
-**VibeFlowCore**
+**MaagicalCore**
 
 - `Transcription/AudioFileDecoder.swift`: decode to temp WAV (mono or per channel), and the pure
   `pieces(of:max:searchWindow:)` cutting function.
@@ -254,7 +254,7 @@ say so ("Stopped at 30:00: Groq hourly limit").
   `HistoryViews`: the Transcripts filter and row; notifications shared with `FocusTimer.swift`.
 - Later: Open With (`CFBundleDocumentTypes` in project.yml, `application(_:open:)`).
 
-## Tests (Swift Testing, VibeFlowCore)
+## Tests (Swift Testing, MaagicalCore)
 
 - Cutting: silence at 9:45 → cut there; no silence → cut at 10:00; under 10 minutes → one piece.
 - Scribe: request shape (diarize, num_speakers only when set, model), response with words and
@@ -489,26 +489,26 @@ History: none
 ### R4: Regression coverage for focus notifications after the split
 Finding: 2 follow-up, CRITICAL (regression rule), 8/10, FocusTimer.swift:200-209 (`guard response.actionIdentifier == startAction else { return }` then decodes session, block, phase), reviewer Claude.
 Plan baseline: D1 approved a shared notifier; regression proof not yet settled.
-Runtime evidence: the focus Start button routes through the only notification delegate; no tests exist for it (the app target has no tests; VibeFlowCore does).
+Runtime evidence: the focus Start button routes through the only notification delegate; no tests exist for it (the app target has no tests; MaagicalCore does).
 Comparison grid:
 | Choice | Current | A | B |
 |---|---|---|---|
 | R1 | pending | pending | pending |
 | R2 | pending | pending | pending |
 | R3 | pending | pending | pending |
-| R4 regression proof | none | pure NotificationRoute in VibeFlowCore with tests (focus break, focus start, transcript open, unknown) + manual check | manual check of the focus Start button only |
+| R4 regression proof | none | pure NotificationRoute in MaagicalCore with tests (focus break, focus start, transcript open, unknown) + manual check | manual check of the focus Start button only |
 Question D6:
 D6 — How do we prove the focus timer's notification button still works after sharing the notifier?
 Project/branch/task: file-transcribe-option-261219, FocusNotifications split.
 ELI10: Sharing the notification code with file transcription changes how a click on a notification is routed. If the routing breaks, "Start break" in a Pomodoro notification would silently stop working.
 Stakes if we pick wrong: The Pomodoro "Start break" button stops working and nothing tells you.
-Recommendation: A because routing becomes a tiny pure function that tests can pin, like the rest of VibeFlowCore.
+Recommendation: A because routing becomes a tiny pure function that tests can pin, like the rest of MaagicalCore.
 Completeness: A=9/10, B=5/10
 Pros / cons:
 A) Pure route + tests (recommended)
   ✅ Focus break, focus start and transcript clicks are each pinned by a test
   ✅ The delegate shrinks to one switch over the route
-  ❌ One small new type in VibeFlowCore plus a test file
+  ❌ One small new type in MaagicalCore plus a test file
 B) Manual check only
   ✅ No new type, smallest diff to FocusTimer.swift
   ✅ One click in the dev app confirms the happy path
@@ -517,13 +517,13 @@ Net: a small pure function buys a permanent guard on Pomodoro.
 Header: Regression
 Options:
 A) Pure route + tests (recommended)
-NotificationRoute.from(category:action:userInfo:) in VibeFlowCore returns .startFocusPhase(session, block, phase), .openHistory(entry) or .none; tests cover each; the delegate switches over it; plus one manual click in the dev app. (human: ~1.5h / CC: ~8min)
+NotificationRoute.from(category:action:userInfo:) in MaagicalCore returns .startFocusPhase(session, block, phase), .openHistory(entry) or .none; tests cover each; the delegate switches over it; plus one manual click in the dev app. (human: ~1.5h / CC: ~8min)
 B) Manual check only
 Split the delegate by category without tests; click "Start break" in the dev app once.
 
 State: approved
 Actual answer: A) Pure route + tests (user, D6, 2026-11-04)
-Accepted scope: NotificationRoute.from(category:action:userInfo:) in VibeFlowCore returns .startFocusPhase(session, block, phase), .openTranscript(id) (the transcript window per the revised D10, in place of .openHistory) or .none; tests for focus break, focus start, transcript and unknown; the delegate switches over it; one manual click on Pomodoro Start break in the dev app.
+Accepted scope: NotificationRoute.from(category:action:userInfo:) in MaagicalCore returns .startFocusPhase(session, block, phase), .openTranscript(id) (the transcript window per the revised D10, in place of .openHistory) or .none; tests for focus break, focus start, transcript and unknown; the delegate switches over it; one manual click on Pomodoro Start break in the dev app.
 History: Option text said .openHistory(entry); the revised design opens the transcript window, so the route is .openTranscript(id). Same behavior class, no new choice.
 
 ### R2 reopened: what counts as a silent piece
@@ -700,12 +700,12 @@ No critical gaps (no path is untested, unhandled and silent).
 | Step | Modules touched | Depends on |
 |---|---|---|
 | T1 spike and bake-off | none (scripts in Spike/) | — |
-| Decoder and silence filter | VibeFlowCore/Transcription, Dictation | — |
-| Transcript, store, History | VibeFlowCore/Transcription, History | — |
-| NotificationRoute | VibeFlowCore (new file), VibeFlow/FocusTimer | — |
-| Call engine client, upload port | VibeFlowCore/Transcription, Ports, Support | T1 |
-| Job (pieces, failures, summary) | VibeFlowCore/Transcription, SmartRead | all above |
-| App: menu, options, transcript windows | VibeFlow/ | Job |
+| Decoder and silence filter | MaagicalCore/Transcription, Dictation | — |
+| Transcript, store, History | MaagicalCore/Transcription, History | — |
+| NotificationRoute | MaagicalCore (new file), Maagical/FocusTimer | — |
+| Call engine client, upload port | MaagicalCore/Transcription, Ports, Support | T1 |
+| Job (pieces, failures, summary) | MaagicalCore/Transcription, SmartRead | all above |
+| App: menu, options, transcript windows | Maagical/ | Job |
 Parallel lanes: A: decoder → silence filter; B: Transcript → History; C: NotificationRoute; D: T1 → call client. Launch A + B + C with T1. Merge. Then D, then the job, then the app. Conflict flags: lanes A and B both add files under Transcription/ (different files) and both may touch Ports.swift: coordinate the `TranscriptionFailure` additions.
 
 ## Implementation Tasks
@@ -717,47 +717,47 @@ Synthesized from this review's findings. Each task derives from a specific findi
   - Verify: Florian picks the engine; limits written into D3
 - [ ] **T2 (P1, human: ~3h / CC: ~15min)** — Memo engine — Per-segment silence filter and 1-second-window piece skip
   - Surfaced by: R2 (D4, D12), outside voice 1
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/OpenAITranscriber.swift, NoSpeech.swift, Transcription/AudioFileDecoder.swift
-  - Verify: cd VibeFlowCore && swift test
+  - Files: MaagicalCore/Sources/MaagicalCore/Dictation/OpenAITranscriber.swift, NoSpeech.swift, Transcription/AudioFileDecoder.swift
+  - Verify: cd MaagicalCore && swift test
 - [ ] **T3 (P1, human: ~1h / CC: ~5min)** — Job — 429 back-off 30/60/120 s then partial with status
   - Surfaced by: R1 (D3)
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Transcription/FileTranscriptionJob.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/Transcription/FileTranscriptionJob.swift
   - Verify: swift test (fake HTTP: 429 then 200; 429 x4)
 - [ ] **T4 (P1, human: ~2h / CC: ~10min)** — History — Transcripts never pruned; delete and clear remove files; orphan re-add on launch
   - Surfaced by: R5 (D13), outside voice 2
-  - Files: VibeFlowCore/Sources/VibeFlowCore/History/HistoryStore.swift, Transcription/Transcript.swift, VibeFlow/HistoryViews.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/History/HistoryStore.swift, Transcription/Transcript.swift, Maagical/HistoryViews.swift
   - Verify: swift test
 - [ ] **T5 (P1, human: ~3h / CC: ~15min)** — Upload — Audio-only export for videos; HTTPClient.upload(_:fromFile:) streaming
   - Surfaced by: R6 (D14), outside voice 5
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Ports.swift, Support/URLSessionClients.swift, Transcription/
+  - Files: MaagicalCore/Sources/MaagicalCore/Ports.swift, Support/URLSessionClients.swift, Transcription/
   - Verify: swift test with the fake; manual 1 GB video in the dev app
 - [ ] **T6 (P1, human: ~2h / CC: ~10min)** — Transcript — Completion status persisted; save before summary; atomic writes; visible write errors
   - Surfaced by: outside voice 3 and 4
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Transcription/Transcript.swift, FileTranscriptionJob.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/Transcription/Transcript.swift, FileTranscriptionJob.swift
   - Verify: swift test
 - [ ] **T7 (P2, human: ~2h / CC: ~10min)** — Summary — Structured JSON with speaker tokens and segment ids, validated
   - Surfaced by: Code quality finding, outside voice 6
-  - Files: VibeFlowCore/Sources/VibeFlowCore/SmartRead/SmartReadPrompts.swift, Transcription/
+  - Files: MaagicalCore/Sources/MaagicalCore/SmartRead/SmartReadPrompts.swift, Transcription/
   - Verify: swift test; live eval on one real call
 - [ ] **T8 (P2, human: ~1h / CC: ~5min)** — Apple — Preflight on-device assets for the system locale
   - Surfaced by: outside voice 7
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/AppleTranscriber.swift, OnDeviceModelStatus.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/Dictation/AppleTranscriber.swift, OnDeviceModelStatus.swift
   - Verify: swift test with a fake asset store
 - [ ] **T9 (P2, human: ~1h / CC: ~5min)** — Menu — Honest progress per engine and Stop text
   - Surfaced by: outside voice 8
-  - Files: VibeFlow/MenuBarView.swift, FileTranscriptionJob.swift
+  - Files: Maagical/MenuBarView.swift, FileTranscriptionJob.swift
   - Verify: dev app with a memo and a call
 - [ ] **T10 (P2, human: ~30min / CC: ~3min)** — Job — PowerAssertion for the job's lifetime
   - Surfaced by: R3 (D5)
-  - Files: VibeFlow/AppContainer.swift, VibeFlow/LiveServices.swift
+  - Files: Maagical/AppContainer.swift, Maagical/LiveServices.swift
   - Verify: pmset -g assertions during a job
 - [ ] **T11 (P1, human: ~1.5h / CC: ~8min)** — Notifications — NotificationRoute pure function with tests; shared delegate
   - Surfaced by: R4 (D6), Architecture finding 2 in scope challenge
-  - Files: VibeFlowCore (new NotificationRoute.swift), VibeFlow/FocusTimer.swift
+  - Files: MaagicalCore (new NotificationRoute.swift), Maagical/FocusTimer.swift
   - Verify: swift test; click Pomodoro Start break in the dev app
 - [ ] **T12 (P2, human: ~30min / CC: ~3min)** — Dictation — Timeout as init parameter, 10 s default pinned by a test
   - Surfaced by: Code quality finding 2
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/OpenAITranscriber.swift, Tests/TranscriberTests.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/Dictation/OpenAITranscriber.swift, Tests/TranscriberTests.swift
   - Verify: swift test
 
 ## Unresolved decisions
@@ -780,7 +780,7 @@ None.
 - Lake Score: 9/9 = answers picking the highest-completeness option / answers scored
 
 Reality rows:
-REALITY: premise-table pass claims checked against code (VibeFlowCore/Sources/VibeFlowCore/Ports.swift:214, VibeFlowCore/Sources/VibeFlowCore/History/HistoryStore.swift:60, VibeFlowCore/Sources/VibeFlowCore/Dictation/NoSpeech.swift:15, VibeFlow/AppContainer.swift:123, VibeFlow/FocusTimer.swift:170) docs/designs/file-transcription.md:1
+REALITY: premise-table pass claims checked against code (MaagicalCore/Sources/MaagicalCore/Ports.swift:214, MaagicalCore/Sources/MaagicalCore/History/HistoryStore.swift:60, MaagicalCore/Sources/MaagicalCore/Dictation/NoSpeech.swift:15, Maagical/AppContainer.swift:123, Maagical/FocusTimer.swift:170) docs/designs/file-transcription.md:1
 REALITY: already-done pass origin/main has no file transcription (git log --grep transcri) docs/designs/file-transcription.md:1
 REALITY: surface-check finding engine parameters (diarize, num_speakers, multichannel) verified only partly; T1 confirms docs/designs/file-transcription.md:57
 REALITY: binding-decisions pass Transcriber protocol decision (2026-10-01) kept docs/designs/file-transcription.md:57

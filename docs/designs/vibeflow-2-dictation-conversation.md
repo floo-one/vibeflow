@@ -43,13 +43,13 @@ Ruled out: ElevenLabs Scribe only (paid, no offline); Apple only (weak on names 
 
 ## Approaches Considered
 
-- A) Native in VibeFlowCore, FreeFlow as reference. Chosen (D6).
+- A) Native in MaagicalCore, FreeFlow as reference. Chosen (D6).
 - B) Port FreeFlow's dictation code. Rejected: two architectures in one app, less testable.
 - C) Separate dictation module and target. Rejected: extra packaging, conversation needs both halves anyway.
 
 ## Recommended Approach
 
-### New ports (VibeFlowCore/Ports.swift)
+### New ports (MaagicalCore/Ports.swift)
 
 | Port | Live (app) | Fake (tests) |
 |---|---|---|
@@ -507,7 +507,7 @@ Accepted scope: Settings > Dictation gets a microphone picker with "Automatic" (
 History: none
 
 ### Section 3: Test review
-Framework: Swift Testing in VibeFlowCore, fakes for every port (existing pattern, Tests/VibeFlowCoreTests). No dictation code exists yet, so every path is a GAP by construction. Regression contract: the 13 CaptureTests and 105 existing tests must pass unchanged through the ClipboardSnapshot extraction (D2).
+Framework: Swift Testing in MaagicalCore, fakes for every port (existing pattern, Tests/MaagicalCoreTests). No dictation code exists yet, so every path is a GAP by construction. Regression contract: the 13 CaptureTests and 105 existing tests must pass unchanged through the ClipboardSnapshot extraction (D2).
 
 ```
 CODE PATHS (proposed)                                       USER FLOWS
@@ -571,11 +571,11 @@ Test Plan Artifact: /Users/floo/.gstack/projects/vibeflow/floo-main-eng-review-t
 ### Outside Voice: Codex (gpt-6-astra) completed, 6 findings (4 P1, 2 P2), all verified against the code
 
 ### Factual correction: v1 clipboard snapshot timeout is not enforced (no decision needed)
-Finding: #O3, P1, confidence 9/10, VibeFlowCore/Sources/VibeFlowCore/Capture/PasteboardCapture.swift:71 readSnapshot (withTimeout wrapping `await Task.detached { ... }.value`) and Support/Timeout.swift:16 (withThrowingTaskGroup), reviewer: Codex, confirmed by plan-eng-review.
+Finding: #O3, P1, confidence 9/10, MaagicalCore/Sources/MaagicalCore/Capture/PasteboardCapture.swift:71 readSnapshot (withTimeout wrapping `await Task.detached { ... }.value`) and Support/Timeout.swift:16 (withThrowingTaskGroup), reviewer: Codex, confirmed by plan-eng-review.
 The task group cannot return until every child finishes, and the child awaiting a detached task's value is not interrupted by cancellation, so a stalled pasteboard owner still stalls capture past 200 ms. The v1 test slowPasteboardReadIsBoundedAndSkipsTheRestore checks the outcome but not elapsed time. The approved v1 contract (D10: 200 ms bound) requires a fix: race the detached read against the clock with a resume-once continuation instead of a task group, and add a wall-clock assertion to the existing test. Required proof of an approved contract, carried into milestone 1 task T0.
 
 ### R6: Apple fallback on macOS 15
-Finding: #O1a, P1, confidence 9/10, project.yml:8 deploymentTarget macOS 15.0 and VibeFlowCore/Package.swift:9 .macOS(.v15) against the design's SpeechAnalyzer (macOS 26 only), reviewer: Codex
+Finding: #O1a, P1, confidence 9/10, project.yml:8 deploymentTarget macOS 15.0 and MaagicalCore/Package.swift:9 .macOS(.v15) against the design's SpeechAnalyzer (macOS 26 only), reviewer: Codex
 Plan baseline: Apple on-device fallback via SpeechAnalyzer (approved design).
 Runtime evidence: verified: both targets say macOS 15; SpeechAnalyzer and SpeechTranscriber are macOS 26 APIs.
 Comparison grid:
@@ -915,15 +915,15 @@ Critical gaps (no test, no handling, silent): 0.
 ### Worktree parallelization strategy
 | Step | Modules touched | Depends on |
 |------|----------------|------------|
-| T0 clipboard timeout fix + ClipboardSnapshot | VibeFlowCore/Capture, Support | — |
+| T0 clipboard timeout fix + ClipboardSnapshot | MaagicalCore/Capture, Support | — |
 | T1 spike | Spike/ | — |
-| T2 ports + fakes | VibeFlowCore/Ports, Tests | T0 |
-| T3 transcribers + no-speech | VibeFlowCore/Dictation | T2 |
-| T4 cleanup client + prompt | VibeFlowCore/SmartRead, Dictation | T2 |
-| T5 text insertion | VibeFlowCore/Dictation, Capture | T0, T2 |
-| T6 DictationSession | VibeFlowCore/Dictation, Session | T3, T4, T5 |
-| T7 live recorder, mic picker, entitlement | VibeFlow/ (app), project.yml | T2 |
-| T8 settings, keys, presets, shortcut wiring | VibeFlow/, VibeFlowCore/Settings | T6, T7 |
+| T2 ports + fakes | MaagicalCore/Ports, Tests | T0 |
+| T3 transcribers + no-speech | MaagicalCore/Dictation | T2 |
+| T4 cleanup client + prompt | MaagicalCore/SmartRead, Dictation | T2 |
+| T5 text insertion | MaagicalCore/Dictation, Capture | T0, T2 |
+| T6 DictationSession | MaagicalCore/Dictation, Session | T3, T4, T5 |
+| T7 live recorder, mic picker, entitlement | Maagical/ (app), project.yml | T2 |
+| T8 settings, keys, presets, shortcut wiring | Maagical/, MaagicalCore/Settings | T6, T7 |
 | T9 QA matrix + docs | — | T8 |
 Lanes: A: T0 → T5. B: T1 (independent). C: T2 → T3 and T4 in parallel. D: T7 after T2. Merge, then T6, T8, T9. Conflict flags: Ports.swift owned by T2; Dictation/ shared by T3 to T6, keep one file per task.
 
@@ -932,7 +932,7 @@ Synthesized from this review's findings. Ratios: tests ~50x, features ~30x, arch
 
 - [x] **T0 (P1, human: ~half day / CC: ~15 min)** — Capture — Fix the snapshot timeout and extract ClipboardSnapshot
   - Surfaced by: Outside Voice factual correction (PasteboardCapture.swift:71, Timeout.swift:16); D2
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Capture/ClipboardSnapshot.swift, Capture/PasteboardCapture.swift, Tests/CaptureTests.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/Capture/ClipboardSnapshot.swift, Capture/PasteboardCapture.swift, Tests/CaptureTests.swift
   - Verify: 13 CaptureTests green plus a wall-clock assertion that a 1 s stalled read returns within 250 ms
 - [x] **T1 (P1, human: ~1 day / CC: ~20 min)** — Spike — Record shortcut feel, secure input, Groq latency, cleanup latency on both providers, Apple model size
   - Surfaced by: design Open Questions; D4; D9
@@ -940,31 +940,31 @@ Synthesized from this review's findings. Ratios: tests ~50x, features ~30x, arch
   - Verify: ten measured dictations; Groq + Groq-chat cleanup median at or under 1.5 s
 - [x] **T2 (P1, human: ~half day / CC: ~10 min)** — Ports — AudioRecorder and Transcriber protocols with fakes; AccessibilityBridge gains pressPasteMenuItem and focusedElement
   - Surfaced by: D2; D10
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Ports.swift, Tests/Fakes.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/Ports.swift, Tests/Fakes.swift
   - Verify: swift build under Swift 6, zero warnings
 - [x] **T3 (P1, human: ~2 days / CC: ~30 min)** — Transcribers — Groq (multipart WAV, verbose_json, fallback table, custom URL) and Apple (macOS 26 guard, prepared model, readiness states); no-speech rules
   - Surfaced by: design fallback table; D8; D9; D11
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/GroqTranscriber.swift, Dictation/AppleTranscriber.swift, Tests/TranscriberTests.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/Dictation/GroqTranscriber.swift, Dictation/AppleTranscriber.swift, Tests/TranscriberTests.swift
   - Verify: TranscriberTests green including spoken and silent phrase rows
 - [x] **T4 (P1, human: ~1 day / CC: ~20 min)** — Cleanup — OpenAI-compatible chat client (Groq default), dictation cleanup prompt, sanity check, 1.5 s deadline, error to raw text
   - Surfaced by: D4; D12; design cleanup section
-  - Files: VibeFlowCore/Sources/VibeFlowCore/SmartRead/ChatCompletionsClient.swift, SmartRead/SmartReadPrompts.swift, Tests/LiveEvalTests.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/SmartRead/ChatCompletionsClient.swift, SmartRead/SmartReadPrompts.swift, Tests/LiveEvalTests.swift
   - Verify: unit rows for each error class; eval golden (question cleaned, not answered) passes with a key
 - [x] **T5 (P1, human: ~1 day / CC: ~20 min)** — Paste — TextInsertion with field and secure-input check, Cmd-V item or synthesized Cmd-V, 750 ms restore
   - Surfaced by: D2; D6; D10
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/TextInsertion.swift, Tests/TextInsertionTests.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/Dictation/TextInsertion.swift, Tests/TextInsertionTests.swift
   - Verify: changed field, same field, missing element, secure input, delay and foreign write rows green
 - [x] **T6 (P1, human: ~2 days / CC: ~30 min)** — DictationSession — state machine, hold and tap, stop read first, local-only routing, last-failure memory with Retry, Copy and Discard
   - Surfaced by: D3; D5; D13; design state machine
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/DictationSession.swift, Tests/DictationTests.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/Dictation/DictationSession.swift, Tests/DictationTests.swift
   - Verify: DictationTests green for every state row
 - [x] **T7 (P1, human: ~1 day / CC: ~20 min)** — App audio — LiveAudioRecorder (16 kHz mono), microphone picker with Automatic rule, audio-input entitlement and NSMicrophoneUsageDescription, Groq warm-up request
   - Surfaced by: required implementation (hardened runtime); D7; perf note P2
-  - Files: VibeFlow/LiveAudioRecorder.swift, VibeFlow/VibeFlow.entitlements, project.yml
+  - Files: Maagical/LiveAudioRecorder.swift, Maagical/Maagical.entitlements, project.yml
   - Verify: first press shows the mic prompt; second press records non-silent audio
 - [x] **T8 (P2, human: ~1 day / CC: ~20 min)** — Settings and wiring — Dictation tab, Groq key, per-app "Dictate on this Mac only", record shortcut handlers, menu states
   - Surfaced by: D5; D7; D9; design Settings additions
-  - Files: VibeFlow/SettingsView.swift, VibeFlow/AppContainer.swift, VibeFlow/MenuBarView.swift, VibeFlowCore/Sources/VibeFlowCore/Settings/AppPreset.swift, Tests/PresetsTests.swift
+  - Files: Maagical/SettingsView.swift, Maagical/AppContainer.swift, Maagical/MenuBarView.swift, MaagicalCore/Sources/MaagicalCore/Settings/AppPreset.swift, Tests/PresetsTests.swift
   - Verify: old presets decode with dictationLocalOnly false; shortcut drives the session
 - [x] **T9 (P2, human: ~half day / CC: ~10 min)** — QA and docs — paste matrix incl. a German-locale app, AirPods check, README dictation and data-handling section
   - Surfaced by: test plan; design success criteria

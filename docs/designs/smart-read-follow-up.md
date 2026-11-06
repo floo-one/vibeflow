@@ -99,7 +99,7 @@ older turns drop first. Lives in memory only, gone on quit. No storage.
 
 All in existing pieces; no new service, no persistence.
 
-**VibeFlowCore**
+**MaagicalCore**
 
 - `Conversation` (a struct inside ReadSession.swift, replacing `storedOriginal`; eng review D3):
   the document text, the frozen preset, the brief (if any), turns and a creation date;
@@ -488,7 +488,7 @@ TODOs D15 A, D16 A. All answers dated 2026-10-21.
 ### Reality rows
 
 - REALITY: premise-table pass 6 claims checked, unverified=1 (that Anthropic merges consecutive user turns; moot after finding 5) ReadSession.swift:85, AppContainer.swift:91, DictationSession.swift:318, SessionConfiguration.swift:9, PasteboardCapture.swift:35, LiveAudioRecorder.swift:108
-- REALITY: already-done pass origin/main has no commits since 2026-10-21 touching VibeFlow or VibeFlowCore; head 5849bc1 AppContainer.swift:91
+- REALITY: already-done pass origin/main has no commits since 2026-10-21 touching VibeFlow or MaagicalCore; head 5849bc1 AppContainer.swift:91
 - REALITY: surface-check pass Messages API `messages` array already used by the client; `cache_control` deferred (D1) AnthropicClient.swift:72
 - REALITY: binding-decisions pass consistent with "conversation about the selection" (2026-10-01); the dictation-key ask rule of the October design is superseded by the user's 2026-10-21 choice docs/designs/vibeflow-2-dictation-conversation.md:38
 - REALITY: numbers pass 0.3 s [estimated], 30 min [estimated], 10 turns [from October design], 600 tokens [estimated], 40,000 chars [measured: SessionConfiguration.swift:9] SessionConfiguration.swift:9
@@ -599,15 +599,15 @@ build time, not a silent failure the plan claims to handle).
 
 | Step | Modules touched | Depends on |
 |------|----------------|------------|
-| Answer prompt and multi-message client | VibeFlowCore/SmartRead | — |
-| Conversation, beginQuestion/ask, errors | VibeFlowCore/Session | Answer prompt |
-| CaptureResult reason | VibeFlowCore/Capture | — |
-| Question purpose, cue on first buffer | VibeFlowCore/Dictation, VibeFlow (LiveAudioRecorder) | — |
-| PressClassifier and routing, notch symbol | VibeFlowCore/Session, VibeFlow | Conversation, Question purpose |
+| Answer prompt and multi-message client | MaagicalCore/SmartRead | — |
+| Conversation, beginQuestion/ask, errors | MaagicalCore/Session | Answer prompt |
+| CaptureResult reason | MaagicalCore/Capture | — |
+| Question purpose, cue on first buffer | MaagicalCore/Dictation, VibeFlow (LiveAudioRecorder) | — |
+| PressClassifier and routing, notch symbol | MaagicalCore/Session, VibeFlow | Conversation, Question purpose |
 
 Lane A: answer prompt → Conversation/ask (SmartRead, Session). Lane B: CaptureResult reason
 (Capture). Lane C: question purpose and cue (Dictation, recorder). Launch A + B + C. Merge. Then
-routing and notch. Conflict flag: lanes A and the final step both touch VibeFlowCore/Session, so
+routing and notch. Conflict flag: lanes A and the final step both touch MaagicalCore/Session, so
 routing waits for A.
 
 ## Implementation Tasks
@@ -616,27 +616,27 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
 
 - [x] **T1 (P1, human: ~4h / CC: ~20min)** — SmartRead — Answer prompt and multi-message client
   - Surfaced by: Scope Challenge finding 5, R4 (D7)
-  - Files: VibeFlowCore/Sources/VibeFlowCore/SmartRead/SmartReadPrompts.swift, AnthropicClient.swift, Ports.swift, Tests/SmartReadClientTests.swift, Tests/Fakes.swift
-  - Verify: `cd VibeFlowCore && swift test` (roles alternate with and without brief; max_tokens case)
+  - Files: MaagicalCore/Sources/MaagicalCore/SmartRead/SmartReadPrompts.swift, AnthropicClient.swift, Ports.swift, Tests/SmartReadClientTests.swift, Tests/Fakes.swift
+  - Verify: `cd MaagicalCore && swift test` (roles alternate with and without brief; max_tokens case)
 - [x] **T2 (P1, human: ~6h / CC: ~30min)** — Session — Conversation at capture time, beginQuestion/ask under one token, spoken errors
   - Surfaced by: D3, O3, R9 (D12), R11 (D14), R6 (D9)
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Session/ReadSession.swift, Tests/SessionTests.swift, Tests/SessionFakes.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/Session/ReadSession.swift, Tests/SessionTests.swift, Tests/SessionFakes.swift
   - Verify: swift test; readOriginal-after-failure test still green; cancel-before-ask test
 - [x] **T3 (P1, human: ~2h / CC: ~10min)** — Capture — nothing selected versus capture failed
   - Surfaced by: R8 (D11), outside voice O1
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Capture/*.swift, Tests/CaptureTests.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/Capture/*.swift, Tests/CaptureTests.swift
   - Verify: swift test; failed capture after reading A never asks about A
 - [x] **T4 (P1, human: ~3h / CC: ~15min)** — Dictation — question purpose and cue on first buffer
   - Surfaced by: R5 (D8), R10 (D13), R2 (D5)
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/DictationSession.swift, Ports.swift, VibeFlow/LiveAudioRecorder.swift, Tests/DictationTests.swift
+  - Files: MaagicalCore/Sources/MaagicalCore/Dictation/DictationSession.swift, Ports.swift, Maagical/LiveAudioRecorder.swift, Tests/DictationTests.swift
   - Verify: swift test; late-ready fake recorder delays the cue; a dictation still pastes
 - [x] **T5 (P1, human: ~3h / CC: ~15min)** — App — PressClassifier, smart read key routing, notch symbol
   - Surfaced by: R2 (D5), R6 (D9)
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Session/PressClassifier.swift, VibeFlow/AppContainer.swift, VibeFlow/NotchIndicator.swift, Tests (new PressClassifier tests)
+  - Files: MaagicalCore/Sources/MaagicalCore/Session/PressClassifier.swift, Maagical/AppContainer.swift, Maagical/NotchIndicator.swift, Tests (new PressClassifier tests)
   - Verify: swift test; xcodebuild build; ten taps and ten holds in the built app, `/usr/bin/log show --last 5m --predicate 'subsystem == "one.floo.vibeflow"'`
 - [x] **T6 (P2, human: ~1h / CC: ~10min)** — Eval — small live answer eval
   - Surfaced by: R7 (D10)
-  - Files: VibeFlowCore/Tests/VibeFlowCoreTests/LiveEvalTests.swift
+  - Files: MaagicalCore/Tests/MaagicalCoreTests/LiveEvalTests.swift
   - Verify: run the gated live suite with keys set
 - [x] **T7 (P3, human: ~30min / CC: ~5min)** — Docs — README and CLAUDE.md shortcut line
   - Surfaced by: plan build order step 4

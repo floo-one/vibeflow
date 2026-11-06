@@ -68,7 +68,7 @@ Approach B. The pieces, in order:
      - A forker changes `DEVELOPMENT_TEAM` and `bundleIdPrefix` in project.yml. The bundle ID `one.floo.vibeflow` belongs to the author's team, so automatic signing with another team needs its own bundle ID. This was not verified with a second team; the README states the steps that avoid the conflict.
 3. **CI.** Add `.github/workflows/ci.yml`. It assumes a public repo, where macOS minutes are free.
    - Triggers: push to main and pull requests.
-   - Steps: select Xcode 26 explicitly; fail early with a clear message if `xcodebuild -version` reports a major version below 26. Then `cd VibeFlowCore && swift test`, `brew install xcodegen && xcodegen generate`, and an ad-hoc app build (`CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=`).
+   - Steps: select Xcode 26 explicitly; fail early with a clear message if `xcodebuild -version` reports a major version below 26. Then `cd MaagicalCore && swift test`, `brew install xcodegen && xcodegen generate`, and an ad-hoc app build (`CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM=`).
    - LiveEvalTests run only with `VIBEFLOW_RUN_EVALS=1` plus an API key. The workflow sets neither the flag nor any secrets.
    - If the repo turns out private: restrict triggers to main with path filters, and cache SwiftPM, before enabling CI.
 4. **Version 1.0.0.** Set `CFBundleShortVersionString` to 1.0.0 in project.yml. Write a `CHANGELOG.md` with the v1.0.0 notes: reading, smart read, dictation, minimal Settings, speakable text, the silent-recording fix. Commit; no tag yet.

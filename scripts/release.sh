@@ -60,7 +60,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 OUT="build/release"
-ARCHIVE="$OUT/VibeFlow.xcarchive"
+ARCHIVE="$OUT/Maagical.xcarchive"
 EXPORT="$OUT/export"
 APP="$EXPORT/Maagical.app"
 
@@ -166,7 +166,7 @@ xcodegen generate >/dev/null
 if [[ $NOTARIZE -eq 1 ]]; then
   # A release signed with another key would never install anywhere, so check before building.
   step "Check the Sparkle signing key"
-  xcodebuild -resolvePackageDependencies -project VibeFlow.xcodeproj -scheme VibeFlow \
+  xcodebuild -resolvePackageDependencies -project Maagical.xcodeproj -scheme Maagical \
     -derivedDataPath build/DerivedData -quiet
   if [[ -n "$SPARKLE_KEY_FILE" ]]; then
     [[ "$(swift scripts/sparkle-public-key.swift "$SPARKLE_KEY_FILE")" == "$UPDATE_KEY" ]] \
@@ -186,7 +186,7 @@ if [[ $NIGHTLY -eq 1 ]]; then
 fi
 
 step "Archive (Release)"
-xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Release \
+xcodebuild -project Maagical.xcodeproj -scheme Maagical -configuration Release \
   -destination 'generic/platform=macOS' \
   -derivedDataPath build/DerivedData -archivePath "$ARCHIVE" \
   archive -quiet "${OVERRIDES[@]}"

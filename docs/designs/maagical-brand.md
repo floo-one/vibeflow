@@ -69,9 +69,13 @@ Rejected on the way: a lifted second a, a mirrored or turned second a, a second 
 ## What the rename touched and what it did not
 
 Moved to Maagical: `PRODUCT_NAME` (Maagical, Maagical Dev), the icons, every user visible string,
-the DMG (`Maagical.dmg`, `Maagical-<version>.dmg`), the website, README, CHANGELOG, CLAUDE.md.
+the DMG (`Maagical.dmg`, `Maagical-<version>.dmg`), the website, README, CHANGELOG, CLAUDE.md, and
+the code itself: the `Maagical/` and `MaagicalCore/` folders, the `MaagicalCore` module and its
+tests, `Maagical.xcodeproj`, the `Maagical` scheme and target, `MaagicalApp`, `Config/Maagical.xcconfig`
+and `Maagical.entitlements`. Two-letter prefixes stay: `VF_*` build settings, the `VF` Info.plist
+keys and `vf-eval`.
 
-Stays VibeFlow: the Xcode project, scheme and target, the `VibeFlowCore` module, the bundle ids
+Stays VibeFlow: the bundle ids
 `one.floo.vibeflow` and `.dev` (Sparkle refuses an update with another bundle id; TCC and
 UserDefaults are keyed to it; `StableInstaller.swift` checks it in its code requirement), the
 Keychain service, the log subsystem, `Application Support/VibeFlow`, the Sparkle keys and feed

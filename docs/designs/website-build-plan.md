@@ -59,7 +59,7 @@ website/
   astro.config.mjs
   tsconfig.json
   public/
-    favicon.png               from VibeFlow/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png
+    favicon.png               from Maagical/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png
     apple-touch-icon.png      from icon_256x256@2x.png (resize to 180x180 with `sips -z 180 180`)
     og.png                    1200x630, see task 8
     robots.txt

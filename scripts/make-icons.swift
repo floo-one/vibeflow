@@ -1,4 +1,4 @@
-// Draws the app icons into VibeFlow/Assets.xcassets: AppIcon for Maagical and AppIconDev for
+// Draws the app icons into Maagical/Assets.xcassets: AppIcon for Maagical and AppIconDev for
 // Maagical Dev (orange, with a DEV band), so the two apps look different in Finder, Spotlight
 // and System Settings (docs/designs/dev-prod-channels.md, P3). The same master also becomes the
 // website's favicon.png (64 px) and apple-touch-icon.png (180 px). Run from the repo root after
@@ -108,7 +108,7 @@ let styles = [
 }
 
 @MainActor func writeCatalog() throws {
-    let catalog = URL(fileURLWithPath: "VibeFlow/Assets.xcassets")
+    let catalog = URL(fileURLWithPath: "Maagical/Assets.xcassets")
     let files = FileManager.default
     try files.createDirectory(at: catalog, withIntermediateDirectories: true)
     try Data(#"{"info":{"author":"xcode","version":1}}"#.utf8).write(to: catalog.appendingPathComponent("Contents.json"))

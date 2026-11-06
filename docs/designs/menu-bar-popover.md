@@ -1,12 +1,12 @@
 # Menu bar popover
 
-Status: built 2026-11-05 on branch modal-size-tabs-58d315 (not committed yet): VibeFlow/Popover,
-VibeFlowCore Panel/PanelState.swift with PanelStateTests (15 tests). Canvas: https://claude.ai/artifact/K7Gon1ujsXysCeTDPwYyrn
+Status: built 2026-11-05 on branch modal-size-tabs-58d315 (not committed yet): Maagical/Popover,
+MaagicalCore Panel/PanelState.swift with PanelStateTests (15 tests). Canvas: https://claude.ai/artifact/K7Gon1ujsXysCeTDPwYyrn
 (frames "Recommended: Control Center popover" and "Recommended, while speaking and focusing").
 
 ## Problem
 
-The VibeFlow menu (`VibeFlow/MenuBarView.swift`, a native NSMenu) grew as wide as the last
+The VibeFlow menu (`Maagical/MenuBarView.swift`, a native NSMenu) grew as wide as the last
 smart read answer, and listed every read and dictation action as a row even though they are
 used through shortcuts. The first fix (shortened lines, a grey shortcut line, a Shortcuts
 submenu) is built on this branch. The user prefers a Control Center style popover.
@@ -211,45 +211,45 @@ Synthesized from this review's findings. Effort assumes features ~30x human ÷ C
 - [ ] **T1 (P1, human: ~1d / CC: ~30min)** — Popover shell — replace the NSMenu with a
   `.window` MenuBarExtra at 330 pt, hierarchy and D9 tokens (light and dark)
   - Surfaced by: Pass 1 hierarchy, Pass 5 D9
-  - Files: VibeFlow/MenuBarView.swift, VibeFlow/VibeFlowApp.swift
+  - Files: Maagical/MenuBarView.swift, Maagical/MaagicalApp.swift
   - Verify: build; panel width fixed with a 2,000-character answer in history
 - [ ] **T2 (P1, human: ~4h / CC: ~15min)** — Top slot — Ready line, activity card, problem
   card with priority order
   - Surfaced by: Pass 2 D3, D4
-  - Files: VibeFlow/MenuBarView.swift (or a new PopoverView.swift)
+  - Files: Maagical/MenuBarView.swift (or a new PopoverView.swift)
   - Verify: Dev build: dictate, smart read, long selection (Read anyway), revoke Accessibility
 - [ ] **T3 (P1, human: ~4h / CC: ~15min)** — Tiles — Keep Awake and Pomodoro toggles with
   chevron menus reusing the existing menu items; remember last Keep Awake duration
   - Surfaced by: Pass 7 D11, D12
-  - Files: VibeFlow/MenuBarView.swift, VibeFlow/KeepAwakeViews.swift, Preferences
+  - Files: Maagical/MenuBarView.swift, Maagical/KeepAwakeViews.swift, Preferences
   - Verify: click toggles, chevron menus open inside the panel without closing it
 - [ ] **T4 (P1, human: ~2h / CC: ~10min)** — Closing and focus — close on hand-off and on
   any global shortcut; paste target never the panel
   - Surfaced by: Pass 7 D13, learning dictation-target-resolved-late
-  - Files: VibeFlow/AppContainer.swift, VibeFlow/MenuBarView.swift
+  - Files: Maagical/AppContainer.swift, Maagical/MenuBarView.swift
   - Verify: Dev build: open panel, finish a dictation, text lands in the previous app
 - [ ] **T5 (P2, human: ~3h / CC: ~10min)** — History row with hover flyout and empty hint,
   meeting card hiding
   - Surfaced by: D14 (replaces D2), Pass 2 D5
-  - Files: VibeFlow/MenuBarView.swift, VibeFlow/HistoryViews.swift, VibeFlow/MeetingsViews.swift
+  - Files: Maagical/MenuBarView.swift, Maagical/HistoryViews.swift, Maagical/MeetingsViews.swift
   - Verify: fresh history file shows the hint with the user's real key
 - [ ] **T6 (P2, human: ~2h / CC: ~10min)** — Transcribe row progress and footer (bug icon,
   version as update control, nightly menu, Dev stamp)
   - Surfaced by: Pass 2 D6, D7
-  - Files: VibeFlow/MenuBarView.swift, VibeFlow/Updater.swift
+  - Files: Maagical/MenuBarView.swift, Maagical/Updater.swift
   - Verify: Release and Debug builds show the right footer
 - [ ] **T8 (P1, human: ~4h / CC: ~20min)** — Drop zone and menu bar icon as a drop target
   - Surfaced by: D15
-  - Files: VibeFlow/MenuBarView.swift, VibeFlow/VibeFlowApp.swift, VibeFlow/FileTranscriptions.swift
+  - Files: Maagical/MenuBarView.swift, Maagical/MaagicalApp.swift, Maagical/FileTranscriptions.swift
   - Verify: drag a .m4a from Finder onto the icon: panel opens, drop starts the job; drop a
     .pdf: refused with "Only audio or video"
 - [ ] **T9 (P2, human: ~2h / CC: ~10min)** — Notch hold tip
   - Surfaced by: D17
-  - Files: VibeFlow/NotchIndicator.swift, VibeFlow/AppContainer.swift
+  - Files: Maagical/NotchIndicator.swift, Maagical/AppContainer.swift
   - Verify: the tip shows on smart read taps 1 to 3 with the real key, and never after a hold
 - [ ] **T7 (P2, human: ~3h / CC: ~15min)** — Keyboard and VoiceOver
   - Surfaced by: Pass 6 D10
-  - Files: VibeFlow/MenuBarView.swift
+  - Files: Maagical/MenuBarView.swift
   - Verify: Tab through every control, VoiceOver reads tile state, Reduce Motion stops the meter
 
 ## Design Review Completion Summary
@@ -295,15 +295,15 @@ Target: docs/designs/menu-bar-popover.md (this plan), reviewed by /plan-eng-revi
 
 Scope record: feature answers: none proposed (no cuts); structure: A (Original arrangement,
 D1 answered after a bounded investigation); accepted scope: D3–D17 as designed, built as a new
-VibeFlow/Popover/ folder (StatusItemController, PopoverView, parts file), Core PanelState plus
-tests, edits to VibeFlowApp, StatusItemRightClick, FileTranscriptions, Updater, AppContainer,
+Maagical/Popover/ folder (StatusItemController, PopoverView, parts file), Core PanelState plus
+tests, edits to MaagicalApp, StatusItemRightClick, FileTranscriptions, Updater, AppContainer,
 NotchIndicator, Preferences, KeepAwakeViews, HistoryViews, MeetingsViews; pending remedies:
 R1, R2, R3, R4.
 
 Reality rows:
 ```
 REALITY: premise-table finding 8 claims, unverified=3 (Finder click closes panel; SwiftUI Menu inside a popover panel; hover flyout) docs/designs/menu-bar-popover.md:D13-D15
-REALITY: already-done finding origin/main 0d03f0b (#40) adds StatusItemRightClick indexed by status window order; branch must merge it VibeFlow/StatusItemRightClick.swift:24
+REALITY: already-done finding origin/main 0d03f0b (#40) adds StatusItemRightClick indexed by status window order; branch must merge it Maagical/StatusItemRightClick.swift:24
 REALITY: surface-check finding MenuBarExtraAccess exists (1.3.0) but PR #26 reports macOS 27 breakage; NSStatusItem/NSPanel are stable AppKit
 REALITY: binding-decisions pass no branch decisions; memory "menu bar model" (Focus/Meetings/Keep Awake items only while active) kept
 REALITY: numbers pass all efforts and sizes tagged [estimated]; no measured baselines cited
@@ -314,7 +314,7 @@ REALITY: pr-count pass one PR (no ship-policy file)
 ## Decision ledger
 
 ### R1: Who owns the VibeFlow menu bar icon and panel
-Finding: 1, CRITICAL, confidence 8/10, VibeFlowApp.swift:17 (`MenuBarExtra {`) and
+Finding: 1, CRITICAL, confidence 8/10, MaagicalApp.swift:17 (`MenuBarExtra {`) and
 StatusItemRightClick.swift:12 on main ("MenuBarExtra hands out no NSStatusItem"); reviewer:
 Claude (Scope Challenge, surface-check)
 Plan baseline: D13 (close from code, close on shortcuts) and D15 (icon accepts file drops) assume
@@ -327,7 +327,7 @@ Comparison grid:
 
 | Choice | Current | A) Own status item and panel | B) MenuBarExtra + MenuBarExtraAccess |
 |---|---|---|---|
-| R1 owner of icon and panel | MenuBarExtra (VibeFlowApp.swift:17) | own NSStatusItem + NSPanel hosting the SwiftUI view | MenuBarExtra(.window) + MenuBarExtraAccess package |
+| R1 owner of icon and panel | MenuBarExtra (MaagicalApp.swift:17) | own NSStatusItem + NSPanel hosting the SwiftUI view | MenuBarExtra(.window) + MenuBarExtraAccess package |
 | Close from code (D13) | impossible | panel.orderOut, reliable | isPresented binding, reported flaky on macOS 27 |
 | Icon accepts file drops (D15) | impossible | dragging-destination view on the status button | same view, via the package's status item closure |
 | Frontmost app while open | unknown | stays the user's app (non-activating panel, like NotchIndicator) | unknown |
@@ -427,12 +427,12 @@ Plan baseline: D3/D4 define a priority order (activity outranks a past error; Ac
 Microphone, API key, last error), D7 footer states, D11 last duration, D17 tip count. The plan
 names no home for these rules; the D1 layout lists a Core PanelState but D1 approved no remedy.
 Runtime evidence: today the equivalent rules sit inside MenuBarView's body and have no tests;
-VibeFlowCore has Swift Testing with 40 test files (e.g. KeepAwakeTests, FocusTests).
+MaagicalCore has Swift Testing with 40 test files (e.g. KeepAwakeTests, FocusTests).
 Comparison grid:
 
-| Choice | Current | A) PanelState in VibeFlowCore | B) Rules inside the SwiftUI view |
+| Choice | Current | A) PanelState in MaagicalCore | B) Rules inside the SwiftUI view |
 |---|---|---|---|
-| R2 home of priority and state rules | inline in MenuBarView body | pure `PanelState` value built from inputs, in VibeFlowCore | computed properties in PopoverView |
+| R2 home of priority and state rules | inline in MenuBarView body | pure `PanelState` value built from inputs, in MaagicalCore | computed properties in PopoverView |
 | Tests | none | swift test cases for priority order, footer, tile text, tip count | none (manual QA only) |
 | Effort | — | human ~4h / CC ~20 min [estimated] | human ~2h / CC ~10 min [estimated] |
 | R1, R3 | — | approved (D2, D3) | approved (D2, D3) |
@@ -440,12 +440,12 @@ Comparison grid:
 Question D4:
 D4 — Where should the panel's rules live (which card shows, problem order, footer and tile text)?
 Project/branch/task: modal-size-tabs-58d315, menu bar popover rules from D3, D4, D7, D11, D17.
-ELI10: The panel has real rules: a running dictation beats an old error, missing Accessibility beats a missing API key, the footer shows an update pill only when one exists, the tip shows three times. Put them in a small pure type in VibeFlowCore and they get fast unit tests like the rest of Core; leave them in the SwiftUI view and only clicking around can check them.
+ELI10: The panel has real rules: a running dictation beats an old error, missing Accessibility beats a missing API key, the footer shows an update pill only when one exists, the tip shows three times. Put them in a small pure type in MaagicalCore and they get fast unit tests like the rest of Core; leave them in the SwiftUI view and only clicking around can check them.
 Stakes if we pick wrong: a wrong priority shows an old error over a running dictation, or hides a missing permission, and nothing catches it.
 Recommendation: A because every rule then has a test that fails when the order breaks, at little extra cost.
 Completeness: A=10/10, B=5/10
 Pros / cons:
-A) PanelState in VibeFlowCore (recommended)
+A) PanelState in MaagicalCore (recommended)
   ✅ Priority, footer and tile rules run under swift test in seconds, like KeepAwakeTests
   ✅ The SwiftUI view stays a thin renderer of one value, easier to read and change
   ❌ One more type and a mapping from app objects into it (human ~4h / CC ~20 min)
@@ -456,13 +456,13 @@ Net: a small type with tests versus untested rules in the view.
 Header: Panel rules
 Options:
 A) PanelState in Core (recommended)
-A pure PanelState value in VibeFlowCore, built from session, dictation, permissions, files, updater and preferences; it decides the top slot, problem order, tile text, footer and tip display. Swift Testing cases cover each rule. Human ~4h / CC ~20 min.
+A pure PanelState value in MaagicalCore, built from session, dictation, permissions, files, updater and preferences; it decides the top slot, problem order, tile text, footer and tip display. Swift Testing cases cover each rule. Human ~4h / CC ~20 min.
 B) Rules in the view
 PopoverView reads the container directly and decides everything in computed properties. No new type, no automated tests for the rules. Human ~2h / CC ~10 min.
 
 State: approved
 Actual answer: A) PanelState in Core (D4, 2026-11-05)
-Accepted scope: A pure PanelState value in VibeFlowCore, built from session, dictation,
+Accepted scope: A pure PanelState value in MaagicalCore, built from session, dictation,
 permissions, files, updater and preferences; it decides the top slot, problem order, tile text,
 footer and tip display. Swift Testing cases cover each rule.
 History: none
@@ -575,12 +575,12 @@ Design twice: StatusItemController owns all panel state (picked) versus AppConta
 **Section 2, Code quality:** R2 (approved). One-job-at-a-time for file transcription is existing
 behaviour, kept by R4 item 6.
 
-**Section 3, Tests:** framework Swift Testing in VibeFlowCore (`cd VibeFlowCore && swift test`);
+**Section 3, Tests:** framework Swift Testing in MaagicalCore (`cd MaagicalCore && swift test`);
 the app target has no tests.
 
 ```
 CODE PATHS (proposed)                                   USER FLOWS
-[+] VibeFlowCore PanelState                              [+] Open panel, act, close
+[+] MaagicalCore PanelState                              [+] Open panel, act, close
   ├── topSlot: ready / activity / problem               ├── [GAP] [QA] click icon → panel, Esc closes
   │   ├── [GAP] activity outranks past error (D4)       ├── [GAP] [QA] outside click closes
   │   ├── [GAP] Accessibility > Mic > key > error       ├── [GAP] [QA] shortcut closes panel first
@@ -597,7 +597,7 @@ CODE PATHS (proposed)                                   USER FLOWS
 COVERAGE: 0/9 code paths, 0/9 flows (all proposed)  |  GAPS: 9 unit, 9 manual QA
 ```
 
-Proposed tests (one Swift Testing file, VibeFlowCore/Tests/VibeFlowCoreTests/PanelStateTests.swift,
+Proposed tests (one Swift Testing file, MaagicalCore/Tests/MaagicalCoreTests/PanelStateTests.swift,
 table-driven):
 - Value: protects=activity card outranks a past error; fails_when=priority order is swapped; why_new=no test covers menu state; seam=none; no_claim=real AppKit panel behaviour
 - Value: protects=problem order Accessibility, Microphone, API key, last error; fails_when=order changes or one is dropped; why_new=none exists; seam=none; no_claim=permission prompts themselves
@@ -623,7 +623,7 @@ and Join, History hover, footer). Right: a simulator for activity, problems, con
 the PanelState rules in effect, and a log of what the real app would do.
 
 Port map:
-- `panelState(s)` → `PanelState.make(...)` in VibeFlowCore; its `ACT` and `PROB` tables and the
+- `panelState(s)` → `PanelState.make(...)` in MaagicalCore; its `ACT` and `PROB` tables and the
   problem `order` array become the Swift enums and ordering; each `rules.push` line is a
   PanelStateTests case.
 - Elements marked `data-swift="…"` name the SwiftUI view or AppKit piece: TopSlotView,
@@ -656,13 +656,13 @@ Critical gaps: 0.
 | Step | Modules touched | Depends on |
 |---|---|---|
 | Merge main (#40) | app | — |
-| PanelState + tests | VibeFlowCore | — |
-| StatusItemController, panel, flyout, drop | VibeFlow/Popover | merge |
-| PopoverView and parts | VibeFlow/Popover | PanelState |
-| Notch tip | VibeFlow (NotchIndicator), VibeFlowCore Preferences | PanelState |
+| PanelState + tests | MaagicalCore | — |
+| StatusItemController, panel, flyout, drop | Maagical/Popover | merge |
+| PopoverView and parts | Maagical/Popover | PanelState |
+| Notch tip | VibeFlow (NotchIndicator), MaagicalCore Preferences | PanelState |
 
-Lane A: PanelState + tests (VibeFlowCore). Lane B: merge main, then StatusItemController
-(VibeFlow/Popover). Then PopoverView, then the notch tip. Conflict flag: both lanes touch
+Lane A: PanelState + tests (MaagicalCore). Lane B: merge main, then StatusItemController
+(Maagical/Popover). Then PopoverView, then the notch tip. Conflict flag: both lanes touch
 Preferences only if the tip counter lands in Lane A; keep it in Lane A.
 
 ## Eng review: Implementation Tasks
@@ -672,15 +672,15 @@ Preferences only if the tip counter lands in Lane A; keep it in Lane A.
   - Verify: build passes; right-click on the clock still opens Settings > Clocks
 - [ ] **E2 (P1, human: ~1d / CC: ~40min)** — StatusItemController — own NSStatusItem, non-activating panel, flyout, icon drop, right-click
   - Surfaced by: R1, R3
-  - Files: VibeFlow/Popover/StatusItemController.swift, VibeFlow/VibeFlowApp.swift, VibeFlow/StatusItemRightClick.swift
+  - Files: Maagical/Popover/StatusItemController.swift, Maagical/MaagicalApp.swift, Maagical/StatusItemRightClick.swift
   - Verify: QA items 7, 10, 11 and the open/close flows
-- [ ] **E3 (P1, human: ~4h / CC: ~20min)** — PanelState in VibeFlowCore with PanelStateTests
+- [ ] **E3 (P1, human: ~4h / CC: ~20min)** — PanelState in MaagicalCore with PanelStateTests
   - Surfaced by: R2, R4
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Settings/PanelState.swift (or a Panel/ folder), VibeFlowCore/Tests/VibeFlowCoreTests/PanelStateTests.swift
-  - Verify: `cd VibeFlowCore && swift test`
+  - Files: MaagicalCore/Sources/MaagicalCore/Settings/PanelState.swift (or a Panel/ folder), MaagicalCore/Tests/MaagicalCoreTests/PanelStateTests.swift
+  - Verify: `cd MaagicalCore && swift test`
 - [ ] **E4 (P2, human: ~30min / CC: ~5min)** — Release the panel's view while hidden (only if R5 is approved)
   - Surfaced by: R5
-  - Files: VibeFlow/Popover/StatusItemController.swift
+  - Files: Maagical/Popover/StatusItemController.swift
 
 ## GSTACK REVIEW REPORT
 

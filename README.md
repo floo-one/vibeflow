@@ -118,7 +118,7 @@ With no keys at all you still get reading with an Apple voice, plus dictation on
 ```bash
 brew install xcodegen
 xcodegen generate
-xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug -derivedDataPath build/DerivedData build
+xcodebuild -project Maagical.xcodeproj -scheme Maagical -configuration Debug -derivedDataPath build/DerivedData build
 open "build/DerivedData/Build/Products/Debug/Maagical Dev.app"
 ```
 

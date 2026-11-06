@@ -56,7 +56,7 @@ the org exists.
 ## What a report contains
 
 Sentry fields are the transport; the content is decided by `FeedbackReport` in
-VibeFlowCore, not by SDK defaults. Every kind has the same shape (D12).
+MaagicalCore, not by SDK defaults. Every kind has the same shape (D12).
 
 | Field | Source | Example |
 |---|---|---|
@@ -73,7 +73,7 @@ therefore record every action end (D8): VibeFlow adds notice lines for read fini
 (provider, voice model, duration, characters), smart read finish (model, duration, outcome)
 and voice fallback (from, to, reason). Failures already log.
 
-**Never sent** (enforced in VibeFlowCore, unit tested):
+**Never sent** (enforced in MaagicalCore, unit tested):
 - **Rule: logs ship with feedback, so never log user text** (selected text, dictated text,
   smart-read answers, vocabulary words, meeting titles). Written into CLAUDE.md and as a
   comment at FeedbackReport (D4). A probe showed that in-process `OSLogStore` reads return
@@ -94,7 +94,7 @@ The same scrub (`FeedbackReport.scrub(_:)`) runs as the SDK's `beforeSend` for c
 ## Architecture
 
 ```
-VibeFlowCore/Feedback/                 pure, Swift Testing
+MaagicalCore/Feedback/                 pure, Swift Testing
   FeedbackReport.swift                 the one way to get sendable text:
                                          init(kind, note, facts, logLines)
                                          render() -> scrubbed preview text == sent text
@@ -102,16 +102,16 @@ VibeFlowCore/Feedback/                 pure, Swift Testing
                                          static scrub(_:) -> keys and home path removed
                                          log cap (200 KB, newest lines kept)
   FeedbackReportTests.swift
-VibeFlow/Feedback/
+Maagical/Feedback/
   FeedbackSender.swift                 SentrySDK.start (options below), reads OSLogStore off
                                        the main thread, gathers facts, capture(feedback:)
                                        with the log attachment; no-op when no DSN
   FeedbackWindow.swift                 the window (swiftui-pro for review)
-VibeFlow/Settings/SettingsView.swift   sidebar bottom row (safeAreaInset on the List)
-VibeFlow/MenuBarView.swift             "Send Feedback…" item
-VibeFlow/VibeFlowApp.swift             Window scene + SDK start
-VibeFlowCore/Session/ReadSession.swift, smart read path   finish and fallback log lines (D8)
-VibeFlowCore/Dictation/OpenAITranscriber.swift (+ Anthropic error path)   no raw bodies in logs (D7)
+Maagical/Settings/SettingsView.swift   sidebar bottom row (safeAreaInset on the List)
+Maagical/MenuBarView.swift             "Send Feedback…" item
+Maagical/MaagicalApp.swift             Window scene + SDK start
+MaagicalCore/Session/ReadSession.swift, smart read path   finish and fallback log lines (D8)
+MaagicalCore/Dictation/OpenAITranscriber.swift (+ Anthropic error path)   no raw bodies in logs (D7)
 ```
 
 Flow:
@@ -130,11 +130,11 @@ Flow:
 - SDK: `getsentry/sentry-cocoa` via SPM in project.yml, `from:` the current 8.x. Send with
   `SentrySDK.capture(feedback:)`; confirm the `SentryFeedback` initializer and its
   fire-and-forget shape against the installed version in T2.
-- DSN: committed as `SENTRY_DSN` in `Config/VibeFlow.xcconfig`, read through Info.plist
+- DSN: committed as `SENTRY_DSN` in `Config/Maagical.xcconfig`, read through Info.plist
   `SentryDSN: $(SENTRY_DSN)` (F6). xcconfig treats `//` as a comment, so write it as
   `https:/$()/<key>@o<org>.ingest.de.sentry.io/<project>`. Empty DSN → feedback hidden,
   SDK never started (forks, tests).
-- Start the SDK in `VibeFlowApp.init` after `quitOlderCopies`, in Debug too (environment
+- Start the SDK in `MaagicalApp.init` after `quitOlderCopies`, in Debug too (environment
   `dev`, D11); `enableAutoSessionTracking` off, `tracesSampleRate = 0`, crash handler on,
   `enableAppHangTracking` on.
 
@@ -168,7 +168,7 @@ No token → warning, not failure, unless `--publish` (a published build must ha
 | # | Task | Done when |
 |---|------|-----------|
 | T0 | Florian: create the personal Sentry org and `vibeflow` project, no card, set the DSN rate limit and spike protection, create an auth token for dSYM upload and store it in the keychain, `brew install getsentry/tools/sentry-cli` | DSN and token exist |
-| T1 | VibeFlowCore/Feedback/FeedbackReport.swift with tests | `swift test` green |
+| T1 | MaagicalCore/Feedback/FeedbackReport.swift with tests | `swift test` green |
 | T2 | sentry-cocoa in project.yml, `SENTRY_DSN` plumbing, SDK start, `beforeSend` scrub | Dev build starts, a test event shows up as `dev` |
 | T3 | FeedbackWindow + sidebar row + menu item + Copy report + crash notice | Feedback with log attachment visible in Sentry; offline send arrives after reconnect |
 | T4 | ~~Breadcrumbs~~ cut (D1); replaced by the log lines of D7 and D8 | |
@@ -190,8 +190,8 @@ Target: docs/designs/feedback.md (this file), reviewed with /plan-eng-review.
 
 feature answers: D1 cut breadcrumbs (T4 and the Telemetry seam; "last action" comes from the
 existing notice log lines), D2 defer F9 (crash-to-feedback linking becomes a TODO);
-structure: B, smaller arrangement (D3): VibeFlowCore/Feedback/FeedbackReport.swift (+ tests),
-VibeFlow/Feedback/FeedbackSender.swift, VibeFlow/Feedback/FeedbackSheet.swift;
+structure: B, smaller arrangement (D3): MaagicalCore/Feedback/FeedbackReport.swift (+ tests),
+Maagical/Feedback/FeedbackSender.swift, Maagical/Feedback/FeedbackSheet.swift;
 accepted scope: T0, T1 (as one FeedbackReport type), T2, T3, T5, T6; T4 cut; F9 deferred;
 pending remedies: S2.
 Scope Challenge result: scope reduced per recommendation.
@@ -207,7 +207,7 @@ Scope Challenge result: scope reduced per recommendation.
   .currentProcessIdentifier): `log.notice("default privacy: \(secret)")` came back as
   `default privacy: selected text here`, and `.info` lines were returned too, so Logger
   privacy does not redact in-process reads. Grep: all 31 interpolating log calls in
-  VibeFlow and VibeFlowCore use `privacy: .public` with metadata only (counts, bundle ids,
+  VibeFlow and MaagicalCore use `privacy: .public` with metadata only (counts, bundle ids,
   error strings, device names, one app path, AppDelegate.swift:28), none carry selected or
   dictated text. See R1.
 
@@ -698,7 +698,7 @@ preview carry the approval of D2 and D9.
   `HistoryWindow.present(openWindow, container: container)` is the existing pattern).
   Correction, no behavior change: the form is its own `Window` scene. Applied.
 
-Design-twice (new module: FeedbackReport). Shape 1 (chosen): a pure VibeFlowCore type whose
+Design-twice (new module: FeedbackReport). Shape 1 (chosen): a pure MaagicalCore type whose
 `render()` returns the scrubbed text that is both previewed and sent. Shape 2: no own type;
 set tags and context on the Sentry scope and attach the log file, preview built separately.
 Shape 1 hides scrub, environment, cap and layout behind one call and is unit-testable; shape
@@ -720,16 +720,16 @@ Dispositions: A1 accepted (D5), A2 accepted (D6), A3 applied as correction.
   `OSLogStore` throws. Correction under F10 ("never lose a note"): report says "Logs
   unavailable: <reason>" and still sends. Applied.
 
-Shared code: no extraction proposed; BuildStamp (VibeFlowCore/Support/BuildStamp.swift) is
+Shared code: no extraction proposed; BuildStamp (MaagicalCore/Support/BuildStamp.swift) is
 reused for branch, commit and date. Dispositions: both applied as corrections.
 
 ### 3. Tests
 
-Framework: Swift Testing in VibeFlowCore (`cd VibeFlowCore && swift test`, CLAUDE.md).
+Framework: Swift Testing in MaagicalCore (`cd MaagicalCore && swift test`, CLAUDE.md).
 
 ```
 CODE PATHS                                              USER FLOWS
-[+] VibeFlowCore/Feedback/FeedbackReport.swift          [+] Send feedback
+[+] MaagicalCore/Feedback/FeedbackReport.swift          [+] Send feedback
   ├── render()                                            ├── [GAP→manual] open from menu bar, no Settings window
   │   ├── [PLANNED ★★★] all fields, every kind (D12)      ├── [GAP→manual] preview == event in Sentry
   │   ├── [PLANNED ★★★] logs unavailable branch          ├── [GAP→manual] offline send, reconnect, arrives (D6)
@@ -745,7 +745,7 @@ CODE PATHS                                              USER FLOWS
   └── [PLANNED ★★★] non-JSON body with a private sentence → "non-JSON body, N bytes"
 [+] action end log lines (D8)
   └── [PLANNED ★★] read finish / smart read finish / fallback lines carry no text
-[+] VibeFlow/Feedback/FeedbackSender.swift
+[+] Maagical/Feedback/FeedbackSender.swift
   └── [GAP→manual] SDK start options, capture(feedback:), attachment (SDK boundary)
 
 COVERAGE (planned): unit 9/9 Core paths | user flows 0/6 automated, 6/6 manual checks
@@ -782,7 +782,7 @@ Dispositions: P1 applied as correction.
 
 ## What already exists
 
-- BuildStamp (VibeFlowCore/Support/BuildStamp.swift): branch, commit, build date; reused.
+- BuildStamp (MaagicalCore/Support/BuildStamp.swift): branch, commit, build date; reused.
 - AppContainer.settingsTab (AppContainer.swift:40): current pane; reused as a tag.
 - Preferences keys (Preferences.swift:44-60): source of the snapshot allowlist.
 - HistoryWindow.present (MenuBarView.swift:98): pattern for opening a window from the menu.
@@ -806,8 +806,8 @@ Critical gaps (no test, no handling, silent): none.
 
 | Step | Modules touched | Depends on |
 |---|---|---|
-| Report core (T1, D7, D8 tests) | VibeFlowCore/Feedback, Session, Dictation | — |
-| SDK + window (T2, T3) | VibeFlow/, project.yml, Config/ | T0, T1 |
+| Report core (T1, D7, D8 tests) | MaagicalCore/Feedback, Session, Dictation | — |
+| SDK + window (T2, T3) | Maagical/, project.yml, Config/ | T0, T1 |
 | Symbol upload (T5) | scripts/ | T0 |
 | Docs (T6) | CLAUDE.md, docs/, README, CHANGELOG | T1-T5 |
 
@@ -819,21 +819,21 @@ Conflict flags: none between lanes; project.yml is touched only in lane A.
 Synthesized from this review's findings. Each task derives from a specific
 finding above. Run with Claude Code or Codex; checkbox as you ship.
 
-- [ ] **T1 (P1, human: ~4h / CC: ~20min)** — VibeFlowCore — FeedbackReport with render, scrub, environment, cap, snapshot
+- [ ] **T1 (P1, human: ~4h / CC: ~20min)** — MaagicalCore — FeedbackReport with render, scrub, environment, cap, snapshot
   - Surfaced by: Scope D3, R1/D4, R2/D5, R9/D12, Code quality vocabulary finding
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Feedback/FeedbackReport.swift, VibeFlowCore/Tests/VibeFlowCoreTests/FeedbackReportTests.swift
-  - Verify: `cd VibeFlowCore && swift test`
-- [ ] **T2 (P1, human: ~2h / CC: ~10min)** — VibeFlowCore — no raw provider bodies in failure logs
+  - Files: MaagicalCore/Sources/MaagicalCore/Feedback/FeedbackReport.swift, MaagicalCore/Tests/MaagicalCoreTests/FeedbackReportTests.swift
+  - Verify: `cd MaagicalCore && swift test`
+- [ ] **T2 (P1, human: ~2h / CC: ~10min)** — MaagicalCore — no raw provider bodies in failure logs
   - Surfaced by: Outside voice O1, R4/D7 (OpenAITranscriber.swift:92, DictationSession.swift:504, Anthropic error path)
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Dictation/OpenAITranscriber.swift, DictationSession.swift, the Anthropic client
+  - Files: MaagicalCore/Sources/MaagicalCore/Dictation/OpenAITranscriber.swift, DictationSession.swift, the Anthropic client
   - Verify: unit test with a non-JSON body containing a private sentence
-- [ ] **T3 (P1, human: ~2h / CC: ~15min)** — VibeFlowCore — finish and fallback log lines
+- [ ] **T3 (P1, human: ~2h / CC: ~15min)** — MaagicalCore — finish and fallback log lines
   - Surfaced by: Outside voice O2, R5/D8 (ReadSession.swift:849)
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Session/ReadSession.swift, smart read path
+  - Files: MaagicalCore/Sources/MaagicalCore/Session/ReadSession.swift, smart read path
   - Verify: unit tests on the line builders; read a real log after a read
 - [ ] **T4 (P1, human: ~1 day / CC: ~30min)** — App — Sentry SDK, sender, window, entry points, crash notice
   - Surfaced by: Architecture A2/A3, R3/D6, R8/D11, Performance P1
-  - Files: project.yml, Config/VibeFlow.xcconfig, VibeFlow/VibeFlowApp.swift, VibeFlow/Feedback/*, Settings/SettingsView.swift, MenuBarView.swift
+  - Files: project.yml, Config/Maagical.xcconfig, Maagical/MaagicalApp.swift, Maagical/Feedback/*, Settings/SettingsView.swift, MenuBarView.swift
   - Verify: `xcodegen generate`, Debug build, feedback and test crash visible in Sentry as `dev`; offline send arrives
 - [ ] **T5 (P1, human: ~3h / CC: ~15min)** — scripts — dSYM upload in release.sh and nightly path
   - Surfaced by: Outside voice O4, R7/D10 (release.sh:124)
