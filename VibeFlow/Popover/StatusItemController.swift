@@ -89,14 +89,14 @@ final class StatusItemController: NSObject {
             Task { @MainActor in self?.watchIcon() }
         }
         guard let button = statusItem.button else { return }
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "VibeFlow")
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Maagical")
         image?.isTemplate = true
         button.image = image
         #if DEBUG
         button.title = " DEV"
         button.font = .systemFont(ofSize: 10, weight: .semibold)
         #endif
-        button.setAccessibilityLabel("VibeFlow")
+        button.setAccessibilityLabel("Maagical")
     }
 
     // MARK: Clicks

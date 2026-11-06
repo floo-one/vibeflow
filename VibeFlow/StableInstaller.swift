@@ -57,14 +57,14 @@ final class StableInstaller {
         let (download, response) = try await URLSession.shared.download(from: Updater.releaseDMG)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard status == 200 else { throw Failure("GitHub answered \(status) for the release download.") }
-        let dmg = work.appending(path: "VibeFlow.dmg")
+        let dmg = work.appending(path: "Maagical.dmg")
         try files.moveItem(at: download, to: dmg)
 
         step = "Checking the release…"
         let mount = work.appending(path: "mount")
         try await Self.exec("/usr/bin/hdiutil", "attach", dmg.path, "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", mount.path)
-        let staged = work.appending(path: "VibeFlow.app")
-        let copied = Result { try files.copyItem(at: mount.appending(path: "VibeFlow.app"), to: staged) }
+        let staged = work.appending(path: "Maagical.app")
+        let copied = Result { try files.copyItem(at: mount.appending(path: "Maagical.app"), to: staged) }
         _ = try? await Self.exec("/usr/bin/hdiutil", "detach", mount.path, "-force")
         try copied.get()
         try Self.verify(staged)
@@ -79,7 +79,7 @@ final class StableInstaller {
         do {
             try await NSWorkspace.shared.openApplication(at: target, configuration: configuration)
         } catch {
-            throw Failure("The release is installed, but did not open: \(error.localizedDescription) Quit VibeFlow and open it again.")
+            throw Failure("The release is installed, but did not open: \(error.localizedDescription) Quit Maagical and open it again.")
         }
     }
 
@@ -92,7 +92,7 @@ final class StableInstaller {
         let flags = SecCSFlags(rawValue: kSecCSCheckAllArchitectures | kSecCSStrictValidate | kSecCSCheckNestedCode)
         let status = SecStaticCodeCheckValidity(code, flags, requirement)
         guard status == errSecSuccess else {
-            throw Failure("The download is not a signed and notarized VibeFlow release (\(status)). Nothing was changed.")
+            throw Failure("The download is not a signed and notarized Maagical release (\(status)). Nothing was changed.")
         }
     }
 

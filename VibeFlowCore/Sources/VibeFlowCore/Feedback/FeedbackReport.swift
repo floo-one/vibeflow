@@ -121,7 +121,7 @@ public struct FeedbackReport: Equatable, Sendable {
         tags["layout"] = facts.keyboardLayout
         self.tags = tags.mapValues(scrub)
 
-        var lines = ["VibeFlow \(facts.version) (\(facts.build)), \(facts.environment.rawValue)"]
+        var lines = ["Maagical \(facts.version) (\(facts.build)), \(facts.environment.rawValue)"]
         if let stamp = facts.stamp {
             lines.append("Built from \(stamp.branch) @ \(stamp.commit), \(stamp.built.formatted(.iso8601))")
         }

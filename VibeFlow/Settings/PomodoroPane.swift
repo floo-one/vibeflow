@@ -30,7 +30,7 @@ struct PomodoroPane: View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let focus = container.focus
             PaneHeader(.pomodoro, subtitle: focus.session == nil
-                       ? "Start a round here or from the VibeFlow menu. It shows in the menu bar only while it runs."
+                       ? "Start a round here or from the Maagical menu. It shows in the menu bar only while it runs."
                        : focus.statusLine(at: context.date)) {
                 HStack { PomodoroControls() }
             }

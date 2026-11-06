@@ -3,7 +3,7 @@ import path from 'node:path';
 
 export const REPO_URL = 'https://github.com/floo-one/vibeflow';
 export const CHANGELOG_URL = REPO_URL + '/blob/main/CHANGELOG.md';
-export const DMG_URL = REPO_URL + '/releases/latest/download/VibeFlow.dmg';
+export const DMG_URL = REPO_URL + '/releases/latest/download/Maagical.dmg';
 export const PUBLISHER = 'floo.one LLC';
 
 // Astro runs from website/, so the app's project.yml is one level up. import.meta.url would

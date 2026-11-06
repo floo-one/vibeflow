@@ -18,7 +18,7 @@ jobs:
           xcodebuild -version
           major=$(xcodebuild -version | head -1 | sed -E 's/Xcode ([0-9]+).*/\1/')
           if [ "$major" -lt 26 ]; then
-            echo "::error::VibeFlow needs Xcode 26 or later (Swift 6, macOS 26 SDK); this runner has Xcode $major."
+            echo "::error::Maagical needs Xcode 26 or later (Swift 6, macOS 26 SDK); this runner has Xcode $major."
             exit 1
           fi
 

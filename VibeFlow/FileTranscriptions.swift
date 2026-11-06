@@ -263,7 +263,7 @@ struct TranscribeFileView: View {
                 form(pending)
             } else {
                 ContentUnavailableView("No File Chosen", systemImage: "waveform",
-                                       description: Text("Use Transcribe File… in the VibeFlow menu."))
+                                       description: Text("Use Transcribe File… in the Maagical menu."))
             }
         }
         // A grouped Form has no height of its own, so the window (sized to content) came out

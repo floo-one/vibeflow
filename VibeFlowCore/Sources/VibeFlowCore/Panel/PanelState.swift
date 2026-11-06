@@ -46,7 +46,7 @@ public struct PanelState: Sendable, Equatable {
         /// The version Sparkle downloaded and holds for install, nil when none waits.
         public var updateWaiting: String?
         public var build: Build
-        /// "VibeFlow 1.5.0" for a release; only the commit ("87d0257") for a nightly or Debug build.
+        /// "Maagical 1.5.0" for a release; only the commit ("87d0257") for a nightly or Debug build.
         public var version: String
 
         public init(readState: SessionState = .idle, readStatus: String = "Ready", readError: LastError? = nil,
@@ -115,7 +115,7 @@ public struct PanelState: Sendable, Equatable {
     static func topSlot(_ input: Input) -> TopSlot {
         if let activity = dictationActivity(input) ?? readActivity(input) { return .activity(activity) }
         if !input.accessibilityTrusted {
-            return .problem(Card(title: "Allow Accessibility access", detail: "VibeFlow needs it to read the text you select.",
+            return .problem(Card(title: "Allow Accessibility access", detail: "Maagical needs it to read the text you select.",
                                  tone: .setup, actions: [.grantAccessibility], actionsEnabled: true, showsMeter: false))
         }
         if input.microphoneDenied {

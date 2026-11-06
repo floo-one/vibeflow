@@ -580,7 +580,7 @@ public final class DictationSession {
         }
     }
 
-    private static let microphoneOff = "Microphone access is off. Allow VibeFlow in System Settings > Privacy & Security > Microphone"
+    private static let microphoneOff = "Microphone access is off. Allow Maagical in System Settings > Privacy & Security > Microphone"
 
     private func finishIdle(status: String) {
         log.notice("Dictation finished: \(status, privacy: .public)")

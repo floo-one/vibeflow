@@ -70,7 +70,7 @@ struct FeedbackReportTests {
         let r = report(facts: facts(settings: [.init("voice model", "eleven_flash_v2_5")]))
         let preview = r.render()
         #expect(preview.hasPrefix(r.message + "\n\n"))
-        #expect(preview.contains("VibeFlow 1.4.0 (3.52), stable"))
+        #expect(preview.contains("Maagical 1.4.0 (3.52), stable"))
         #expect(preview.contains("Settings\n  voice model: eleven_flash_v2_5"))
         let logFile = try #require(r.logFile)
         #expect(preview.hasSuffix(logFile))

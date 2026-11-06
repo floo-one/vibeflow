@@ -124,7 +124,7 @@ func fail(_ message: String) -> Never {
 
 // MARK: Run
 
-guard let key = apiKey() else { fail("No Anthropic key: set ANTHROPIC_API_KEY or store one in VibeFlow.") }
+guard let key = apiKey() else { fail("No Anthropic key: set ANTHROPIC_API_KEY or store one in Maagical.") }
 let files = (try? FileManager.default.contentsOfDirectory(at: fixturesDir, includingPropertiesForKeys: nil)) ?? []
 let fixtures = files.filter { $0.pathExtension == "txt" }
     .sorted { $0.lastPathComponent < $1.lastPathComponent }

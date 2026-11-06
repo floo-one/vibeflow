@@ -141,7 +141,7 @@ final class AppContainer {
         self.history = history
         self.session = session
         files = FileTranscriptions(secrets: secrets, preferences: preferences, history: history, store: transcripts,
-                                   http: http, awake: LivePowerAssertion(name: "VibeFlow file transcription"))
+                                   http: http, awake: LivePowerAssertion(name: "Maagical file transcription"))
 
         let onDevice: (any Transcriber)? = AppleTranscriber.isAvailable ? AppleTranscriber() : nil
         let sounds = DictationSounds()
@@ -369,7 +369,7 @@ final class AppContainer {
         #else
         let build: PanelState.Build = Updater.isNightly ? .nightly : .release
         let release = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
-        let version = stamp?.commit ?? "VibeFlow \(release)"
+        let version = stamp?.commit ?? "Maagical \(release)"
         #endif
         return PanelState.Input(
             readState: session.state, readStatus: session.status, readError: session.lastError,

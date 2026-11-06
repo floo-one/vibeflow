@@ -51,7 +51,7 @@ public struct PromptLibrary: Sendable, Equatable, Codable {
         public var title: String {
             switch self {
             case .aboutYou: "About you"
-            case .identity: "Who VibeFlow is"
+            case .identity: "Who Maagical is"
             case .spokenStyle: "Spoken style"
             case .customRules: "Your rules"
             case .briefKinds: "Brief: kinds of text"
@@ -92,7 +92,7 @@ public struct PromptLibrary: Sendable, Equatable, Codable {
         public var hint: String {
             switch self {
             case .aboutYou: "Who you are, so briefs and answers can say \"your email to Charlotte\" instead of naming you. Name, role, company, languages. Empty = none."
-            case .identity: "Opens every Smart Read prompt. \"I\" is VibeFlow; everyone else is named."
+            case .identity: "Opens every Smart Read prompt. \"I\" is Maagical; everyone else is named."
             case .spokenStyle: "How answers sound when spoken: sentences, terms, numbers."
             case .customRules: "Your own instructions, added to the features you tick. Empty = none."
             case .briefKinds: "The brief picks one kind of text and follows its line, word limit and sample opening."

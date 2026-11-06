@@ -19,7 +19,7 @@ struct VibeFlowApp: App {
 
     var body: some Scene {
         // First, so SwiftUI's openWindow and openSettings have a live scene to work from.
-        Window("VibeFlow", id: SceneAnchor.id) {
+        Window("Maagical", id: SceneAnchor.id) {
             SceneAnchor()
                 .environment(container)
         }

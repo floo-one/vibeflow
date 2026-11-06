@@ -23,7 +23,7 @@ struct UsagePane: View {
         let colors = UsageColors(groups: usage.groups(in: range, by: grouping).map(\.group), grouping: grouping)
 
         Form {
-            PaneHeader(.usage, subtitle: "Estimated from what VibeFlow sent") {
+            PaneHeader(.usage, subtitle: "Estimated from what Maagical sent") {
                 Picker("Period", selection: $period) {
                     ForEach(UsagePeriod.browsable, id: \.self) { Text($0.title).tag($0) }
                 }
@@ -106,7 +106,7 @@ struct UsagePane: View {
     }
 
     #if DEBUG
-    private static let devNote = "; VibeFlow Dev keeps its own count"
+    private static let devNote = "; Maagical Dev keeps its own count"
     #else
     private static let devNote = ""
     #endif

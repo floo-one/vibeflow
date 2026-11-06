@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+VibeFlow is now Maagical.
+
+### Changed
+- **New name and icon.** VibeFlow is now Maagical: Maag, the author's surname, plus magical. The
+  icon is a white playing card with the five voice bars as its suit, on indigo. Same keys, same
+  settings, same bundle id, so the installed app updates in place and keeps its Accessibility
+  grant. The DMG is now Maagical.dmg; the release also carries it as VibeFlow.dmg once more, so
+  Back to Stable in 1.5 nightlies still works.
+
 ## 1.5.0
 
 Transcribe any audio or video file, a Pomodoro timer and Keep Awake built in, Send Feedback,

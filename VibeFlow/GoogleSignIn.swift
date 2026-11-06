@@ -195,15 +195,15 @@ private final class LoopbackListener: @unchecked Sendable {
         case .failure(.stateMismatch):
             // Not our browser's answer (another tab, another program): ignore it and keep
             // waiting, so a stray request cannot end the sign-in.
-            respond(connection, status: "400 Bad Request", page: "This request does not belong to the VibeFlow sign-in.")
+            respond(connection, status: "400 Bad Request", page: "This request does not belong to the Maagical sign-in.")
         case .success(let code):
-            respond(connection, status: "200 OK", page: "VibeFlow is signed in to Google Calendar. You can close this tab.")
+            respond(connection, status: "200 OK", page: "Maagical is signed in to Google Calendar. You can close this tab.")
             finish(.success(code))
         case .failure(let error):
             let page = switch error {
-            case .adminPolicyEnforced: "Your Google Workspace admin blocks VibeFlow. Ask them to trust the VibeFlow client ID, then try again."
+            case .adminPolicyEnforced: "Your Google Workspace admin blocks Maagical. Ask them to trust the Maagical client ID, then try again."
             case .accessDenied: "Sign-in cancelled. You can close this tab."
-            default: "VibeFlow sign-in failed. Close this tab and try again from VibeFlow's Settings."
+            default: "Maagical sign-in failed. Close this tab and try again from Maagical's Settings."
             }
             respond(connection, status: "200 OK", page: page)
             finish(.failure(.callback(error)))
@@ -217,7 +217,7 @@ private final class LoopbackListener: @unchecked Sendable {
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
-        let html = "<!doctype html><meta charset=utf-8><title>VibeFlow</title>"
+        let html = "<!doctype html><meta charset=utf-8><title>Maagical</title>"
             + "<body style=\"font:16px -apple-system,sans-serif;margin:4em auto;max-width:32em\"><p>\(escaped)</p>"
         let response = "HTTP/1.1 \(status)\r\nContent-Type: text/html; charset=utf-8\r\n"
             + "Content-Length: \(html.utf8.count)\r\nConnection: close\r\n\r\n\(html)"

@@ -1,20 +1,17 @@
 ---
-// The app icon: four white bars on the blue-violet gradient. Decorative wherever it appears.
+// The app icon, "the ace": a white playing card with the five voice bars as its suit on a flat
+// indigo tile. Same shapes as scripts/make-icons.swift. Decorative wherever it appears.
 interface Props { size?: number }
 const { size = 30 } = Astro.props;
-// Gradient ids must be unique on a page; every use on one page has its own size.
-const id = `ic-${size}`;
 ---
-<svg width={size} height={size} viewBox="0 0 30 30" aria-hidden="true">
-  <defs>
-    <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#6B70FF" />
-      <stop offset="1" stop-color="#4030C7" />
-    </linearGradient>
-  </defs>
-  <rect width="30" height="30" rx="7" fill={`url(#${id})`} />
-  <rect x="6.5" y="12" width="2.6" height="6" rx="1.3" fill="#FFFFFF" />
-  <rect x="11.2" y="8" width="2.6" height="14" rx="1.3" fill="#FFFFFF" />
-  <rect x="15.9" y="10" width="2.6" height="10" rx="1.3" fill="#FFFFFF" />
-  <rect x="20.6" y="13" width="2.6" height="4" rx="1.3" fill="#FFFFFF" />
+<svg width={size} height={size} viewBox="0 0 1024 1024" aria-hidden="true">
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#3A2FBF" />
+  <rect x="292" y="180" width="440" height="664" rx="48" fill="#FFFFFF" />
+  <text x="340" y="312" font-family="-apple-system, BlinkMacSystemFont, 'Inter Variable', Inter, system-ui, sans-serif" font-weight="900" font-size="120" fill="#3A2FBF">A</text>
+  <text x="684" y="712" font-family="-apple-system, BlinkMacSystemFont, 'Inter Variable', Inter, system-ui, sans-serif" font-weight="900" font-size="120" fill="#3A2FBF" transform="rotate(180 684 712)">A</text>
+  <rect x="378" y="457" width="36" height="110" rx="18" fill="#3A2FBF" />
+  <rect x="436" y="417" width="36" height="190" rx="18" fill="#3A2FBF" />
+  <rect x="494" y="382" width="36" height="260" rx="18" fill="#F5B82E" />
+  <rect x="552" y="417" width="36" height="190" rx="18" fill="#3A2FBF" />
+  <rect x="610" y="457" width="36" height="110" rx="18" fill="#3A2FBF" />
 </svg>

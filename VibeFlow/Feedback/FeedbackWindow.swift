@@ -61,7 +61,7 @@ struct FeedbackView: View {
                 .frame(height: 180)
             }
 
-            Text("VibeFlow also sends crash reports, without your text.")
+            Text("Maagical also sends crash reports, without your text.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -90,7 +90,7 @@ struct FeedbackView: View {
     private var placeholder: String {
         switch kind {
         case .bug: return "What happened, and what did you expect?"
-        case .idea: return "What should VibeFlow do?"
+        case .idea: return "What should Maagical do?"
         case .loveIt: return "What do you like?"
         }
     }

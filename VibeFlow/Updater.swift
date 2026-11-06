@@ -50,7 +50,7 @@ final class Updater: NSObject, SPUUpdaterDelegate {
 
     /// The newest release's DMG. Sparkle never installs an older build, so StableInstaller
     /// installs this one to leave a nightly.
-    static let releaseDMG = URL(string: "https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg")!
+    static let releaseDMG = URL(string: "https://github.com/floo-one/vibeflow/releases/latest/download/Maagical.dmg")!
 
     var lastCheck: Date? { controller?.updater.lastUpdateCheckDate }
 

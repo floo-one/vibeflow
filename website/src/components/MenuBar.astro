@@ -1,5 +1,5 @@
 ---
-// The site's navigation as a macOS menu bar, on every page: VibeFlow, Voice, Tools and Help
+// The site's navigation as a macOS menu bar, on every page: Maagical, Voice, Tools and Help
 // menus, a German clock like the app's, and a Download pill that grows once the hero's own
 // button has scrolled away. Menus are disclosure buttons (aria-expanded), not ARIA menus.
 import AppIcon from './AppIcon.astro';
@@ -12,9 +12,9 @@ const here = (page: 'meetings' | 'clocks') => (page === current ? 'page' : undef
 <header class="mb" id="mb">
   <nav aria-label="Main" class="mb-nav">
     <div class="mwrap">
-      <button class="mt app" type="button" aria-expanded="false"><AppIcon size={22} /><span class="app-name">VibeFlow</span></button>
+      <button class="mt app" type="button" aria-expanded="false"><AppIcon size={22} /><span class="app-name">Maagical</span></button>
       <ul class="dd">
-        <li class="about"><span><b>VibeFlow {VERSION}</b>Free, open source, MIT</span></li>
+        <li class="about"><span><b>Maagical {VERSION}</b>Free, open source, MIT</span></li>
         <li class="sep" role="separator"></li>
         <li><a href={url()}>Home</a></li>
         <li><a href={DMG_URL}>Download for Mac…</a></li>
@@ -116,7 +116,7 @@ const here = (page: 'meetings' | 'clocks') => (page === current ? 'page' : undef
   .dlp:focus-visible { outline-offset: 3px; }
   .dlp .more { display: inline-block; max-width: 0; overflow: hidden; opacity: 0; vertical-align: bottom; transition: max-width 0.6s var(--ease), opacity 0.4s var(--ease); }
   .mb.cta .dlp .more { max-width: 70px; opacity: 1; }
-  .mb.cta .dlp { box-shadow: 0 0 0 4px rgba(107, 112, 255, 0.2), 0 8px 20px -8px rgba(64, 48, 199, 0.6); }
+  .mb.cta .dlp { box-shadow: 0 0 0 4px rgba(58, 47, 191, 0.2), 0 8px 20px -8px rgba(58, 47, 191, 0.6); }
 
   @media (max-width: 760px) {
     .mtitles, .mb-clock, .dlp .more { display: none; }

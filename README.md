@@ -1,4 +1,4 @@
-# VibeFlow
+# Maagical
 
 **Hear anything. Say anything.**
 
@@ -8,17 +8,17 @@ A tiny Mac menu bar app for both directions of voice. Select text anywhere and p
 shortcut to hear it in a natural voice. Hold another shortcut, talk, and your words are typed
 where your cursor is.
 
-Native Swift and SwiftUI, macOS 15 or later. No VibeFlow account, no server, no telemetry.
+Native Swift and SwiftUI, macOS 15 or later. No Maagical account, no server, no telemetry.
 You bring your own API keys.
 
 ## Install
 
-1. Download [VibeFlow.dmg](https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg)
-   (signed and notarized by Apple), open it and drag VibeFlow to Applications.
+1. Download [Maagical.dmg](https://github.com/floo-one/vibeflow/releases/latest/download/Maagical.dmg)
+   (signed and notarized by Apple), open it and drag Maagical to Applications.
 2. Grant Accessibility when asked, and Microphone on your first dictation.
 3. Add your keys in Settings > Accounts (see [Keys](#keys); all optional).
 
-From 1.2.0 on, VibeFlow updates itself in the background (Check for Updates… in the menu
+From 1.2.0 on, Maagical updates itself in the background (Check for Updates… in the menu
 looks right away). To get there from an older version, download the DMG once more and replace
 the app.
 
@@ -77,17 +77,17 @@ With no keys at all you still get reading with an Apple voice, plus dictation on
 - **Dictation**: your recording goes to Groq, then the transcript goes to Groq for cleanup.
   Without Groq (no key, offline, rate limited) Apple's on-device recognizer is used on macOS
   26 and nothing is sent.
-- **Meetings**: VibeFlow reads your calendars from Google with read-only access. Events stay
+- **Meetings**: Maagical reads your calendars from Google with read-only access. Events stay
   in memory on this Mac; the Google sign-in is kept in your Keychain. Sign Out in Settings >
-  Meetings forgets the sign-in on this Mac only; to remove VibeFlow's access entirely, remove
+  Meetings forgets the sign-in on this Mac only; to remove Maagical's access entirely, remove
   it at myaccount.google.com/permissions.
-- **Send Feedback** (menu, or the bottom of the Settings sidebar): your note, the VibeFlow
+- **Send Feedback** (menu, or the bottom of the Settings sidebar): your note, the Maagical
   version and channel, macOS version, keyboard layout, permission status, your non-secret
-  settings (vocabulary and calendars only as counts) and the last 10 minutes of VibeFlow's own
+  settings (vocabulary and calendars only as counts) and the last 10 minutes of Maagical's own
   log go to Sentry (EU). The form shows exactly this text before you send it. Keys, anything
   key-shaped and your home folder name are removed; the log never contains the text you read
   or dictate.
-- **Crash reports**: if VibeFlow crashes or freezes, Sentry receives the stack trace, version
+- **Crash reports**: if Maagical crashes or freezes, Sentry receives the stack trace, version
   and Mac model, with the same scrubbing and a random install id instead of your name. Like
   any web request, Sentry sees the IP address a report arrives from.
 - **Stays local**: History (`~/Library/Application Support/VibeFlow/history.json`, cleared in
@@ -96,7 +96,7 @@ With no keys at all you still get reading with an Apple voice, plus dictation on
 
 ## Good to know
 
-- **Clipboard.** When an app does not expose its selection, VibeFlow presses Edit > Copy for
+- **Clipboard.** When an app does not expose its selection, Maagical presses Edit > Copy for
   you and restores your previous clipboard text afterwards. Dictation pastes through the
   clipboard too (marked transient, so clipboard managers skip it) and restores it 750 ms
   later. Before pasting it checks that the same text field still has focus and that no
@@ -106,8 +106,8 @@ With no keys at all you still get reading with an Apple voice, plus dictation on
   headphones (a headset microphone drops them to call quality) or when the system input is a
   virtual device. Pick a specific microphone in Settings > Dictation.
 - **Speaker.** Settings > Read > Speaker sends the ElevenLabs voice to a specific output.
-- **Google sign-in.** Google has not verified VibeFlow yet, so the consent screen warns that
-  the app is unverified (Advanced > Go to VibeFlow), and while the app is in Google's testing
+- **Google sign-in.** Google has not verified Maagical yet, so the consent screen warns that
+  the app is unverified (Advanced > Go to Maagical), and while the app is in Google's testing
   phase only invited accounts can sign in. A Google Workspace admin can block third-party apps;
   the Meetings tab then says "Blocked by your Google Workspace admin". If you untick calendar
   access on the consent screen, sign-in stops with "Allow calendar access"; sign in again and
@@ -119,7 +119,7 @@ With no keys at all you still get reading with an Apple voice, plus dictation on
 brew install xcodegen
 xcodegen generate
 xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug -derivedDataPath build/DerivedData build
-open "build/DerivedData/Build/Products/Debug/VibeFlow Dev.app"
+open "build/DerivedData/Build/Products/Debug/Maagical Dev.app"
 ```
 
 Set your own `DEVELOPMENT_TEAM` and bundle id in `project.yml` first. Signing, tests,

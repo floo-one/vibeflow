@@ -200,7 +200,7 @@ final class LivePowerAssertion: PowerAssertion {
     /// What `pmset -g assertions` shows.
     private let name: String
 
-    init(name: String = "VibeFlow Keep Awake") {
+    init(name: String = "Maagical Keep Awake") {
         self.name = name
     }
 

@@ -1,7 +1,7 @@
 #!/bin/zsh
-# Build a notarized VibeFlow release: Developer ID signed app, stapled, in a DMG with its
+# Build a notarized Maagical release: Developer ID signed app, stapled, in a DMG with its
 # Sparkle update feed (appcast.xml), and with --publish also tagged and uploaded to GitHub
-# Releases, where installed copies of VibeFlow find it.
+# Releases, where installed copies of Maagical find it.
 #
 # One-time setup (see docs/DEVELOPMENT.md "Release"):
 #   xcrun notarytool store-credentials VibeFlowNotary --team-id X7UXDLS9F7
@@ -14,7 +14,7 @@
 # SPARKLE_KEY_FILE (generate_keys -x), SENTRY_AUTH_TOKEN, and the Developer ID certificate in
 # a keychain the workflow sets up.
 #
-# Usage:  scripts/release.sh                 build build/release/VibeFlow-<version>.dmg
+# Usage:  scripts/release.sh                 build build/release/Maagical-<version>.dmg
 #         scripts/release.sh --publish       same, from a clean main that matches origin, then
 #                                            tag v<version> and create the GitHub release
 #         scripts/release.sh --no-notarize   stop after the signed export (no credentials)
@@ -62,7 +62,7 @@ cd "$ROOT"
 OUT="build/release"
 ARCHIVE="$OUT/VibeFlow.xcarchive"
 EXPORT="$OUT/export"
-APP="$EXPORT/VibeFlow.app"
+APP="$EXPORT/Maagical.app"
 
 step() { print -P "%B==> $1%b"; }
 fail() { print -u2 "error: $1"; exit 1; }
@@ -177,7 +177,7 @@ if [[ $NOTARIZE -eq 1 ]]; then
   fi
 fi
 
-# A nightly carries its build number and, like VibeFlow Dev, the commit it came from
+# A nightly carries its build number and, like Maagical Dev, the commit it came from
 # (BuildStamp), which the menu shows next to the version.
 OVERRIDES=()
 if [[ $NIGHTLY -eq 1 ]]; then
@@ -202,7 +202,7 @@ EXPECTED="$VERSION"; [[ $NIGHTLY -eq 1 ]] && EXPECTED="$NIGHTLY_VERSION"
 if [[ $NIGHTLY -eq 1 ]]; then
   [[ "$BUILD" == "$NIGHTLY_BUILD" ]] || fail "built build number $BUILD is not $NIGHTLY_BUILD"
 fi
-print "VibeFlow $VERSION ($BUILD)"
+print "Maagical $VERSION ($BUILD)"
 
 step "Verify the signature"
 codesign --verify --deep --strict --verbose=2 "$APP"
@@ -220,19 +220,19 @@ if [[ $NOTARIZE -eq 0 ]]; then
 fi
 
 step "Notarize the app"
-ZIP="$OUT/VibeFlow-$VERSION.zip"
+ZIP="$OUT/Maagical-$VERSION.zip"
 ditto -c -k --keepParent "$APP" "$ZIP"
 xcrun notarytool submit "$ZIP" "${NOTARY_AUTH[@]}" --wait
 xcrun stapler staple "$APP"
 rm -f "$ZIP"
 
 step "Build the DMG"
-if [[ $NIGHTLY -eq 1 ]]; then DMG="$OUT/VibeFlow-$NIGHTLY_BUILD.dmg"; else DMG="$OUT/VibeFlow-$VERSION.dmg"; fi
+if [[ $NIGHTLY -eq 1 ]]; then DMG="$OUT/Maagical-$NIGHTLY_BUILD.dmg"; else DMG="$OUT/Maagical-$VERSION.dmg"; fi
 STAGE="$OUT/dmg"
 mkdir -p "$STAGE"
-ditto "$APP" "$STAGE/VibeFlow.app"
+ditto "$APP" "$STAGE/Maagical.app"
 ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "VibeFlow" -srcfolder "$STAGE" -ov -format UDZO -quiet "$DMG"
+hdiutil create -volname "Maagical" -srcfolder "$STAGE" -ov -format UDZO -quiet "$DMG"
 rm -rf "$STAGE"
 
 step "Sign, notarize and staple the DMG"
@@ -267,7 +267,7 @@ if [[ $NIGHTLY -eq 1 && $PUBLISH -eq 1 ]]; then
   # release. Its tag is not moved (a moved tag breaks everyone's git fetch --tags); the title
   # and notes name the commit. DMG first, then the feed that points at it, then old DMGs.
   # The Ship workflow reads the commit back from the end of this title.
-  TITLE="VibeFlow $NIGHTLY_VERSION ($COMMIT)"
+  TITLE="Maagical $NIGHTLY_VERSION ($COMMIT)"
   if ! gh release view nightly >/dev/null 2>&1; then
     gh release create nightly --target main --prerelease --latest=false \
       --title "$TITLE" --notes-file "$NOTES"
@@ -275,24 +275,29 @@ if [[ $NIGHTLY -eq 1 && $PUBLISH -eq 1 ]]; then
   gh release upload nightly "$DMG#$TITLE (DMG)" --clobber
   gh release upload nightly "$APPCAST#Update feed (Sparkle, nightly)" --clobber
   gh release edit nightly --title "$TITLE" --notes-file "$NOTES" --prerelease
-  for old in $(gh release view nightly --json assets -q '.assets[].name' | grep -E '^VibeFlow-.*\.dmg$'); do
+  for old in $(gh release view nightly --json assets -q '.assets[].name' | grep -E '^(VibeFlow|Maagical)-.*\.dmg$'); do
     [[ "$old" == "${DMG:t}" ]] || gh release delete-asset nightly "$old" --yes
   done
   print "Published: $(gh release view nightly --json url -q .url)"
 elif [[ $PUBLISH -eq 1 ]]; then
   step "Publish $TAG to GitHub"
-  git tag -a "$TAG" -m "VibeFlow $VERSION"
+  git tag -a "$TAG" -m "Maagical $VERSION"
   git push origin "$TAG"
-  # Uploaded as VibeFlow.dmg and appcast.xml so .../releases/latest/download/<name> always
+  # Uploaded as Maagical.dmg and appcast.xml so .../releases/latest/download/<name> always
   # serves the newest: the README links the DMG, installed copies read the feed (SUFeedURL).
+  cp "$DMG" "$OUT/Maagical.dmg"
+  # Back to Stable in the 1.5 nightlies (StableInstaller) still fetches VibeFlow.dmg from
+  # .../latest/download, so the same DMG goes up under the old name once more. Drop this
+  # with the first release after 1.6.
   cp "$DMG" "$OUT/VibeFlow.dmg"
-  gh release create "$TAG" "$OUT/VibeFlow.dmg#VibeFlow $VERSION (DMG)" "$APPCAST#Update feed (Sparkle)" \
-    --title "VibeFlow $VERSION" --notes-file "$NOTES" --verify-tag --latest
+  gh release create "$TAG" "$OUT/Maagical.dmg#Maagical $VERSION (DMG)" "$OUT/VibeFlow.dmg#Maagical $VERSION (DMG, old name)" \
+    "$APPCAST#Update feed (Sparkle)" \
+    --title "Maagical $VERSION" --notes-file "$NOTES" --verify-tag --latest
   print "Published: $(gh release view "$TAG" --json url -q .url)"
 fi
 
-# The DMG is the release. A launchable VibeFlow left in build/ could answer to
-# one.floo.vibeflow instead of /Applications/VibeFlow.app; the archive stays for its dSYMs.
+# The DMG is the release. A launchable Maagical left in build/ could answer to
+# one.floo.vibeflow instead of /Applications/Maagical.app; the archive stays for its dSYMs.
 step "Drop the exported app"
 rm -rf "$APP"
 [[ -n "$IN_CI" ]] || "$ROOT/scripts/dev.sh" --clean || print -u2 "warning: scripts/dev.sh --clean failed"

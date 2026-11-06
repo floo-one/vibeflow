@@ -21,12 +21,12 @@ const skipped = [
 
 const faq = [
   { q: 'Does it work with Outlook or iCloud calendars?', a: 'No. Meetings reads Google Calendar directly, which is how it finds exact Meet links. Other calendars are not planned.' },
-  { q: "My work account says it's blocked.", a: 'Some Google Workspace admins only allow approved apps. Ask yours to allow VibeFlow, or use a personal account.' },
-  { q: 'Can I turn it off?', a: 'Yes, with one switch in Settings › Meetings. Like every tool in VibeFlow, it is an on/off and nothing more.' },
+  { q: "My work account says it's blocked.", a: 'Some Google Workspace admins only allow approved apps. Ask yours to allow Maagical, or use a personal account.' },
+  { q: 'Can I turn it off?', a: 'Yes, with one switch in Settings › Meetings. Like every tool in Maagical, it is an on/off and nothing more.' },
 ];
 ---
 <Base
-  title="Meetings in your Mac menu bar · VibeFlow"
+  title="Meetings in your Mac menu bar · Maagical"
   description="Your next Google Calendar meeting in the Mac menu bar, ten minutes before it starts. One click joins Meet, Zoom, Teams or Webex. Free, read-only, no server."
   path="meetings/"
   page="meetings"
@@ -89,7 +89,7 @@ const faq = [
   <section class="wrap real" aria-labelledby="real-title">
     <div class="real-text">
       <h2 id="real-title" class="h2">Only real meetings.</h2>
-      <p class="lead">A calendar is full of things that aren't meetings. VibeFlow skips them, judged by your own email, even on a colleague's calendar you watch. A meeting on two of your calendars shows once.</p>
+      <p class="lead">A calendar is full of things that aren't meetings. Maagical skips them, judged by your own email, even on a colleague's calendar you watch. A meeting on two of your calendars shows once.</p>
     </div>
     <ul class="skipped" aria-label="Skipped">
       {skipped.map((s) => <li>{s}</li>)}
@@ -108,8 +108,8 @@ const faq = [
     </article>
     <article class="setup-card dark">
       <h2 class="card-h">Your calendar stays yours</h2>
-      <p>VibeFlow asks Google for read-only access and keeps events in memory on your Mac. Nothing goes to a VibeFlow server, because there isn't one. The sign-in lives in your Keychain.</p>
-      <p class="note">Sign out in Settings › Meetings, or remove VibeFlow at myaccount.google.com/permissions.</p>
+      <p>Maagical asks Google for read-only access and keeps events in memory on your Mac. Nothing goes to a Maagical server, because there isn't one. The sign-in lives in your Keychain.</p>
+      <p class="note">Sign out in Settings › Meetings, or remove Maagical at myaccount.google.com/permissions.</p>
     </article>
   </section>
 
