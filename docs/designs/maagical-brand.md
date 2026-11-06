@@ -36,8 +36,10 @@ Drawn by `scripts/make-icons.swift`, which also writes the website's favicon and
 `website/src/components/AppIcon.astro` is the same shapes as SVG. Dev build: same card on solid
 orange with the DEV band.
 
-Menu bar: the idle glyph stays the SF Symbol waveform, with mic, ellipsis and exclamation for the
-other states. The card does not reduce to 18 px.
+Menu bar: the idle glyph is the ace reduced to a solid card with three bars cut out, drawn as a
+template image by `Maagical/Popover/MenuBarGlyph.swift` (the website's `Glyph.astro` is the same
+shape as SVG). Five bars and the corner A's do not survive 18 px, three bars do. Mic, ellipsis
+and exclamation SF Symbols stay for the busy and error states.
 
 Also considered and kept on the canvas: a mirrored double a monogram, rabbit ears in a top hat,
 the plain hat, a floating card, cups and ball.

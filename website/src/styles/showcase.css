@@ -85,8 +85,7 @@
 .bi.clocks { gap: 12px; }
 .clk { display: flex; align-items: center; gap: 5px; }
 .clk svg { border-radius: 2px; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.15); }
-.glyph { display: flex; gap: 2px; align-items: center; height: 14px; }
-.glyph b { width: 2px; border-radius: 1px; background: #111111; }
+.glyph { display: block; }
 
 /* The Maagical menu, open under its menu bar icon */
 .menu {

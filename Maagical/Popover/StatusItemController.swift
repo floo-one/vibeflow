@@ -82,14 +82,14 @@ final class StatusItemController: NSObject {
 
     // MARK: Icon
 
-    /// The waveform (or mic, ellipsis, error) symbol, with DEV in the Debug build; follows
+    /// The card (or mic, ellipsis, error symbol), with DEV in the Debug build; follows
     /// AppContainer.iconSymbol like the old MenuBarExtra label.
     private func watchIcon() {
         let symbol = withObservationTracking { container.iconSymbol } onChange: { [weak self] in
             Task { @MainActor in self?.watchIcon() }
         }
         guard let button = statusItem.button else { return }
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Maagical")
+        let image = MenuBarGlyph.image(named: symbol)
         image?.isTemplate = true
         button.image = image
         #if DEBUG
@@ -345,7 +345,7 @@ private final class IconTargetView: NSView {
 extension IconState {
     var symbolName: String {
         switch self {
-        case .idle: return "waveform"
+        case .idle: return MenuBarGlyph.cardName
         case .speaking: return "waveform.circle.fill"
         case .transforming: return "sparkles"
         case .awaitingConfirm: return "exclamationmark.circle"

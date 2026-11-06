@@ -10,6 +10,8 @@ VibeFlow is now Maagical.
   settings, same bundle id, so the installed app updates in place and keeps its Accessibility
   grant. The DMG is now Maagical.dmg; the release also carries it as VibeFlow.dmg once more, so
   Back to Stable in 1.5 nightlies still works.
+- **Menu bar icon.** The waveform is now the ace as a small card with three bars cut out, so the
+  menu bar and the app icon match.
 
 ## 1.5.0
 
