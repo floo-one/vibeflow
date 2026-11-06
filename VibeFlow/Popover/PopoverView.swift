@@ -51,7 +51,7 @@ struct TopSlotView: View {
         case .ready:
             HStack(spacing: 8) {
                 Circle()
-                    .fill(LinearGradient(colors: [Palette.brandTop, Palette.brandBottom], startPoint: .top, endPoint: .bottom))
+                    .fill(Palette.brand)
                     .frame(width: 8, height: 8)
                 Text("Ready").fontWeight(.semibold)
                 Spacer()
@@ -90,6 +90,12 @@ private struct CardView: View {
             HStack(spacing: 12) {
                 if card.showsMeter {
                     LevelMeter(color: tone)
+                } else if isProblem, card.tone == .brand {
+                    Image(nsImage: NSApp.applicationIconImage)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 24, height: 24)
+                        .accessibilityHidden(true)
                 } else if isProblem {
                     Image(systemName: card.tone == .setup ? "exclamationmark.triangle" : "xmark.octagon")
                         .font(.system(size: 15, weight: .semibold))
@@ -149,7 +155,7 @@ private struct CardView: View {
     }
 }
 
-/// Bars that move while VibeFlow listens or speaks; still under Reduce Motion.
+/// Bars that move while Maagical listens or speaks; still under Reduce Motion.
 private struct LevelMeter: View {
     let color: Color
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -184,13 +190,15 @@ enum PanelActions {
         case .dictation(.copyText): return "Copy text"
         case .dictation(.discard): return "Discard"
         case .dictation(.openDictationSettings): return "Open Settings > Dictation"
+        case .dismissRenameNotice: return "OK"
         }
     }
 
     /// Actions that open a window or System Settings close the panel first (D13).
     static func handsOff(_ action: PanelState.Action) -> Bool {
         switch action {
-        case .stop, .readAnyway, .read(.readOriginal), .dictation(.retry), .dictation(.copyText), .dictation(.discard):
+        case .stop, .readAnyway, .read(.readOriginal), .dictation(.retry), .dictation(.copyText), .dictation(.discard),
+             .dismissRenameNotice:
             return false
         default:
             return true
@@ -210,6 +218,7 @@ enum PanelActions {
         case .dictation(.copyText): Task { await container.dictation.copyText() }
         case .dictation(.discard): container.dictation.discard()
         case .dictation(.openDictationSettings): container.presentSettings(tab: .dictation)
+        case .dismissRenameNotice: container.dismissRenameNotice()
         }
     }
 }

@@ -71,7 +71,7 @@ Made one at a time in /plan-design-review (2026-11-05).
   | smart        | #5B4FE0   | #8F86FF   | Smart read key cap, Thinking/Answering card      |
   | dictation    | #D93025   | #FF6B5E   | Dictate key cap, Listening card, mic level       |
   | tools        | #0F7B5F   | #3CC59A   | "On" tiles (Keep Awake), Join button             |
-  | brand        | #4030C7→#6B70FF (icon) | same | the Ready dot only                      |
+  | brand        | #3A2FBF (flat) | same; text #9B8CFF | the Ready dot, the update pill, the rename card (2026-11-06, Maagical) |
   | text / text-2| #1D1D1F / #6E6E73 | #F5F5F7 / #AEAEB2 | labels, subtitles                  |
   | surface      | white 80% | white 8%  | clickable modules on the panel material          |
   | problem      | #C2410C (setup) / #D93025 (failure) on a 12% tint | lighter in dark | D4 cards |

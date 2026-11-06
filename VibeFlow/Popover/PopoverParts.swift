@@ -5,7 +5,7 @@ import VibeFlowCore
 
 // MARK: - Palette (D9)
 
-/// VibeFlow's feature colours from the website (website/src/styles/global.css), each with a
+/// Maagical's feature colours from the website (website/src/styles/global.css), each with a
 /// dark variant so they read on the dark popover material.
 enum Palette {
     static let read = Color(light: 0x0064D2, dark: 0x4C9BFF)
@@ -13,10 +13,10 @@ enum Palette {
     static let dictation = Color(light: 0xD93025, dark: 0xFF6B5E)
     static let tools = Color(light: 0x0F7B5F, dark: 0x3CC59A)
     static let setup = Color(light: 0xC2410C, dark: 0xFB923C)
-    static let brandTop = Color(light: 0x6B70FF, dark: 0x6B70FF)
-    static let brandBottom = Color(light: 0x4030C7, dark: 0x4030C7)
-    static let brandText = Color(light: 0x4030C7, dark: 0xC9C4FF)
-    static let brandTint = smart.opacity(0.16)
+    /// Maagical indigo (docs/designs/maagical-brand.md): the Ready dot, the update pill, the rename card.
+    static let brand = Color(light: 0x3A2FBF, dark: 0x3A2FBF)
+    static let brandText = Color(light: 0x3A2FBF, dark: 0x9B8CFF)
+    static let brandTint = brand.opacity(0.14)
     /// Text on a filled button: white in light mode, near-black on the lighter dark-mode fills.
     static let onFill = Color(light: 0xFFFFFF, dark: 0x111114)
     static let surface = Color(light: 0xFFFFFF, dark: 0xFFFFFF, lightAlpha: 0.75, darkAlpha: 0.07)
@@ -28,6 +28,7 @@ enum Palette {
         case .smart: return smart
         case .dictation, .failure: return dictation
         case .setup: return setup
+        case .brand: return brand
         }
     }
 }

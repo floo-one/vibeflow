@@ -11,6 +11,15 @@ struct PanelStateTests {
         #expect(PanelState(.init()).top == .ready)
     }
 
+    @Test func renameNoticeShowsOnlyWhenNothingElseDoes() {
+        let notice = PanelState(.init(showsRenameNotice: true)).top.card
+        #expect(notice?.title == "VibeFlow is now Maagical")
+        #expect(notice?.tone == .brand)
+        #expect(notice?.actions == [.dismissRenameNotice])
+        #expect(PanelState(.init(accessibilityTrusted: false, showsRenameNotice: true)).top.card?.title == "Allow Accessibility access")
+        #expect(PanelState(.init(readState: .speaking, readStatus: "Speaking", showsRenameNotice: true)).top.card?.title == "Speaking")
+    }
+
     @Test func runningActivityOutranksEveryProblem() {
         let input = PanelState.Input(readState: .speaking, readStatus: "Speaking", readError: readFailed,
                                      dictationError: pasteFailed, accessibilityTrusted: false, microphoneDenied: true)

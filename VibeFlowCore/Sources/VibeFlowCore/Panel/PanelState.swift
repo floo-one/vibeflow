@@ -48,13 +48,15 @@ public struct PanelState: Sendable, Equatable {
         public var build: Build
         /// "Maagical 1.5.0" for a release; only the commit ("87d0257") for a nightly or Debug build.
         public var version: String
+        /// The one-time "VibeFlow is now Maagical" card, until the user presses OK (RenameNotice).
+        public var showsRenameNotice: Bool
 
         public init(readState: SessionState = .idle, readStatus: String = "Ready", readError: LastError? = nil,
                     dictationState: DictationState = .idle, dictationStatus: String = "Ready",
                     dictationError: DictationError? = nil, showsDictation: Bool = false,
                     accessibilityTrusted: Bool = true, microphoneDenied: Bool = false,
                     feedbackEnabled: Bool = true, updateWaiting: String? = nil,
-                    build: Build = .release, version: String = "1.5.0") {
+                    build: Build = .release, version: String = "1.5.0", showsRenameNotice: Bool = false) {
             self.readState = readState
             self.readStatus = readStatus
             self.readError = readError
@@ -68,6 +70,7 @@ public struct PanelState: Sendable, Equatable {
             self.updateWaiting = updateWaiting
             self.build = build
             self.version = version
+            self.showsRenameNotice = showsRenameNotice
         }
     }
 
@@ -77,6 +80,8 @@ public struct PanelState: Sendable, Equatable {
         case read, smart, dictation
         /// Missing setup (orange) and a failure (red).
         case setup, failure
+        /// The one-time rename card, in the brand indigo.
+        case brand
     }
 
     public enum Action: Sendable, Equatable {
@@ -86,6 +91,8 @@ public struct PanelState: Sendable, Equatable {
         case openMicrophoneSettings
         case read(ErrorAction)
         case dictation(DictationAction)
+        /// OK on the rename card.
+        case dismissRenameNotice
     }
 
     public struct Card: Sendable, Equatable {
@@ -126,6 +133,11 @@ public struct PanelState: Sendable, Equatable {
             ? [dictationProblem(input), readProblem(input)]
             : [readProblem(input), dictationProblem(input)]
         if let problem = errors.compactMap({ $0 }).first { return .problem(problem) }
+        if input.showsRenameNotice {
+            return .problem(Card(title: "VibeFlow is now Maagical",
+                                 detail: "Same keys, same settings, same place in the menu bar. Only the name and the icon changed.",
+                                 tone: .brand, actions: [.dismissRenameNotice], actionsEnabled: true, showsMeter: false))
+        }
         return .ready
     }
 

@@ -17,6 +17,14 @@ Rejected: Maagic (reads as a typo of magic), Maag alone (says nothing), Maaginto
 Domain: maagical.app had no DNS records on 2026-11-06; registration status unconfirmed. The site
 stays at vibeflow.floo.one until that is settled.
 
+## In the app
+
+The panel's brand colour (Palette.brand, flat #3A2FBF) marks the Ready dot, the update pill
+and the one-time rename card: "VibeFlow is now Maagical", shown by RenameNotice on a Mac that
+already had VibeFlow data, until OK. The General pane header shows the app icon instead of the
+gear tile. Feature colours (read, smart read, dictation, tools) are unchanged, see
+menu-bar-popover.md D9.
+
 ## Icon: the ace
 
 A white playing card on a flat indigo tile, an A in the top left and bottom right corners (the

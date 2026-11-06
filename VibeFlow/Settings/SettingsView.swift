@@ -160,19 +160,31 @@ struct PaneHeader<Trailing: View>: View {
     let tab: SettingsTab
     var title: String?
     let subtitle: String
+    /// The app icon in place of the tab's symbol: the General pane, where the app names itself.
+    var appIcon = false
     @ViewBuilder var trailing: Trailing
 
-    init(_ tab: SettingsTab, title: String? = nil, subtitle: String, @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
+    init(_ tab: SettingsTab, title: String? = nil, subtitle: String, appIcon: Bool = false,
+         @ViewBuilder trailing: () -> Trailing = { EmptyView() }) {
         self.tab = tab
         self.title = title
         self.subtitle = subtitle
+        self.appIcon = appIcon
         self.trailing = trailing()
     }
 
     var body: some View {
         Section {
             HStack(spacing: 12) {
-                SettingsIcon(tab: tab, size: 40)
+                if appIcon {
+                    Image(nsImage: NSApp.applicationIconImage)
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 44, height: 44)
+                        .accessibilityHidden(true)
+                } else {
+                    SettingsIcon(tab: tab, size: 40)
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title ?? tab.title).font(.headline)
                     Text(subtitle)

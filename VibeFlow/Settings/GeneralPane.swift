@@ -46,9 +46,9 @@ private struct VersionHeader: View {
     var body: some View {
         #if DEBUG
         PaneHeader(.general, title: "Maagical Dev \(Updater.installedVersion)",
-                   subtitle: "Built by scripts/dev.sh, never updates itself")
+                   subtitle: "Built by scripts/dev.sh, never updates itself", appIcon: true)
         #else
-        PaneHeader(.general, title: "Maagical \(Updater.installedVersion)", subtitle: lastChecked) {
+        PaneHeader(.general, title: "Maagical \(Updater.installedVersion)", subtitle: lastChecked, appIcon: true) {
             Button("Check for Updates…") { container.updater?.checkForUpdates() }
         }
         #endif

@@ -73,10 +73,13 @@ final class AppContainer {
     @ObservationIgnored private var permissionWatch: Task<Void, Never>?
     /// Whether Escape is registered as the cancel-dictation hotkey right now.
     @ObservationIgnored private var escapeRegistered = false
+    /// The one-time "VibeFlow is now Maagical" card in the panel (RenameNotice).
+    private(set) var showsRenameNotice = false
 
     init() {
         LegacyMigration.runIfNeeded()
         ShortcutMigration.runIfNeeded()
+        showsRenameNotice = RenameNotice.decideAtLaunch()
         SystemVoiceCatalog.preload()
         let preferences = Preferences()
         let presets = AppPresetStore()
@@ -378,7 +381,14 @@ final class AppContainer {
             accessibilityTrusted: session.accessibilityTrusted,
             microphoneDenied: microphonePermission == .denied,
             feedbackEnabled: FeedbackSender.isEnabled,
-            updateWaiting: updateWaiting, build: build, version: version)
+            updateWaiting: updateWaiting, build: build, version: version,
+            showsRenameNotice: showsRenameNotice)
+    }
+
+    /// OK on the rename card: never again, on this Mac.
+    func dismissRenameNotice() {
+        showsRenameNotice = false
+        RenameNotice.markSeen()
     }
 
     /// Opens Settings (optionally on a tab) with the opener SceneAnchor handed over.
