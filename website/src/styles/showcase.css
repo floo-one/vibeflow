@@ -30,7 +30,7 @@
 .show { max-width: 1120px; margin: 0 auto; padding: 88px 24px; display: grid; grid-template-columns: 1fr 1.1fr; gap: 72px; align-items: center; }
 .show.flip { grid-template-columns: 1.1fr 1fr; }
 .flip .copy { order: 2; }
-.show h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); line-height: 1.04; letter-spacing: -0.03em; }
+.show h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); line-height: 1.04; letter-spacing: -0.03em; color: var(--heading); }
 .show .lead { margin-top: 16px; max-width: 28rem; }
 
 .feats { margin-top: 40px; padding: 0; list-style: none; border-top: 1px solid var(--line); }
