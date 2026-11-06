@@ -4,7 +4,8 @@
   --ground: #FFFFFF; --ground-2: #F5F5F7; --line: #ECECF0; --line-2: #D2D2D7;
   --dark: #1D1D1F; --dark-2: #2C2C30; --dark-text: #F5F5F7; --dark-text-2: #C7C7CC;
   --read: #0064D2; --smart: #5B4FE0; --dictation: #D93025; --tools: #0F7B5F;
-  --brand: #3A2FBF; --brand-ink: #14123A; --brand-gold: #F5B82E;
+  --brand: #3A2FBF; --brand-pressed: #2A22A0; --brand-ink: #14123A; --brand-gold: #F5B82E;
+  --heading: var(--brand-ink); /* dark bands set it to white */
   --radius-card: 18px; --radius-pill: 999px;
   --max: 1200px; --gutter: 24px;
 
@@ -56,10 +57,12 @@ a:hover { color: var(--link-hover); }
 .display {
   font-weight: 800; letter-spacing: -0.035em; line-height: 1.0;
   font-size: clamp(44px, 6vw, 76px);
+  color: var(--heading);
 }
 .h2 {
   font-weight: 800; font-size: clamp(30px, 3.6vw, 44px);
   line-height: 1.08; letter-spacing: -0.025em;
+  color: var(--heading);
 }
 .lead { font-size: 18px; line-height: 1.55; color: var(--text-2); }
 .intro { font-size: 20px; line-height: 1.5; color: var(--text-2); max-width: 34rem; }
@@ -95,6 +98,6 @@ a:hover { color: var(--link-hover); }
 .skip-link {
   position: fixed; left: 12px; top: -60px; z-index: 200;
   padding: 10px 16px; border-radius: var(--radius-pill);
-  background: var(--dark); color: #FFFFFF; font-weight: 600; text-decoration: none;
+  background: var(--brand); color: #FFFFFF; font-weight: 600; text-decoration: none;
 }
 .skip-link:focus { top: 12px; color: #FFFFFF; }

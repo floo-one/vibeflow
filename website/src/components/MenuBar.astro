@@ -109,10 +109,10 @@ const here = (page: 'meetings' | 'clocks') => (page === current ? 'page' : undef
   .mb-clock { padding: 0 8px; font-variant-numeric: tabular-nums; color: var(--text); }
   .dlp {
     position: relative; height: 32px; margin-left: 4px; padding: 0 14px 0 11px; border-radius: 999px; display: flex; align-items: center; gap: 7px;
-    background: var(--dark); color: #FFFFFF; font-weight: 600; font-size: 13.5px; text-decoration: none; white-space: nowrap;
-    transition: box-shadow 0.5s var(--ease), transform 0.2s var(--ease);
+    background: var(--brand); color: #FFFFFF; font-weight: 600; font-size: 13.5px; text-decoration: none; white-space: nowrap;
+    transition: box-shadow 0.5s var(--ease), transform 0.2s var(--ease), background 0.2s;
   }
-  .dlp:hover { color: #FFFFFF; background: #000000; transform: translateY(-1px); }
+  .dlp:hover { color: #FFFFFF; background: var(--brand-pressed); transform: translateY(-1px); }
   .dlp:focus-visible { outline-offset: 3px; }
   .dlp .more { display: inline-block; max-width: 0; overflow: hidden; opacity: 0; vertical-align: bottom; transition: max-width 0.6s var(--ease), opacity 0.4s var(--ease); }
   .mb.cta .dlp .more { max-width: 70px; opacity: 1; }

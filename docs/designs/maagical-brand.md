@@ -48,13 +48,18 @@ the plain hat, a floating card, cups and ball.
 
 | Role | Hex | Use |
 |---|---|---|
-| Indigo | #3A2FBF | Icon tile, links, primary button, the wordmark's second a |
+| Indigo | #3A2FBF | Icon tile, primary buttons (#2A22A0 pressed), the panel's brand tint |
 | Midnight | #14123A | Headings, dark website bands |
 | Gold | #F5B82E | The middle bar, live states. Fills only on light grounds (2.1:1 as text); #8A5B00 is the gold allowed as text on white |
 | Mist | #F4F3FF | Tinted section ground |
 | Indigo on midnight | #9B8CFF | Small text and links on dark |
 
 The website's four feature colours (read, smart read, dictation, tools) stay as they are.
+
+On the website (applied 2026-11-07): headings in midnight (`--heading`, white inside the dark
+bands), every primary Download button in indigo with the pressed indigo on hover, the privacy
+band, the closing band and the social card (`og.astro`, screenshot in `public/og.png`) on
+midnight. Links keep the feature blue.
 
 ## Wordmark
 

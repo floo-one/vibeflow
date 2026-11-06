@@ -34,9 +34,9 @@ import AppIcon from '../components/AppIcon.astro';
 </html>
 
 <style>
-  body { background: var(--dark); }
+  body { background: var(--brand-ink); }
   .card {
-    width: 1200px; height: 630px; padding: 64px 72px; background: var(--dark); color: var(--dark-text);
+    width: 1200px; height: 630px; padding: 64px 72px; background: var(--brand-ink); color: #FFFFFF;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", sans-serif;
     display: flex; flex-direction: column; justify-content: space-between;
   }
@@ -44,8 +44,8 @@ import AppIcon from '../components/AppIcon.astro';
   .bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 48px; }
   .text { display: flex; flex-direction: column; gap: 22px; }
   h1 { font-weight: 800; font-size: 96px; line-height: 0.98; letter-spacing: -0.04em; }
-  p { font-size: 28px; color: var(--dark-text-2); }
-  .cluster { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 22px; background: var(--dark-2); }
+  p { font-size: 28px; color: rgba(255, 255, 255, 0.8); }
+  .cluster { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 22px; background: rgba(255, 255, 255, 0.08); }
   .three { display: flex; gap: 10px; }
   .key {
     width: 96px; height: 96px; flex: none; border-radius: 14px; padding: 12px;
@@ -53,6 +53,6 @@ import AppIcon from '../components/AppIcon.astro';
     color: #FFFFFF; font-weight: 700; font-size: 38px; line-height: 1;
   }
   .key small { font-size: 13px; font-weight: 600; white-space: nowrap; color: rgba(255, 255, 255, 0.95); }
-  .key.opt { width: 110px; background: var(--dark-text); color: var(--text); }
-  .key.opt small { color: var(--text); }
+  .key.opt { width: 110px; background: #FFFFFF; color: var(--brand-ink); }
+  .key.opt small { color: var(--brand-ink); }
 </style>

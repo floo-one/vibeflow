@@ -186,9 +186,9 @@ const faq = [
   /* Hero download: the menu bar's Download pill watches it (#hero-dl). */
   .hero-dl {
     display: inline-flex; align-items: center; gap: 9px; min-height: 52px; padding: 0 24px; border-radius: var(--radius-pill);
-    background: var(--dark); color: #FFFFFF; font-weight: 600; font-size: 17px; text-decoration: none; transition: transform 0.2s var(--ease), background 0.2s;
+    background: var(--brand); color: #FFFFFF; font-weight: 600; font-size: 17px; text-decoration: none; transition: transform 0.2s var(--ease), background 0.2s;
   }
-  .hero-dl:hover { color: #FFFFFF; background: #000000; transform: translateY(-1px); }
+  .hero-dl:hover { color: #FFFFFF; background: var(--brand-pressed); transform: translateY(-1px); }
   .hero-dl:focus-visible { outline-offset: 3px; }
 
   .tools { padding-top: 96px; padding-bottom: 40px; display: flex; flex-direction: column; gap: 40px; }
@@ -242,18 +242,18 @@ const faq = [
   .privacy-table td { padding: 14px 0; border-bottom: 1px solid var(--line); color: var(--text-2); }
 
   /* Final CTA */
-  /* Two dark moments for rhythm. They redefine the text tokens, so everything inside adapts. */
+  /* Two midnight moments for rhythm. They redefine the text tokens, so everything inside adapts. */
   .band-dark {
-    --text: #F5F5F7; --text-2: #C7C7CC; --text-3: #A1A1A6; --line: rgba(255, 255, 255, 0.12); --line-2: rgba(255, 255, 255, 0.22);
-    margin-top: 96px; background: #141416; color: var(--text);
+    --text: #F5F5F7; --text-2: #C7C7CC; --text-3: #A1A1A6; --line: rgba(255, 255, 255, 0.12); --line-2: rgba(255, 255, 255, 0.22); --heading: #FFFFFF;
+    margin-top: 96px; background: var(--brand-ink); color: var(--text);
   }
   .band-dark .privacy { padding-top: 96px; padding-bottom: 96px; }
   .final {
-    --text: #FFFFFF; --text-2: rgba(255, 255, 255, 0.8); --text-3: rgba(255, 255, 255, 0.64); --link: #B4BEFF; --link-hover: #FFFFFF;
-    padding: 96px 0 104px; background: #16133A; color: var(--text);
+    --text: #FFFFFF; --text-2: rgba(255, 255, 255, 0.8); --text-3: rgba(255, 255, 255, 0.64); --link: #B4BEFF; --link-hover: #FFFFFF; --heading: #FFFFFF;
+    padding: 96px 0 104px; background: var(--brand-ink); color: var(--text);
   }
-  .final :global(.dl) { background: #FFFFFF; color: #16133A; }
-  .final :global(.dl:hover) { background: #E9E8FF; color: #16133A; }
+  .final :global(.dl) { background: #FFFFFF; color: var(--brand-ink); }
+  .final :global(.dl:hover) { background: #E9E8FF; color: var(--brand-ink); }
   .final-inner { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; }
   .final-title { font-weight: 800; font-size: clamp(34px, 4.6vw, 56px); line-height: 1.04; letter-spacing: -0.03em; }
 

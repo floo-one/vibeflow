@@ -18,10 +18,10 @@ const { size = 'md', label = 'Download for Mac', icon = false } = Astro.props;
 <style>
   .dl {
     display: inline-flex; align-items: center; gap: 10px;
-    border-radius: var(--radius-pill); background: var(--dark); color: #FFFFFF;
+    border-radius: var(--radius-pill); background: var(--brand); color: #FFFFFF;
     text-decoration: none; font-weight: 600; white-space: nowrap;
   }
-  .dl:hover { color: #FFFFFF; background: #000000; }
+  .dl:hover { color: #FFFFFF; background: var(--brand-pressed); }
   .sm { min-height: 44px; padding: 0 18px; font-size: 15px; }
   .md { min-height: 52px; padding: 0 26px; font-size: 17px; }
   .lg { min-height: 56px; padding: 0 30px; font-size: 18px; }
