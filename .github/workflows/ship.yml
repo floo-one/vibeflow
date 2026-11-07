@@ -1,6 +1,6 @@
 name: Ship
 
-# Builds, signs, notarizes and publishes VibeFlow after CI passed on a push to main:
+# Builds, signs, notarizes and publishes Maagical after CI passed on a push to main:
 # - project.yml has a MARKETING_VERSION without a tag yet: the release v<version> (tag, GitHub
 #   release marked Latest, appcast.xml), then a nightly of the same commit so the Nightly
 #   channel moves past it too.
@@ -57,7 +57,7 @@ jobs:
             echo "kind=release" >> "$GITHUB_OUTPUT"; exit 0
           fi
           # The commit of the current nightly, from the end of its release title:
-          # "VibeFlow 1.4.0-nightly.71 (8cd0a1b)" (older ones: "… (5.69, 8cd0a1b)").
+          # "Maagical 1.4.0-nightly.71 (8cd0a1b)" (older ones: "… (5.69, 8cd0a1b)").
           last=$(gh release view nightly --json name -q .name 2>/dev/null \
             | sed -nE 's/.*[ (]([0-9a-f]{7,40})\)$/\1/p' || true)
           if [ "${{ github.event_name }}" != workflow_dispatch ] && [ -n "$last" ] && git cat-file -e "$last^{commit}" 2>/dev/null; then

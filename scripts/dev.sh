@@ -1,24 +1,24 @@
 #!/bin/zsh
-# One VibeFlow Dev to open, quit and grant permissions to, whichever worktree built it: this
-# script installs the Debug build of this checkout to ~/Applications/VibeFlow Dev.app and runs
-# it from there. The release, VibeFlow, lives in /Applications and is never touched here.
+# One Maagical Dev to open, quit and grant permissions to, whichever worktree built it: this
+# script installs the Debug build of this checkout to ~/Applications/Maagical Dev.app and runs
+# it from there. The release, Maagical, lives in /Applications and is never touched here.
 # Plan: docs/designs/dev-prod-channels.md (P2).
 #
-# Usage:  scripts/dev.sh            build Debug, quit the running VibeFlow Dev (from any path),
+# Usage:  scripts/dev.sh            build Debug, quit the running Maagical Dev (from any path),
 #                                   install it to ~/Applications and open it
-#         scripts/dev.sh --doctor   list every VibeFlow app: the two homes, what is running,
+#         scripts/dev.sh --doctor   list every Maagical app: the two homes, what is running,
 #                                   stray copies and stale Launch Services entries
 #         scripts/dev.sh --clean    delete leftover builds with the release bundle id from this
 #                                   repo's build folders and make Launch Services forget every
-#                                   VibeFlow outside the two homes
+#                                   Maagical outside the two homes
 
 set -euo pipefail
 
 PROD_ID="one.floo.vibeflow"
 DEV_ID="one.floo.vibeflow.dev"
-PROD_APP="/Applications/VibeFlow.app"
-DEV_APP="$HOME/Applications/VibeFlow Dev.app"
-RELEASE_DMG="https://github.com/floo-one/vibeflow/releases/latest/download/VibeFlow.dmg"
+PROD_APP="/Applications/Maagical.app"
+DEV_APP="$HOME/Applications/Maagical Dev.app"
+RELEASE_DMG="https://github.com/floo-one/vibeflow/releases/latest/download/Maagical.dmg"
 # Swift packages, shared by all worktrees; a cache, Xcode downloads it again when emptied.
 SHARED_PACKAGES="$HOME/Library/Caches/VibeFlow/SourcePackages"
 LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
@@ -41,10 +41,11 @@ version() { print -r -- "$(info "$1" CFBundleShortVersionString) ($(info "$1" CF
 short() { print -r -- "${1/#$HOME/~}"; }
 plural() { if (( $1 == 1 )); then print -r -- "$1 $2"; else print -r -- "$1 $3"; fi; }
 
-# The process name of every VibeFlow Dev, wherever it was launched from.
-dev_pids() { pgrep -x "VibeFlow Dev" || true; }
+# The process name of every Maagical Dev, wherever it was launched from, and of a VibeFlow Dev
+# from before the rename (same bundle id).
+dev_pids() { pgrep -x "Maagical Dev"; pgrep -x "VibeFlow Dev"; return 0; }
 
-# SIGTERM quits VibeFlow like its Quit menu item (AppDelegate); a copy that hangs is killed.
+# SIGTERM quits Maagical like its Quit menu item (AppDelegate); a copy that hangs is killed.
 quit_dev() {
   local pids=(${(f)"$(dev_pids)"})
   (( ${#pids} )) || return 0
@@ -54,11 +55,11 @@ quit_dev() {
     [[ -z "$(dev_pids)" ]] && return 0
     sleep 0.1
   done
-  print -u2 "VibeFlow Dev did not quit within 5 s; killing it"
+  print -u2 "Maagical Dev did not quit within 5 s; killing it"
   kill -KILL ${(f)"$(dev_pids)"} 2>/dev/null || true
 }
 
-# Every VibeFlow Launch Services knows, gone or not, plus every one on disk where they collect:
+# Every Maagical Launch Services knows, gone or not, plus every one on disk where they collect:
 # /Applications, ~/Applications and the build folders of this repo's checkouts (main and every
 # worktree). Sets APPS, WORKTREES and REGISTERED (path -> number of Launch Services records;
 # one path can have several, and lsregister -u drops one per call).
@@ -68,25 +69,25 @@ collect() {
   WORKTREES=(${(f)"$(git worktree list --porcelain | sed -n 's/^worktree //p')"})
   local registered p wt
   registered="$($LSREGISTER -dump 2>/dev/null \
-    | sed -nE 's#^path: +(.*/VibeFlow[^/]*\.app) \(0x[0-9a-f]+\)$#\1#p')"
+    | sed -nE 's#^path: +(.*/(VibeFlow|Maagical)[^/]*\.app) \(0x[0-9a-f]+\)$#\1#p')"
   for p in ${(f)registered}; do REGISTERED[$p]=$(( ${REGISTERED[$p]:-0} + 1 )); done
   APPS=(${(f)"$({
     print -r -- "$registered"
-    print -rl -- /Applications/VibeFlow*.app(N) "$HOME"/Applications/VibeFlow*.app(N)
+    print -rl -- /Applications/(VibeFlow|Maagical)*.app(N) "$HOME"/Applications/(VibeFlow|Maagical)*.app(N)
     for wt in $WORKTREES; do
-      if [[ -d "$wt/build" ]]; then find "$wt/build" -type d -name 'VibeFlow*.app' -prune -print 2>/dev/null; fi
+      if [[ -d "$wt/build" ]]; then find "$wt/build" -type d \( -name 'VibeFlow*.app' -o -name 'Maagical*.app' \) -prune -print 2>/dev/null; fi
     done
   } | sed '/^$/d' | sort -u)"})
 }
 
-# What a VibeFlow outside the two homes is:
+# What a Maagical outside the two homes is:
 #   archive     the release archive, kept for its dSYMs
 #   dev-build   a Debug build in some checkout (scripts/dev.sh installs it)
-#   stray       release bundle id, in a checkout that now builds VibeFlow Dev, so nothing
+#   stray       release bundle id, in a checkout that now builds Maagical Dev, so nothing
 #               rebuilds it: --clean deletes it (in the Trash it would stay registered)
-#   old-branch  release bundle id: the Debug build of a branch from before VibeFlow Dev
+#   old-branch  release bundle id: the Debug build of a branch from before Maagical Dev
 #   elsewhere   release bundle id, outside this repo
-#   other       something else named VibeFlow
+#   other       something else named Maagical
 kind() {
   local wt
   if [[ $1 == *.xcarchive/* ]]; then print archive; return; fi
@@ -117,15 +118,15 @@ run() {
   local commit=$(git rev-parse --short HEAD)
   # "*": built with uncommitted changes.
   if [[ -n "$(git status --porcelain)" ]]; then commit="$commit*"; fi
-  local built="$ROOT/build/DerivedData/Build/Products/Debug/VibeFlow Dev.app"
+  local built="$ROOT/build/DerivedData/Build/Products/Debug/Maagical Dev.app"
   local buildlog="$ROOT/build/dev-build.log"
 
-  step "Build VibeFlow Dev from $branch ($commit)"
+  step "Build Maagical Dev from $branch ($commit)"
   xcodegen generate >/dev/null
   mkdir -p "${buildlog:h}"
   # The VF_* settings end up in Info.plist; the Dev menu shows them (BuildStamp).
   # One package folder for every worktree: sentry-cocoa's binaries alone are 3.3 GB per copy.
-  if ! xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug \
+  if ! xcodebuild -project Maagical.xcodeproj -scheme Maagical -configuration Debug \
       -derivedDataPath build/DerivedData -clonedSourcePackagesDirPath "$SHARED_PACKAGES" build -quiet \
       VF_GIT_BRANCH="$branch" VF_GIT_COMMIT="$commit" VF_BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
       >"$buildlog" 2>&1; then
@@ -134,7 +135,7 @@ run() {
   fi
   [[ "$(info "$built" CFBundleIdentifier)" == "$DEV_ID" ]] || fail "$built is not $DEV_ID"
 
-  step "Quit the running VibeFlow Dev"
+  step "Quit the running Maagical Dev"
   quit_dev
 
   step "Install to $(short "$DEV_APP")"
@@ -147,13 +148,18 @@ run() {
   # Services, so nothing opens it by accident.
   $LSREGISTER -u "$built" 2>/dev/null || true
   $LSREGISTER -f "$DEV_APP"
+  # The Dev app was "VibeFlow Dev" until the rename; one copy per bundle id, so the old one goes.
+  if [[ -d "$HOME/Applications/VibeFlow Dev.app" ]]; then
+    step "Remove the old VibeFlow Dev"
+    rm -rf "$HOME/Applications/VibeFlow Dev.app"
+  fi
 
   open "$DEV_APP"
-  print "VibeFlow Dev $(version "$DEV_APP") from $branch ($commit) is running."
-  # VibeFlow reads the shared API keys at launch; a Keychain dialog holds it until answered.
+  print "Maagical Dev $(version "$DEV_APP") from $branch ($commit) is running."
+  # Maagical reads the shared API keys at launch; a Keychain dialog holds it until answered.
   sleep 2
   if pgrep -x SecurityAgent >/dev/null; then
-    print "A Keychain dialog may be waiting: VibeFlow Dev shows no menu bar icon until it is answered."
+    print "A Keychain dialog may be waiting: Maagical Dev shows no menu bar icon until it is answered."
     print "Enter your login password and click Always Allow, so later builds do not ask again."
   fi
 }
@@ -164,11 +170,11 @@ doctor() {
   local -a old_branches
 
   print -P "%BHomes%b"
-  home_line "VibeFlow" "$PROD_APP" "$PROD_ID"
-  home_line "VibeFlow Dev" "$DEV_APP" "$DEV_ID"
+  home_line "Maagical" "$PROD_APP" "$PROD_ID"
+  home_line "Maagical Dev" "$DEV_APP" "$DEV_ID"
 
   print -P "\n%BRunning%b"
-  for line in ${(f)"$(ps -axo pid=,comm= | grep -E '/VibeFlow[^/]*\.app/Contents/MacOS/' || true)"}; do
+  for line in ${(f)"$(ps -axo pid=,comm= | grep -E '/(VibeFlow|Maagical)[^/]*\.app/Contents/MacOS/' || true)"}; do
     read -r pid exe <<< "$line"
     printf "  pid %-8s %s\n" "$pid" "$(short "${exe%%/Contents/MacOS/*}")"
     (( ++running ))
@@ -198,11 +204,11 @@ doctor() {
   print -P "\n%BNext%b"
   local todo=0
   if [[ ! -d $PROD_APP ]]; then
-    print "  Install the release: download $RELEASE_DMG and drag VibeFlow to Applications."
+    print "  Install the release: download $RELEASE_DMG and drag Maagical to Applications."
     todo=1
   fi
   if [[ ! -d $DEV_APP ]]; then
-    print "  Install VibeFlow Dev: scripts/dev.sh"
+    print "  Install Maagical Dev: scripts/dev.sh"
     todo=1
   fi
   if (( strays + gone )); then
@@ -210,7 +216,7 @@ doctor() {
     todo=1
   fi
   if (( ${#old_branches} )); then
-    print "  Branches from before VibeFlow Dev build their Debug app with the release bundle id; merge main into: ${(j:, :)${(@u)old_branches}}"
+    print "  Branches from before Maagical Dev build their Debug app with the release bundle id; merge main into: ${(j:, :)${(@u)old_branches}}"
     todo=1
   fi
   if (( elsewhere )); then
@@ -218,8 +224,8 @@ doctor() {
     todo=1
   fi
   if (( strays + ${#old_branches} + elsewhere )); then
-    print "  A copy with the release bundle id can own its Accessibility entry: if VibeFlow says Accessibility"
-    print "  is off while System Settings shows it on, remove VibeFlow there with the minus button and grant it again."
+    print "  A copy with the release bundle id can own its Accessibility entry: if Maagical says Accessibility"
+    print "  is off while System Settings shows it on, remove Maagical there with the minus button and grant it again."
   fi
   (( todo )) || print "  Nothing to do."
 }

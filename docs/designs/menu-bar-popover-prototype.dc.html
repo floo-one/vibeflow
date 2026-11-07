@@ -176,7 +176,7 @@ body{margin:0}
 <div><div class="sect">BUILD</div><div style="display: flex; flex-wrap: wrap; gap: 6px"><sc-for list="{{builds}}" as="b" hint-placeholder-count="3"><button type="button" class="{{b.cls}}" onClick="{{b.pick}}">{{b.title}}</button></sc-for></div></div>
 
 <div style="padding: 12px 14px; border-radius: 12px; background: #ffffff; border: 1px solid #E5E5EA">
-<div class="sect">PANELSTATE RULES IN EFFECT (port to VibeFlowCore)</div>
+<div class="sect">PANELSTATE RULES IN EFFECT (port to MaagicalCore)</div>
 <sc-for list="{{p.rules}}" as="rule" hint-placeholder-count="4"><div style="font-size: 12px; line-height: 18px; color: #1D1D1F">{{rule}}</div></sc-for>
 </div>
 
@@ -188,7 +188,7 @@ body{margin:0}
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
-// panelState() is the spec for VibeFlowCore PanelState: same inputs, same rules, same order.
+// panelState() is the spec for MaagicalCore PanelState: same inputs, same rules, same order.
 function panelState(s) {
   const rules = [];
   const ACT = {

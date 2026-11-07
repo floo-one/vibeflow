@@ -1,6 +1,6 @@
 ---
-// New in 1.5: the VibeFlow menu as the hero of the section. On the way in the clocks arrive in
-// the bar, the VibeFlow item is clicked and the menu drops open from it, row by row, with the
+// New in 1.5: the Maagical menu as the hero of the section. On the way in the clocks arrive in
+// the bar, the Maagical item is clicked and the menu drops open from it, row by row, with the
 // New badges last. Hover or focus a feature and its row lights up, and its menu bar item
 // appears; until then the features take turns.
 // The menu itself is the part to replace when the new pop-up menu bar design exists.
@@ -10,7 +10,7 @@ import Get from './Get.astro';
 import { VERSION } from '../../data/site';
 
 const feats = [
-  { row: 'transcribe', c: 'var(--icon-bottom)', title: 'Transcribe any file', text: 'Calls and meetings come back with speakers, a summary and action items.' },
+  { row: 'transcribe', c: 'var(--brand)', title: 'Transcribe any file', text: 'Calls and meetings come back with speakers, a summary and action items.' },
   { row: 'focus', status: 'focus', c: 'var(--tools)', title: 'Pomodoro', text: 'Focus and break rounds, a chime between them, and your streak.' },
   { row: 'awake', status: 'awake', c: 'var(--tools)', title: 'Keep Awake', text: 'Keeps your Mac awake for an hour, a day or until you stop it.' },
   { row: 'feedback', c: 'var(--smart)', title: 'Send Feedback', text: 'A bug, an idea or some love. You see exactly what gets sent.' },
@@ -39,7 +39,7 @@ const timer = '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/>';
     <Get note={`Free · ${VERSION} · updates itself`} />
   </div>
 
-  <div class="scene" id="scene" role="img" aria-label="The VibeFlow menu in the macOS menu bar, grouped into Voice, Focus and Time, and Utilities">
+  <div class="scene" id="scene" role="img" aria-label="The Maagical menu in the macOS menu bar, grouped into Voice, Focus and Time, and Utilities">
     <div class="bar" aria-hidden="true">
       <div class="bi status" id="st-focus" hidden>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" set:html={timer} />24:12

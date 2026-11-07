@@ -1,5 +1,5 @@
 // Homepage motion: the hero settles in on load; as you scroll, its app icon shrinks and docks
-// into the VibeFlow icon in the site's menu bar while the words drift back. The sections after
+// into the Maagical icon in the site's menu bar while the words drift back. The sections after
 // it rise in once as they reach the screen. Reduced motion gets none of it; the CSS only hides
 // the hero while this is known to run (.js and no-preference).
 import { gsap, ScrollTrigger, EASE, MOTION } from './motion';

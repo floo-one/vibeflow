@@ -1,4 +1,4 @@
-# Developing VibeFlow
+# Developing Maagical
 
 ## Build
 
@@ -15,21 +15,21 @@
    scripts/dev.sh
    ```
 
-   It generates the project, builds Debug, quits the VibeFlow Dev that is running (from
-   whichever worktree), installs the new build to `~/Applications/VibeFlow Dev.app` and opens
-   it. One place for every build means one VibeFlow Dev to open, quit and grant permissions
+   It generates the project, builds Debug, quits the Maagical Dev that is running (from
+   whichever worktree), installs the new build to `~/Applications/Maagical Dev.app` and opens
+   it. One place for every build means one Maagical Dev to open, quit and grant permissions
    to. To only check that it compiles:
 
    ```bash
    xcodegen generate
-   xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug -derivedDataPath build/DerivedData build
+   xcodebuild -project Maagical.xcodeproj -scheme Maagical -configuration Debug -derivedDataPath build/DerivedData build
    ```
 
 4. Grant Accessibility when asked, and Microphone on the first dictation, then add your keys
    in Settings > Accounts. If a Keychain dialog asks for the keys the release saved, click Always
-   Allow: VibeFlow Dev waits for that answer before its menu bar icon appears.
+   Allow: Maagical Dev waits for that answer before its menu bar icon appears.
 
-The Debug build is **VibeFlow Dev**, a separate app from the release, so both can run at once:
+The Debug build is **Maagical Dev**, a separate app from the release, so both can run at once:
 its own bundle id, settings and permissions, an orange app icon with a DEV band, a DEV tag in
 the menu bar, and Control added to every default shortcut (Control + Option + . reads, and so
 on). API keys are shared with the release; the Google sign-in for Meetings is not, so each
@@ -38,16 +38,16 @@ time it came from, which `scripts/dev.sh` stamps into Info.plist; a `*` after th
 means it was built with uncommitted changes. Both app icons are drawn by
 `swift scripts/make-icons.swift`.
 
-Each app runs once: a VibeFlow that starts quits any older copy of itself, from any path
-(another worktree, Xcode), so two menu bar icons never answer the same shortcut. VibeFlow and
-VibeFlow Dev never quit each other.
+Each app runs once: a Maagical that starts quits any older copy of itself, from any path
+(another worktree, Xcode), so two menu bar icons never answer the same shortcut. Maagical and
+Maagical Dev never quit each other.
 
-`scripts/dev.sh --doctor` lists every VibeFlow on the Mac: the two homes
-(`/Applications/VibeFlow.app` and `~/Applications/VibeFlow Dev.app`), what is running, other
+`scripts/dev.sh --doctor` lists every Maagical on the Mac: the two homes
+(`/Applications/Maagical.app` and `~/Applications/Maagical Dev.app`), what is running, other
 copies and dead Launch Services entries. A copy with the release bundle id outside
 /Applications can take over its Accessibility entry, so `scripts/dev.sh --clean` deletes the
 leftover ones in this repo's build folders and makes Launch Services forget dead entries.
-Worktrees on a branch from before VibeFlow Dev still build their Debug app with the release
+Worktrees on a branch from before Maagical Dev still build their Debug app with the release
 bundle id; `--clean` leaves those alone and the doctor names them (merge main there).
 
 An ad-hoc build (`CODE_SIGN_IDENTITY=-`, as CI does) works too, but macOS forgets its
@@ -58,13 +58,13 @@ Accessibility permission on every rebuild; remove the old entry and grant it aga
 
 ## Test
 
-The logic lives in the `VibeFlowCore` Swift package behind small protocols (pasteboard,
+The logic lives in the `MaagicalCore` Swift package behind small protocols (pasteboard,
 accessibility, speech provider, audio player, audio recorder, transcriber, clock, smart read
 client, secrets), so everything from both state machines to the paste and Copy fallbacks is
 tested with in-memory fakes:
 
 ```bash
-cd VibeFlowCore && swift test
+cd MaagicalCore && swift test
 ```
 
 Live goldens that call the real Anthropic API (injection resistance, brief keeps
@@ -106,7 +106,7 @@ not work). Both go into the login keychain, nothing into the repo.
 
 Crash reports and Send Feedback go to Sentry (organization `floo-one`, project `vibeflow`,
 EU region; docs/designs/feedback.md). The app only carries the send-only DSN, committed in
-`Config/VibeFlow.xcconfig`. `release.sh` uploads each build's debug symbols so crash stack
+`Config/Maagical.xcconfig`. `release.sh` uploads each build's debug symbols so crash stack
 traces are readable; that needs `sentry-cli` and an organization auth token
 (floo-one.sentry.io/settings/auth-tokens/) in the login keychain:
 
@@ -122,7 +122,7 @@ Installed copies update themselves with [Sparkle](https://sparkle-project.org): 
 release is signed with a private EdDSA key, and the app checks it against its public key,
 `SUPublicEDKey` in `project.yml`. The private key lives in the login keychain under the
 Sparkle account `vibeflow`. Sparkle's tools appear after the first build (or
-`xcodebuild -resolvePackageDependencies -project VibeFlow.xcodeproj -scheme VibeFlow -derivedDataPath build/DerivedData`):
+`xcodebuild -resolvePackageDependencies -project Maagical.xcodeproj -scheme Maagical -derivedDataPath build/DerivedData`):
 
 ```bash
 SPARKLE=build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin
@@ -147,8 +147,8 @@ DMG with an Applications shortcut, notarizes and staples the DMG as well, and fi
 Gatekeeper check (`spctl`). It then signs the DMG with the Sparkle key and writes the update
 feed, `build/release/appcast.xml` (`scripts/write-appcast.sh`), after checking before the
 build that the key in the keychain matches `SUPublicEDKey`. The result is
-`build/release/VibeFlow-<version>.dmg`. The exported app is deleted at the end, since the DMG
-is the release and a second copy of VibeFlow could answer to its bundle id; the archive stays
+`build/release/Maagical-<version>.dmg`. The exported app is deleted at the end, since the DMG
+is the release and a second copy of Maagical could answer to its bundle id; the archive stays
 for its dSYMs. `--no-notarize` stops after the signed export, which needs no credentials.
 
 To publish:
@@ -161,7 +161,7 @@ To publish:
 
 By hand, on a clean, pushed main: `scripts/release.sh --publish`. It refuses to run anywhere else or with a build number that is not higher than the last
 tag's. It tags `v<version>` and creates the GitHub release with the changelog section as
-notes, the DMG as `VibeFlow.dmg` and the feed as `appcast.xml`. So the README download link
+notes, the DMG as `Maagical.dmg` and the feed as `appcast.xml`. So the README download link
 always points at the newest version, and installed copies (which read
 `.../releases/latest/download/appcast.xml`) find it within 6 hours. Forks: change `teamID` in
 `scripts/ExportOptions.plist`, the team id in the commands above, and `SUFeedURL` and
@@ -198,7 +198,7 @@ that the Sparkle key matches `SUPublicEDKey` (`scripts/sparkle-public-key.swift`
 
 ### Nightly: follow main
 
-With Settings > General > Updates, Channel "Nightly", the installed VibeFlow updates to
+With Settings > General > Updates, Channel "Nightly", the installed Maagical updates to
 every new main instead of waiting for a release. The Ship workflow builds them (above). The
 LaunchAgent below did it from a Mac before that, and stays as a fallback; uninstall it once
 Actions publishes nightlies, so the two do not race:
@@ -239,7 +239,7 @@ since `--publish` refuses to build without the Google client.
 
 Upcoming meetings sign in to Google with a "Desktop app" OAuth client. Its ID and secret are
 built into the app (Google treats a desktop client's secret as public) but never committed:
-they live in the gitignored `Config/Google.xcconfig`, which `Config/VibeFlow.xcconfig`
+they live in the gitignored `Config/Google.xcconfig`, which `Config/Maagical.xcconfig`
 includes when it exists. Without it the app builds as usual and Settings > Meetings says
 "Not configured in this build" (CI builds this way).
 
@@ -292,7 +292,7 @@ pnpm dlx playwright@1.64.1 screenshot --viewport-size=1200,630 http://localhost:
 ## Clocks data
 
 The time zone list comes from [vvo/tzdb](https://github.com/vvo/tzdb) (MIT, Copyright
-CodeAgain SASU), trimmed into `VibeFlowCore/Sources/VibeFlowCore/Clock/Resources/`. Refresh
+CodeAgain SASU), trimmed into `MaagicalCore/Sources/MaagicalCore/Clock/Resources/`. Refresh
 it with `python3 scripts/update-time-zones.py`.
 
 ## Design docs
@@ -303,5 +303,5 @@ Every design, review decision and task list is in `docs/designs/`:
 - `vibeflow-2-dictation-conversation.md`: dictation and conversation mode
 - `smart-read-follow-up.md`: ask back
 - `vibeflow-github-v1.md`: this repository and its releases
-- `dev-prod-channels.md`: VibeFlow and VibeFlow Dev side by side, and updates
+- `dev-prod-channels.md`: Maagical and Maagical Dev side by side, and updates
 - `upcoming-meetings.md`: meetings in the menu bar (Google Calendar)

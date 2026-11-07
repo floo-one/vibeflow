@@ -13,7 +13,7 @@ import { CHANGELOG_URL, DMG_URL, REPO_URL, VERSION, url } from '../data/site';
 import '../styles/showcase.css';
 
 const extras = [
-  { title: 'Notch indicator', text: 'Small black wings at the notch while VibeFlow listens, thinks or speaks. Macs without a notch get the same shape in the menu bar.' },
+  { title: 'Notch indicator', text: 'Small black wings at the notch while Maagical listens, thinks or speaks. Macs without a notch get the same shape in the menu bar.' },
   { title: 'History', text: 'Every read and every answer, kept on your Mac for as long as you choose. Read again, copy or delete.' },
   { title: 'Updates itself', text: "New versions install in the background while you're away from the keyboard, never mid-read." },
   { title: 'Careful with your clipboard', text: 'Restored after every copy and paste. Never pastes into a password field or a window you left.' },
@@ -37,16 +37,16 @@ const privacy = [
 ];
 
 const faq = [
-  { q: 'Do I need API keys?', a: 'No. Without any key VibeFlow reads with an Apple voice, dictates on device on macOS 26, and the clocks work. Keys unlock the ElevenLabs voice, smart read and faster dictation, and you pay those providers directly.' },
-  { q: 'Do the shortcuts work on my keyboard layout?', a: 'Yes. VibeFlow uses the position, not the character: the three keys right above Option, next to M. On a German keyboard that is comma, period and minus; on a US keyboard comma, period and slash.' },
+  { q: 'Do I need API keys?', a: 'No. Without any key Maagical reads with an Apple voice, dictates on device on macOS 26, and the clocks work. Keys unlock the ElevenLabs voice, smart read and faster dictation, and you pay those providers directly.' },
+  { q: 'Do the shortcuts work on my keyboard layout?', a: 'Yes. Maagical uses the position, not the character: the three keys right above Option, next to M. On a German keyboard that is comma, period and minus; on a US keyboard comma, period and slash.' },
   { q: 'Which Macs does it run on?', a: 'Apple silicon and Intel Macs with macOS 15 Sequoia or later.' },
   { q: 'Why does it need Accessibility access?', a: 'To read the text you selected in other apps and to paste dictation where you were typing. It acts only when you press one of its keys.' },
-  { q: 'How do updates work?', a: "VibeFlow checks every few hours and installs a new version while you're away from the keyboard. Check for Updates… in the menu looks right away." },
-  { q: "Why isn't it in the Mac App Store?", a: "Store apps run in a sandbox that blocks global shortcuts and reading other apps' selections. VibeFlow is signed and notarized by Apple instead, and MIT licensed." },
+  { q: 'How do updates work?', a: "Maagical checks every few hours and installs a new version while you're away from the keyboard. Check for Updates… in the menu looks right away." },
+  { q: "Why isn't it in the Mac App Store?", a: "Store apps run in a sandbox that blocks global shortcuts and reading other apps' selections. Maagical is signed and notarized by Apple instead, and MIT licensed." },
 ];
 ---
 <Base
-  title="VibeFlow: everything your Mac was missing"
+  title="Maagical: your Mac, just better"
   description="Hear any text, ask it a question, dictate, transcribe a call, focus, keep awake. One small, free and open-source Mac app. No account, no subscription, no telemetry."
   path=""
   page="home"
@@ -54,7 +54,7 @@ const faq = [
   <section class="hero" id="top">
     <span class="hero-icon"><AppIcon size={96} /></span>
     <p class="eyebrow">Free and open source · macOS 15 or later</p>
-    <h1>Everything your Mac <br />was missing.</h1>
+    <h1>Your Mac, just better.<br />Quite Maagical.</h1>
     <p class="lead">Hear any text, ask it a question, dictate, transcribe a call, focus, keep awake. One small app, free and open source.</p>
     <div class="ctas">
       <a class="hero-dl" id="hero-dl" href={DMG_URL}>
@@ -122,7 +122,7 @@ const faq = [
     <div class="section-head">
       <p class="eyebrow">Pricing</p>
       <h2 id="pricing-title" class="h2">Free. Works without any keys. Better with them.</h2>
-      <p class="lead">VibeFlow costs nothing and has no subscription. Out of the box it reads with an Apple voice and dictates on device (macOS 26). Add a key to unlock more; you pay the provider directly, and most have a free tier. Keys live in your Keychain.</p>
+      <p class="lead">Maagical costs nothing and has no subscription. Out of the box it reads with an Apple voice and dictates on device (macOS 26). Add a key to unlock more; you pay the provider directly, and most have a free tier. Keys live in your Keychain.</p>
     </div>
     <div class="table-box" role="region" aria-label="What each optional key unlocks" tabindex="0">
       <table class="keys-table">
@@ -148,7 +148,7 @@ const faq = [
     <div class="privacy-text">
       <p class="eyebrow">Privacy</p>
       <h2 id="privacy-title" class="h2">Exactly what leaves your Mac.</h2>
-      <p class="lead">There is no VibeFlow server. Text goes straight from your Mac to the provider you chose, only when you press a key. The code is public, so you can check.</p>
+      <p class="lead">There is no Maagical server. Text goes straight from your Mac to the provider you chose, only when you press a key. The code is public, so you can check.</p>
     </div>
     <div class="privacy-table">
       <table>
@@ -186,9 +186,9 @@ const faq = [
   /* Hero download: the menu bar's Download pill watches it (#hero-dl). */
   .hero-dl {
     display: inline-flex; align-items: center; gap: 9px; min-height: 52px; padding: 0 24px; border-radius: var(--radius-pill);
-    background: var(--dark); color: #FFFFFF; font-weight: 600; font-size: 17px; text-decoration: none; transition: transform 0.2s var(--ease), background 0.2s;
+    background: var(--brand); color: #FFFFFF; font-weight: 600; font-size: 17px; text-decoration: none; transition: transform 0.2s var(--ease), background 0.2s;
   }
-  .hero-dl:hover { color: #FFFFFF; background: #000000; transform: translateY(-1px); }
+  .hero-dl:hover { color: #FFFFFF; background: var(--brand-pressed); transform: translateY(-1px); }
   .hero-dl:focus-visible { outline-offset: 3px; }
 
   .tools { padding-top: 96px; padding-bottom: 40px; display: flex; flex-direction: column; gap: 40px; }
@@ -213,7 +213,7 @@ const faq = [
 
   /* Also in the box */
   .extras { padding-top: 64px; padding-bottom: 40px; display: flex; flex-direction: column; gap: 28px; }
-  .extras-title { font-weight: 700; font-size: 26px; letter-spacing: -0.015em; }
+  .extras-title { font-weight: 700; font-size: 26px; letter-spacing: -0.015em; color: var(--heading); }
   .extras-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 28px 36px; }
   .extra { display: flex; flex-direction: column; gap: 6px; }
   .extra h3 { font-size: 17px; font-weight: 600; }
@@ -242,18 +242,18 @@ const faq = [
   .privacy-table td { padding: 14px 0; border-bottom: 1px solid var(--line); color: var(--text-2); }
 
   /* Final CTA */
-  /* Two dark moments for rhythm. They redefine the text tokens, so everything inside adapts. */
+  /* Two midnight moments for rhythm. They redefine the text tokens, so everything inside adapts. */
   .band-dark {
-    --text: #F5F5F7; --text-2: #C7C7CC; --text-3: #A1A1A6; --line: rgba(255, 255, 255, 0.12); --line-2: rgba(255, 255, 255, 0.22);
-    margin-top: 96px; background: #141416; color: var(--text);
+    --text: #F5F5F7; --text-2: #C7C7CC; --text-3: #A1A1A6; --line: rgba(255, 255, 255, 0.12); --line-2: rgba(255, 255, 255, 0.22); --heading: #FFFFFF;
+    margin-top: 96px; background: var(--brand-ink); color: var(--text);
   }
   .band-dark .privacy { padding-top: 96px; padding-bottom: 96px; }
   .final {
-    --text: #FFFFFF; --text-2: rgba(255, 255, 255, 0.8); --text-3: rgba(255, 255, 255, 0.64); --link: #B4BEFF; --link-hover: #FFFFFF;
-    padding: 96px 0 104px; background: #16133A; color: var(--text);
+    --text: #FFFFFF; --text-2: rgba(255, 255, 255, 0.8); --text-3: rgba(255, 255, 255, 0.64); --link: #B4BEFF; --link-hover: #FFFFFF; --heading: #FFFFFF;
+    padding: 96px 0 104px; background: var(--brand-ink); color: var(--text);
   }
-  .final :global(.dl) { background: #FFFFFF; color: #16133A; }
-  .final :global(.dl:hover) { background: #E9E8FF; color: #16133A; }
+  .final :global(.dl) { background: #FFFFFF; color: var(--brand-ink); }
+  .final :global(.dl:hover) { background: #E9E8FF; color: var(--brand-ink); }
   .final-inner { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; }
   .final-title { font-weight: 800; font-size: clamp(34px, 4.6vw, 56px); line-height: 1.04; letter-spacing: -0.03em; }
 

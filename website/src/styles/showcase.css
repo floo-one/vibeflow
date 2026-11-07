@@ -5,11 +5,11 @@
 .hero { max-width: 1120px; margin: 0 auto; padding: 112px 24px 48px; display: flex; flex-direction: column; gap: 20px; align-items: center; text-align: center; }
 /* The icon flies over the menu bar when it docks (home-motion.ts), so it sits above it; --glow
    fades its shadow on the way. */
-.hero-icon { position: relative; z-index: 101; margin-bottom: 8px; filter: drop-shadow(0 18px 28px rgb(64 48 199 / calc(0.35 * var(--glow, 1)))); }
+.hero-icon { position: relative; z-index: 101; margin-bottom: 8px; filter: drop-shadow(0 18px 28px rgb(58 47 191 / calc(0.35 * var(--glow, 1)))); }
 .hero-icon svg { display: block; }
 /* The final icon flies down from the menu bar (home-motion.ts), so it passes above the bar. */
-.final-inner > svg { position: relative; z-index: 101; filter: drop-shadow(0 18px 28px rgba(64, 48, 199, 0.35)); }
-.hero h1 { font-weight: 800; letter-spacing: -0.035em; line-height: 1; font-size: clamp(46px, 6.4vw, 80px); }
+.final-inner > svg { position: relative; z-index: 101; filter: drop-shadow(0 18px 28px rgba(58, 47, 191, 0.35)); }
+.hero h1 { font-weight: 800; letter-spacing: -0.035em; line-height: 1; font-size: clamp(46px, 6.4vw, 80px); color: var(--heading); }
 .hero .lead { max-width: 34rem; font-size: 20px; }
 /* Hidden only while the GSAP entrance is known to run (scripts on, motion allowed); it fades them in. */
 @media (prefers-reduced-motion: no-preference) {
@@ -30,7 +30,7 @@
 .show { max-width: 1120px; margin: 0 auto; padding: 88px 24px; display: grid; grid-template-columns: 1fr 1.1fr; gap: 72px; align-items: center; }
 .show.flip { grid-template-columns: 1.1fr 1fr; }
 .flip .copy { order: 2; }
-.show h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); line-height: 1.04; letter-spacing: -0.03em; }
+.show h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); line-height: 1.04; letter-spacing: -0.03em; color: var(--heading); }
 .show .lead { margin-top: 16px; max-width: 28rem; }
 
 .feats { margin-top: 40px; padding: 0; list-style: none; border-top: 1px solid var(--line); }
@@ -70,7 +70,7 @@
 .scene {
   position: relative; aspect-ratio: 5 / 4.4; border-radius: 22px; overflow: hidden;
   background: linear-gradient(160deg, #EEF0FF 0%, #DCDDFB 45%, #C9C4F6 100%);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 40px 80px -40px rgba(64, 48, 199, 0.45);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 40px 80px -40px rgba(58, 47, 191, 0.45);
 }
 .scene .bar {
   position: absolute; left: 0; right: 0; top: 0; height: 34px; display: flex; justify-content: flex-end; align-items: center; gap: 2px; padding: 0 12px;
@@ -85,10 +85,9 @@
 .bi.clocks { gap: 12px; }
 .clk { display: flex; align-items: center; gap: 5px; }
 .clk svg { border-radius: 2px; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.15); }
-.glyph { display: flex; gap: 2px; align-items: center; height: 14px; }
-.glyph b { width: 2px; border-radius: 1px; background: #111111; }
+.glyph { display: block; }
 
-/* The VibeFlow menu, open under its menu bar icon */
+/* The Maagical menu, open under its menu bar icon */
 .menu {
   position: absolute; right: 96px; top: 40px; width: 300px; padding: 5px; border-radius: 12px; font-size: 13.5px;
   background: rgba(250, 250, 253, 0.86); backdrop-filter: blur(40px) saturate(1.8); -webkit-backdrop-filter: blur(40px) saturate(1.8);
@@ -107,7 +106,7 @@
 .mi.on .new { background: rgba(255, 255, 255, 0.22); color: #FFFFFF; }
 .menu .sep { height: 1px; margin: 5px 10px; background: rgba(0, 0, 0, 0.09); }
 
-/* The notch, with VibeFlow's wings */
+/* The notch, with Maagical's wings */
 .vscene { aspect-ratio: 5 / 3.4; background: linear-gradient(160deg, #F3F4FF 0%, #E4E5FC 50%, #D5D1F8 100%); }
 .vscene .bar { justify-content: space-between; }
 .notch {

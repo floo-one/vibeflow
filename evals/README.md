@@ -5,7 +5,7 @@ exactly as the app does (same prompt, model, language detection and max tokens) 
 long each answer is and how it starts, so a prompt change can be judged on the same set.
 
 ```bash
-cd VibeFlowCore && swift run vf-eval --label baseline
+cd MaagicalCore && swift run vf-eval --label baseline
 ```
 
 The key comes from `ANTHROPIC_API_KEY`, else from VibeFlow's Keychain item (macOS asks once).

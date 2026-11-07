@@ -1,0 +1,35 @@
+import SwiftUI
+import MaagicalCore
+
+/// Plain reads: their shortcuts, the ElevenLabs voice, model, speed and speaker.
+struct ReadPane: View {
+    @Environment(AppContainer.self) private var container
+    /// Loaded when the pane appears, never in body (CoreAudio enumeration).
+    @State private var speakers: [AudioDevice] = []
+
+    var body: some View {
+        @Bindable var prefs = container.preferences
+        @Bindable var store = container.presets
+        Form {
+            PaneHeader(.read, subtitle: "Reads the selected text aloud. Press again to stop.")
+            Section("Shortcuts") {
+                ShortcutRecorder("Read selection", name: .read)
+                ShortcutRecorder("Read clipboard", name: .readClipboard)
+            }
+            Section {
+                VoicePicker(voiceID: $store.defaultPreset.elevenLabsVoiceID)
+                ModelPicker(title: "Voice model", options: ModelOptions.voice, selection: $prefs.voiceModel)
+                SpeedSlider(speed: $store.defaultPreset.speed)
+            } header: {
+                Text("Voice")
+            } footer: {
+                Text("Smart Read uses these too, unless you pick its own in Smart Read.").foregroundStyle(.secondary)
+            }
+            Section("Output") {
+                DevicePicker(title: "Speaker", automaticLabel: "System output", devices: speakers, selection: $prefs.speakerUID)
+            }
+        }
+        .formStyle(.grouped)
+        .task { speakers = AudioDevices.outputs() }
+    }
+}

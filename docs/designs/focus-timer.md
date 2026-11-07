@@ -18,7 +18,7 @@ Not novelty: the user said "doesnt have to be super special for the start." The 
 
 - Settings stay minimal (user rule): plain dropdowns, strong defaults, at most a toggle. Settings gets one row for this feature.
 - No database, no server. Stats are a JSON file in Application Support.
-- Swift 6 / SwiftUI `MenuBarExtra`; core logic in VibeFlowCore with Swift Testing, as for Clock and Meetings.
+- Swift 6 / SwiftUI `MenuBarExtra`; core logic in MaagicalCore with Swift Testing, as for Clock and Meetings.
 - Public repo: nothing personal in code or fixtures.
 - Release and Debug run side by side ("VibeFlow" and "VibeFlow Dev"). Each needs its own log file, or Debug runs pollute the real stats. Debug writes `focus-dev.json` (see FocusLog).
 
@@ -83,7 +83,7 @@ Wireframe (approved): [focus-timer-wireframe.png](focus-timer-wireframe.png).
 - Skipping the long break, whether it is running or awaiting, resets the cycle, the same as finishing it (eng review D7).
 - The cycle count resets after the long break ends (completed or skipped), on Stop, and when Focus is switched off. It never resets just because a new day starts.
 
-**Core (VibeFlowCore/Focus/)**
+**Core (MaagicalCore/Focus/)**
 - `FocusPreset`: enum with focus, short, long and `blocksBeforeLong`.
 - `FocusEngine`: a pure state machine `idle → running(phase, deadline) ⇄ paused(phase, remaining) → awaiting(nextPhase) → running …`. It takes `now` as input and never reads the clock itself. Every command first expires a phase whose deadline has passed, using the same `now`, then applies to the resulting state (eng review D7). A Pause clicked just after zero acts on awaiting break, and the block is still logged. Tested. Skip ends a phase without logging. Stop resets the cycle.
 - `FocusLog`: owns one file, `focus.json` shaped `{active: Session?, blocks: [Block]}` (eng review D2). Release writes `~/Library/Application Support/VibeFlow/focus.json`. Debug (`#if DEBUG`) writes `focus-dev.json` in the same folder, because both builds share Application Support and dev runs must not touch the real stats. Every change (start, pause, expire, skip, stop) is one atomic write with 0600 permissions, like HistoryStore, so the session and the blocks can never disagree. A block's `{id, start, end, preset, minutes}` is added in the same write that moves the session to awaiting.
@@ -95,7 +95,7 @@ Wireframe (approved): [focus-timer-wireframe.png](focus-timer-wireframe.png).
 - `FocusStats`: pure functions for today's count and minutes and the per-day minutes for the last 7 days. A whole block counts on the local calendar day of its `end`. That covers a block that crosses midnight and one that expired during sleep and was processed the next morning. Tests cover both cases.
 - The active session lives in `focus.json` next to the blocks (premise 6 lists its fields). Relaunch tests rebuild the state from that file alone.
 
-**App (VibeFlow/)**
+**App (Maagical/)**
 - `FocusTimer`: @MainActor @Observable. Owns the engine and the log, and runs a 1-second ticker only while a phase is running (MenuBarClock ticks per minute, so it can't drive this). At the deadline it calls the engine's expire, plays a chime with NSSound like LiveServices, and posts a notification.
 - Re-evaluates on `NSWorkspace.didWakeNotification` and at launch.
 - The popup's "Today" and 7-day strip are computed from the existing per-minute `MenuBarClock.now`, so they roll over at midnight even while the timer is idle and its ticker is stopped (eng review D7).
@@ -104,7 +104,7 @@ Wireframe (approved): [focus-timer-wireframe.png](focus-timer-wireframe.png).
   - The notification is silent (`content.sound = nil`), so the NSSound chime is the only sound.
   - `userInfo` carries the session ID, the block index and the expected next phase. The action runs only if the engine is still awaiting exactly that phase for that block in that session. Anything else is a stale action and is ignored. The guard is a pure FocusEngine method, so FocusTests covers it.
   - Every exit from awaiting (Start from the menu, Skip, Stop, a preset change, switching Focus off) removes the delivered notification.
-- `FocusMenuView` holds the three states from the wireframe. The fourth `MenuBarExtra(isInserted:)` sits in VibeFlowApp, bound to `preferences.focusEnabled` with a no-op setter like Clocks and Meetings, so only the Settings toggle turns Focus off.
+- `FocusMenuView` holds the three states from the wireframe. The fourth `MenuBarExtra(isInserted:)` sits in MaagicalApp, bound to `preferences.focusEnabled` with a no-op setter like Clocks and Meetings, so only the Settings toggle turns Focus off.
 
 ## Open Questions
 
@@ -125,10 +125,10 @@ Ships through the existing pipeline: a nightly from main, then the next `scripts
 
 ## Next Steps
 
-1. `VibeFlowCore/Sources/VibeFlowCore/Focus/Focus.swift`: `FocusPreset`, `FocusEngine` (injected time, stale-action guard) and `FocusStats`; tests in `VibeFlowCoreTests/FocusTests.swift` for every transition, including double expire and relaunch mid-phase.
+1. `MaagicalCore/Sources/MaagicalCore/Focus/Focus.swift`: `FocusPreset`, `FocusEngine` (injected time, stale-action guard) and `FocusStats`; tests in `MaagicalCoreTests/FocusTests.swift` for every transition, including double expire and relaunch mid-phase.
 2. `Focus/FocusLog.swift` (one `focus.json`, no pruning, broken file kept aside) with tests in the same FocusTests.swift.
-3. App: `VibeFlow/FocusTimer.swift` with its 1-second ticker, wake handling (MeetingsStore's observer pattern), NSSound chime; `focusEnabled` and `focus.preset` in Preferences; created in AppContainer, which also sets the notification delegate.
-4. `VibeFlow/FocusMenuView.swift` (five states plus stats strip) and the fourth `MenuBarExtra` in VibeFlowApp, plus the General toggle.
+3. App: `Maagical/FocusTimer.swift` with its 1-second ticker, wake handling (MeetingsStore's observer pattern), NSSound chime; `focusEnabled` and `focus.preset` in Preferences; created in AppContainer, which also sets the notification delegate.
+4. `Maagical/FocusMenuView.swift` (five states plus stats strip) and the fourth `MenuBarExtra` in MaagicalApp, plus the General toggle.
 5. Silent UserNotifications with the "Start break" action, degrading gracefully when denied.
 6. Run it via scripts/dev.sh for a day. Then /review and /ship.
 
@@ -310,14 +310,14 @@ Target: docs/designs/focus-timer.md (this file; the plan above is the original, 
 
 ### Scope record
 
-feature answers: no cuts proposed (scope already a plain Flow clone); structure: A, Smaller arrangement (D1, 2026-11-02); accepted scope: the full approved design in about 10 files: VibeFlowCore/Sources/VibeFlowCore/Focus/Focus.swift (FocusPreset, FocusEngine, FocusStats), VibeFlowCore/Sources/VibeFlowCore/Focus/FocusLog.swift, VibeFlowCore/Tests/VibeFlowCoreTests/FocusTests.swift, VibeFlow/FocusTimer.swift, VibeFlow/FocusMenuView.swift, plus edits to VibeFlowApp.swift, AppContainer.swift (creates FocusTimer and sets the UNUserNotificationCenter delegate in App.init), Preferences.swift, Settings/GeneralPane.swift, CHANGELOG.md; AppDelegate.swift untouched; pending remedies: none.
+feature answers: no cuts proposed (scope already a plain Flow clone); structure: A, Smaller arrangement (D1, 2026-11-02); accepted scope: the full approved design in about 10 files: MaagicalCore/Sources/MaagicalCore/Focus/Focus.swift (FocusPreset, FocusEngine, FocusStats), MaagicalCore/Sources/MaagicalCore/Focus/FocusLog.swift, MaagicalCore/Tests/MaagicalCoreTests/FocusTests.swift, Maagical/FocusTimer.swift, Maagical/FocusMenuView.swift, plus edits to MaagicalApp.swift, AppContainer.swift (creates FocusTimer and sets the UNUserNotificationCenter delegate in App.init), Preferences.swift, Settings/GeneralPane.swift, CHANGELOG.md; AppDelegate.swift untouched; pending remedies: none.
 
 Scope Challenge result: scope accepted as-is.
 
 ## Decision ledger
 
 ### R1: Persistence shape for the active session and the focus log
-Finding: A1, INFORMATIONAL, confidence 8/10, VibeFlowCore/Sources/VibeFlowCore/Settings/Preferences.swift:37 ("/// The few settings that are not per-app presets, backed by UserDefaults") and plan "The persisted active session goes in UserDefaults through Preferences"; reviewer: Claude (Architecture, design-twice).
+Finding: A1, INFORMATIONAL, confidence 8/10, MaagicalCore/Sources/MaagicalCore/Settings/Preferences.swift:37 ("/// The few settings that are not per-app presets, backed by UserDefaults") and plan "The persisted active session goes in UserDefaults through Preferences"; reviewer: Claude (Architecture, design-twice).
 Plan baseline: two stores. focus-log.json holds completed blocks; the active session is a JSON blob in UserDefaults via Preferences. Write order log first, then session; deterministic ids `<sessionID>-<blockIndex>` and a skip-if-present append cover a crash between the two writes (office-hours review R1-4, R2-6, R2-9; approved D9).
 Runtime evidence: none yet (proposed code). Preferences today stores only user settings (Preferences.swift:56-61 keys), never runtime state.
 Comparison grid:
@@ -396,7 +396,7 @@ History: none
 ### R3: Remaining office-hours minor concerns (R3-1 to R3-9, R3-11)
 Finding: 11 minor findings recorded by the office-hours spec review (Reviewer Concerns above). R3-10 is settled by R2. R3-6 and R3-11 are moot after R1 (one atomic write, no crash ordering). Reviewer: office-hours spec reviewer, triaged by Claude.
 Plan baseline: open as minors.
-Runtime evidence: n/a (doc clarity). R3-9 checked: Clocks and Meetings bind isInserted with `set: { _ in }` (VibeFlowApp.swift:57-64).
+Runtime evidence: n/a (doc clarity). R3-9 checked: Clocks and Meetings bind isInserted with `set: { _ in }` (MaagicalApp.swift:57-64).
 Comparison grid:
 | Choice | Current | A (accept all as listed) | B (one at a time) |
 |---|---|---|---|
@@ -438,7 +438,7 @@ Accepted scope: Apply R3-1, R3-2, R3-3, R3-4, R3-5, R3-7, R3-8 and R3-9 exactly 
 History: none
 
 ### R4: What happens when saving focus.json fails
-Finding: O1, Codex High, confidence 8/10 after verification, VibeFlowCore/Sources/VibeFlowCore/History/HistoryStore.swift:120-124 (`entries.insert(entry, at: 0)` ... `save()`, memory first, save errors only logged at :171). The plan says "Every change ... is one atomic write" but not what a failed write means. Reviewer: Codex outside voice, verified by Claude.
+Finding: O1, Codex High, confidence 8/10 after verification, MaagicalCore/Sources/MaagicalCore/History/HistoryStore.swift:120-124 (`entries.insert(entry, at: 0)` ... `save()`, memory first, save errors only logged at :171). The plan says "Every change ... is one atomic write" but not what a failed write means. Reviewer: Codex outside voice, verified by Claude.
 Plan baseline: atomic write per change; a failed write keeps the previous file (D2 accepted scope). Failure behavior unspecified.
 Runtime evidence: HistoryStore pattern commits in memory and logs save failures with .notice.
 Comparison grid:
@@ -485,7 +485,7 @@ Accepted scope: Compute the next state, write focus.json, and commit the state i
 History: none
 
 ### R5: Two copies of the same build briefly running at once
-Finding: O2, Codex Medium, confidence 6/10 after verification, VibeFlow/AppDelegate.swift:26-28 (`kill(app.processIdentifier, SIGTERM)` with no wait), called from VibeFlowApp.init before AppContainer. The old copy quits through NSApp.terminate on its main queue (AppDelegate.swift:35-41), usually within milliseconds. Release and Debug use different files (focus.json / focus-dev.json), so only two copies of the same build can overlap. Reviewer: Codex outside voice, verified by Claude.
+Finding: O2, Codex Medium, confidence 6/10 after verification, Maagical/AppDelegate.swift:26-28 (`kill(app.processIdentifier, SIGTERM)` with no wait), called from MaagicalApp.init before AppContainer. The old copy quits through NSApp.terminate on its main queue (AppDelegate.swift:35-41), usually within milliseconds. Release and Debug use different files (focus.json / focus-dev.json), so only two copies of the same build can overlap. Reviewer: Codex outside voice, verified by Claude.
 Plan baseline: single writer assumed.
 Runtime evidence: quitOlderCopies does not wait; termination timing not measured.
 Comparison grid:
@@ -532,7 +532,7 @@ Accepted scope: Document the brief overlap of two copies of the same build as ac
 History: none
 
 ### R6: Engine rule gaps from the outside voice (O3 to O6)
-Finding: O3 to O6, Codex Medium each, verified by Claude against the plan text. O3: no rule for a command that arrives after the deadline but before the ticker fires. O4: plan "The cycle position is clamped to the new preset" loses earned progress (3 Classic blocks, switch to Deep, back to Classic leaves 2). O5: plan "Skipping a break ... cycle position unchanged" contradicts "resets after a long break ends (completed or skipped)". O6: the ticker runs only while a phase is running (plan FocusTimer bullet), so "Today" and the 7-day strip go stale across midnight while idle; MenuBarClock (VibeFlow/MenuBarClock.swift:9-21) already ticks each minute.
+Finding: O3 to O6, Codex Medium each, verified by Claude against the plan text. O3: no rule for a command that arrives after the deadline but before the ticker fires. O4: plan "The cycle position is clamped to the new preset" loses earned progress (3 Classic blocks, switch to Deep, back to Classic leaves 2). O5: plan "Skipping a break ... cycle position unchanged" contradicts "resets after a long break ends (completed or skipped)". O6: the ticker runs only while a phase is running (plan FocusTimer bullet), so "Today" and the 7-day strip go stale across midnight while idle; MenuBarClock (Maagical/MenuBarClock.swift:9-21) already ticks each minute.
 Plan baseline: as written in the plan body (approved D9, amended by D2 to D6).
 Runtime evidence: n/a (proposed code).
 Comparison grid:
@@ -609,15 +609,15 @@ Approval readiness: PASS. Checked R1 (D2), R2 (D3), R3 (D4), R4 (D5), R5 (D6), R
 ### Reality rows
 | premise | claim | receipt | verdict |
 |---|---|---|---|
-| isInserted MenuBarExtra pattern exists | Clocks and Meetings use `MenuBarExtra(isInserted:)` with no-op setters | VibeFlow/VibeFlowApp.swift:29,36,57-64 | true |
-| HistoryStore atomic-write pattern | atomic write, 0700 folder, 0600 file | VibeFlowCore/Sources/VibeFlowCore/History/HistoryStore.swift:163-171 | true |
-| NSSound cues exist | DictationSounds uses NSSound | VibeFlow/LiveServices.swift:170 | true |
-| Wake observer pattern | MeetingsStore observes didWake | VibeFlow/MeetingsStore.swift:57 | true |
+| isInserted MenuBarExtra pattern exists | Clocks and Meetings use `MenuBarExtra(isInserted:)` with no-op setters | Maagical/MaagicalApp.swift:29,36,57-64 | true |
+| HistoryStore atomic-write pattern | atomic write, 0700 folder, 0600 file | MaagicalCore/Sources/MaagicalCore/History/HistoryStore.swift:163-171 | true |
+| NSSound cues exist | DictationSounds uses NSSound | Maagical/LiveServices.swift:170 | true |
+| Wake observer pattern | MeetingsStore observes didWake | Maagical/MeetingsStore.swift:57 | true |
 | No .window extra and no UserNotifications yet | grep finds none | `grep -rn menuBarExtraStyle VibeFlow` empty; `grep UNUserNotification` empty | true |
 | .window popup has no first-party dismiss | web sources | MenuBarExtraAccess README, Apple WindowMenuBarExtraStyle docs | unverified (web) |
-| quitOlderCopies does not wait | SIGTERM only | VibeFlow/AppDelegate.swift:26-28 | true |
-REALITY: premise-table pass 6 true, unverified=1 VibeFlow/VibeFlowApp.swift:29
-REALITY: already-done pass no focus or pomodoro commits on origin/main (git log origin/main -- VibeFlowApp.swift, Preferences.swift) VibeFlow/VibeFlowApp.swift:1
+| quitOlderCopies does not wait | SIGTERM only | Maagical/AppDelegate.swift:26-28 | true |
+REALITY: premise-table pass 6 true, unverified=1 Maagical/MaagicalApp.swift:29
+REALITY: already-done pass no focus or pomodoro commits on origin/main (git log origin/main -- MaagicalApp.swift, Preferences.swift) Maagical/MaagicalApp.swift:1
 REALITY: surface-check pass commands named (xcodebuild, swift test, scripts/dev.sh, xcodegen) are the ones in CLAUDE.md CLAUDE.md:1
 REALITY: binding-decisions pass office-hours decision cf4973d5 (plain clone, presets, chime+wait, Focus off by default) honored; D2 replaces the log file name and session store with user approval docs/designs/focus-timer.md:25
 REALITY: numbers pass effort estimates [estimated]; 450 KB/year [estimated: 10 blocks/day x 365 x ~120 B] docs/designs/focus-timer.md:320
@@ -625,13 +625,13 @@ REALITY: deferred-asks pass no linked issue docs/designs/focus-timer.md:9
 REALITY: pr-count pass one PR, no .gstack/ship-policy.json docs/designs/focus-timer.md:120
 
 ### 1. Architecture
-[INFORMATIONAL] (confidence: 8/10) VibeFlowCore/Sources/VibeFlowCore/Settings/Preferences.swift:37 — "/// The few settings that are not per-app presets, backed by UserDefaults". The plan split state across focus-log.json and a Preferences blob, which meant split ownership (red flag 5) and a crash-ordering rule.
+[INFORMATIONAL] (confidence: 8/10) MaagicalCore/Sources/MaagicalCore/Settings/Preferences.swift:37 — "/// The few settings that are not per-app presets, backed by UserDefaults". The plan split state across focus-log.json and a Preferences blob, which meant split ownership (red flag 5) and a crash-ordering rule.
 [INFORMATIONAL] (confidence: 7/10) plan "Menu style: the Focus item uses `.menuBarExtraStyle(.window)`". SwiftUI has no first-party dismiss for a `.window` popup.
 Design-twice: shape 1 (log file plus a session in UserDefaults) against shape 2 (one focus.json owned by FocusLog). Shape 2 is picked: the same surface (`load`, `apply(transition)`) hides the ordering policy entirely.
 Dispositions: A1 accepted (D2), A2 accepted, popup stays open (D3).
 
 ```
-                 FocusTimer (@MainActor, app)                      VibeFlowCore
+                 FocusTimer (@MainActor, app)                      MaagicalCore
  click / notif ─►  command(now) ──────────────────────────► FocusEngine.apply(cmd, now)
  1 s ticker   ─►  tick(now)    (only while running)            1. expire if deadline <= now
  wake / launch ─► reconcile(now)                                2. apply cmd to resulting state
@@ -654,13 +654,13 @@ Engine states:
 ```
 
 ### 2. Code quality
-[INFORMATIONAL] (confidence: 9/10) VibeFlowCore/Sources/VibeFlowCore/History/HistoryStore.swift:158 — `log.notice("History unreadable, starting empty: ...")` followed by `entries = []`. The next `save()` overwrites history.json, so one unreadable file silently loses all history. This is existing code outside this feature. Flagged only; the TODO question (D10) was declined.
+[INFORMATIONAL] (confidence: 9/10) MaagicalCore/Sources/MaagicalCore/History/HistoryStore.swift:158 — `log.notice("History unreadable, starting empty: ...")` followed by `entries = []`. The next `save()` overwrites history.json, so one unreadable file silently loses all history. This is existing code outside this feature. Flagged only; the TODO question (D10) was declined.
 Shared code: FocusLog will repeat HistoryStore.save()'s 9 lines (folder 0700, atomic write, 0600). Extracting a helper was considered and rejected. Two callers, about 9 lines each, and the extraction would save about 4 lines net but couple History and Focus. Copy the pattern instead.
 Reuse: wake observer from MeetingsStore.swift:57; the minute clock from MenuBarClock.swift for stats rollover (D7).
 Dispositions: Q1 flagged, not actioned (D10 declined). Extraction rejected, no remedy proposed.
 
 ### 3. Tests
-Framework: Swift Testing in VibeFlowCore (CLAUDE.md "Core tests: cd VibeFlowCore && swift test"). One FocusTests.swift (D1). The app target has no unit tests, so app-layer behavior is verified manually through scripts/dev.sh.
+Framework: Swift Testing in MaagicalCore (CLAUDE.md "Core tests: cd MaagicalCore && swift test"). One FocusTests.swift (D1). The app target has no unit tests, so app-layer behavior is verified manually through scripts/dev.sh.
 ```
 CODE PATHS (proposed)                                        USER FLOWS
 [+] Focus.swift                                              [+] Daily use
@@ -696,7 +696,7 @@ No issues found. The 1-second ticker runs only while a phase is running and redr
 - Dismiss-on-click for the popup: D3, no dependency.
 
 ### What already exists
-- MenuBarExtra(isInserted:) with a no-op setter: VibeFlowApp.swift:29-64, reused.
+- MenuBarExtra(isInserted:) with a no-op setter: MaagicalApp.swift:29-64, reused.
 - Atomic JSON persistence: HistoryStore.swift:163-171, pattern copied (not shared, see Code quality).
 - Wake handling: MeetingsStore.swift:57, pattern reused.
 - Minute clock: MenuBarClock.swift, reused for stats rollover.
@@ -721,21 +721,21 @@ Sequential implementation, no parallelization opportunity. The app layer (FocusT
 ## Implementation Tasks
 Synthesized from this review's findings. Each task derives from a specific finding above. Run with Claude Code or Codex; checkbox as you ship.
 
-- [ ] **T1 (P1, human: ~1 day / CC: ~30 min)** — VibeFlowCore — FocusPreset, FocusEngine (expire-if-due, unclamped count, skip rules, stale-action guard) and FocusStats
+- [ ] **T1 (P1, human: ~1 day / CC: ~30 min)** — MaagicalCore — FocusPreset, FocusEngine (expire-if-due, unclamped count, skip rules, stale-action guard) and FocusStats
   - Surfaced by: Architecture A1/D2; outside voice O3, O4, O5 (D7); minor R3-7 (D4)
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Focus/Focus.swift, VibeFlowCore/Tests/VibeFlowCoreTests/FocusTests.swift
-  - Verify: cd VibeFlowCore && swift test
-- [ ] **T2 (P1, human: ~3h / CC: ~15 min)** — VibeFlowCore — FocusLog with one focus.json, save-then-commit, dedup on load, broken file named after the active file
+  - Files: MaagicalCore/Sources/MaagicalCore/Focus/Focus.swift, MaagicalCore/Tests/MaagicalCoreTests/FocusTests.swift
+  - Verify: cd MaagicalCore && swift test
+- [ ] **T2 (P1, human: ~3h / CC: ~15 min)** — MaagicalCore — FocusLog with one focus.json, save-then-commit, dedup on load, broken file named after the active file
   - Surfaced by: Architecture A1 (D2); outside voice O1 (D5), O2 (D6); minor R3-8 (D4)
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Focus/FocusLog.swift, FocusTests.swift
-  - Verify: cd VibeFlowCore && swift test
+  - Files: MaagicalCore/Sources/MaagicalCore/Focus/FocusLog.swift, FocusTests.swift
+  - Verify: cd MaagicalCore && swift test
 - [ ] **T3 (P1, human: ~4h / CC: ~20 min)** — App — FocusTimer: 1 s ticker while running, wake reconcile, NSSound chime, silent actionable notification, delegate set in AppContainer; Preferences focusEnabled (default off) and focus.preset
   - Surfaced by: D1 structure; minor R3-3, R3-4, R3-7 (D4)
-  - Files: VibeFlow/FocusTimer.swift, VibeFlow/AppContainer.swift, VibeFlowCore/Sources/VibeFlowCore/Settings/Preferences.swift
+  - Files: Maagical/FocusTimer.swift, Maagical/AppContainer.swift, MaagicalCore/Sources/MaagicalCore/Settings/Preferences.swift
   - Verify: xcodebuild Debug build; scripts/dev.sh and a manual sleep/wake check
 - [ ] **T4 (P1, human: ~4h / CC: ~20 min)** — App — FocusMenuView with five states, popup stays open, stats via MenuBarClock; fourth MenuBarExtra with a no-op isInserted setter; General toggle
   - Surfaced by: Architecture A2 (D3); minor R3-1, R3-9 (D4); outside voice O6 (D7)
-  - Files: VibeFlow/FocusMenuView.swift, VibeFlow/VibeFlowApp.swift, VibeFlow/Settings/GeneralPane.swift
+  - Files: Maagical/FocusMenuView.swift, Maagical/MaagicalApp.swift, Maagical/Settings/GeneralPane.swift
   - Verify: scripts/dev.sh; walk the five states; leave the popup open across midnight once
 - [ ] **T5 (P2, human: ~15 min / CC: ~2 min)** — Docs — CHANGELOG line for the focus timer
   - Surfaced by: Distribution Plan

@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 
 URL = "https://raw.githubusercontent.com/vvo/tzdb/main/raw-time-zones.json"
-OUT = Path(__file__).resolve().parent.parent / "VibeFlowCore/Sources/VibeFlowCore/Clock/Resources/time-zones.json"
+OUT = Path(__file__).resolve().parent.parent / "MaagicalCore/Sources/MaagicalCore/Clock/Resources/time-zones.json"
 
 # curl, not urllib: python.org builds of Python ship without root certificates on macOS.
 raw = json.loads(subprocess.run(["curl", "-fsSL", URL], check=True, capture_output=True).stdout)

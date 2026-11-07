@@ -3,7 +3,7 @@
 # Install this only while Actions cannot; never both at once, they would race on the release.
 #
 # Keep the "nightly" pre-release at the newest main, built, signed and notarized on this Mac,
-# so a VibeFlow with Settings > General > Updates, Channel "Nightly", installs every new main.
+# so a Maagical with Settings > General > Updates, Channel "Nightly", installs every new main.
 # A LaunchAgent runs it every 30 minutes; it builds only when origin/main moved and CI passed
 # on that commit, in its own clone under ~/Library/Application Support (never ~/Documents, which
 # macOS keeps from background jobs, nor ~/Library/Caches, which macOS and cleaner apps empty), with scripts/release.sh --nightly --publish. Keys stay in the login keychain: the Mac has

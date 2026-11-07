@@ -1,0 +1,284 @@
+import Foundation
+import Observation
+
+/// How the notch shows that the microphone is listening.
+public enum ListeningStyle: String, CaseIterable, Sendable {
+    /// A still red dot: no loudness at all.
+    case dot
+    /// A red dot with a soft ring that swells with the voice.
+    case pulse
+    /// Five bars that follow the microphone level.
+    case bars
+
+    public var title: String {
+        switch self {
+        case .dot: return "Dot"
+        case .pulse: return "Pulse"
+        case .bars: return "Bars"
+        }
+    }
+}
+
+/// Light or dark for Maagical's own windows, or whatever macOS uses.
+public enum ColorMode: String, CaseIterable, Sendable {
+    case system
+    case light
+    case dark
+
+    public var title: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+}
+
+/// The few settings that are not per-app presets, backed by UserDefaults: a model per job,
+/// the audio devices, the dictation cues, the focus timer, launch at login and the update channel. Shortcuts live in KeyboardShortcuts' own storage;
+/// keys live in the Keychain.
+@MainActor
+@Observable
+public final class Preferences {
+    private let defaults: UserDefaults
+    private enum Key {
+        static let launchAtLogin = "launchAtLogin"
+        static let updateToNewestMain = "update.newestMain"
+        static let voiceModel = "voiceModel"
+        static let smartReadModel = "smartReadModel"
+        static let smartReadSpeed = "smartRead.speed"
+        static let prompts = "prompts.library"
+        static let smartReadVoiceID = "smartRead.voiceID"
+        static let smartReadVoiceModel = "smartRead.voiceModel"
+        static let smartReadSpeaker = "smartRead.speaker"
+        static let historyRetention = "history.retention"
+        static let transcriptionModel = "dictation.transcriptionModel"
+        static let cleanupModel = "dictation.cleanupModel"
+        static let vocabulary = "dictation.vocabulary"
+        static let microphoneUID = "dictation.microphoneUID"
+        static let speakerUID = "speakerUID"
+        static let worldClocks = "clocks.worldClocks"
+        static let dictationSounds = "feel.dictationSounds"
+        static let notchIndicator = "feel.notchIndicator"
+        static let listeningStyle = "feel.listeningStyle"
+        static let colorMode = "feel.colorMode"
+        static let meetingsEnabled = "meetings.enabled"
+        static let meetingsLeadMinutes = "meetings.leadMinutes"
+        static let meetingsCalendars = "meetings.calendars"
+        static let focusPreset = "focus.preset"
+        static let focusAutoAdvance = "focus.autoAdvance"
+        static let focusCustomFocus = "focus.custom.focus"
+        static let focusCustomBreak = "focus.custom.break"
+        static let focusCustomLongBreak = "focus.custom.longBreak"
+        static let focusCustomRounds = "focus.custom.rounds"
+        static let keepAwakeDisplayOn = "keepAwake.displayOn"
+        static let keepAwakeLastMinutes = "keepAwake.lastMinutes"
+        static let holdTipTaps = "smartRead.holdTipTaps"
+        static let holdTipHeld = "smartRead.holdTipHeld"
+    }
+
+    public var launchAtLogin: Bool {
+        didSet { defaults.set(launchAtLogin, forKey: Key.launchAtLogin) }
+    }
+    /// The release follows the nightly feed (a build of every new main) instead of releases.
+    public var updateToNewestMain: Bool {
+        didSet { defaults.set(updateToNewestMain, forKey: Key.updateToNewestMain) }
+    }
+    /// ElevenLabs model for reads.
+    public var voiceModel: String {
+        didSet { defaults.set(voiceModel, forKey: Key.voiceModel) }
+    }
+    public var smartReadModel: String {
+        didSet { defaults.set(smartReadModel, forKey: Key.smartReadModel) }
+    }
+    /// How much History keeps (Settings > General).
+    public var historyRetention: HistoryRetention {
+        didSet { defaults.set(historyRetention.storageValue, forKey: Key.historyRetention) }
+    }
+    /// Speed for briefs and follow-up answers, separate from the read speed (Settings > Smart Read).
+    public var smartReadSpeed: Double {
+        didSet { defaults.set(smartReadSpeed, forKey: Key.smartReadSpeed) }
+    }
+    /// Smart Read's own ElevenLabs voice, nil = the Read voice.
+    public var smartReadVoiceID: String? {
+        didSet { defaults.set(smartReadVoiceID, forKey: Key.smartReadVoiceID) }
+    }
+    /// Smart Read's own ElevenLabs model, nil = the Read model.
+    public var smartReadVoiceModel: String? {
+        didSet { defaults.set(smartReadVoiceModel, forKey: Key.smartReadVoiceModel) }
+    }
+    /// Smart Read's own speaker: nil = the Read speaker, "" = system output, else a device UID.
+    public var smartReadSpeaker: String? {
+        didSet { defaults.set(smartReadSpeaker, forKey: Key.smartReadSpeaker) }
+    }
+    /// The output device a smart read plays on, nil = system output.
+    public var smartReadOutputDeviceUID: String? {
+        switch smartReadSpeaker {
+        case nil: speakerUID
+        case "": nil
+        case let uid?: uid
+        }
+    }
+    /// Prompt edits (Settings > Prompts); parts left alone follow the built-in defaults.
+    public var prompts: PromptLibrary {
+        didSet { defaults.set(try? JSONEncoder().encode(prompts), forKey: Key.prompts) }
+    }
+    /// Groq Whisper model for dictation.
+    public var transcriptionModel: String {
+        didSet { defaults.set(transcriptionModel, forKey: Key.transcriptionModel) }
+    }
+    /// Groq chat model for dictation cleanup; ModelOptions.cleanupOff turns cleanup off.
+    public var cleanupModel: String {
+        didSet { defaults.set(cleanupModel, forKey: Key.cleanupModel) }
+    }
+    /// Names and terms dictation cleanup should spell correctly. Not in Settings yet.
+    public var vocabulary: String {
+        didSet { defaults.set(vocabulary, forKey: Key.vocabulary) }
+    }
+    /// nil = Automatic (D7).
+    public var microphoneUID: String? {
+        didSet { defaults.set(microphoneUID, forKey: Key.microphoneUID) }
+    }
+    /// Output device for the ElevenLabs voice, nil = system output.
+    public var speakerUID: String? {
+        didSet { defaults.set(speakerUID, forKey: Key.speakerUID) }
+    }
+
+    /// Clocks in the menu bar, in order; empty hides the item. Starts with Berlin.
+    public var worldClocks: [WorldClock] {
+        didSet { defaults.set(try? JSONEncoder().encode(worldClocks), forKey: Key.worldClocks) }
+    }
+    /// Tink when the microphone opens, Pop when it closes.
+    public var dictationSounds: Bool {
+        didSet { defaults.set(dictationSounds, forKey: Key.dictationSounds) }
+    }
+    /// The black wings around the notch while dictating, reading and thinking.
+    public var notchIndicator: Bool {
+        didSet { defaults.set(notchIndicator, forKey: Key.notchIndicator) }
+    }
+    public var listeningStyle: ListeningStyle {
+        didSet { defaults.set(listeningStyle.rawValue, forKey: Key.listeningStyle) }
+    }
+    /// Settings and History follow this; the notch stays black either way.
+    public var colorMode: ColorMode {
+        didSet { defaults.set(colorMode.rawValue, forKey: Key.colorMode) }
+    }
+    /// Upcoming meetings in the menu bar (works only once signed in to Google).
+    public var meetingsEnabled: Bool {
+        didSet { defaults.set(meetingsEnabled, forKey: Key.meetingsEnabled) }
+    }
+    /// Minutes before a meeting the item appears: 5, 10 or 15.
+    public var meetingsLeadMinutes: Int {
+        didSet { defaults.set(meetingsLeadMinutes, forKey: Key.meetingsLeadMinutes) }
+    }
+    /// Google calendar ids to watch; nil = your own calendar.
+    public var meetingsCalendars: [String]? {
+        didSet { defaults.set(meetingsCalendars, forKey: Key.meetingsCalendars) }
+    }
+    /// Picked in the Pomodoro pane or menu; the running session keeps its own copy.
+    public var focusPreset: FocusPreset {
+        didSet { defaults.set(focusPreset.rawValue, forKey: Key.focusPreset) }
+    }
+    /// The Custom card's values; kept while another preset is selected.
+    public var focusCustom: FocusRhythm {
+        didSet {
+            defaults.set(focusCustom.focusMinutes, forKey: Key.focusCustomFocus)
+            defaults.set(focusCustom.shortBreakMinutes, forKey: Key.focusCustomBreak)
+            defaults.set(focusCustom.longBreakMinutes, forKey: Key.focusCustomLongBreak)
+            defaults.set(focusCustom.rounds, forKey: Key.focusCustomRounds)
+        }
+    }
+    /// A phase that runs out starts the next one by itself instead of waiting for a click.
+    public var focusAutoAdvance: Bool {
+        didSet { defaults.set(focusAutoAdvance, forKey: Key.focusAutoAdvance) }
+    }
+    /// The rhythm of the selected preset.
+    public var focusRhythm: FocusRhythm { focusPreset.rhythm(custom: focusCustom) }
+
+    /// Keep Awake also keeps the display on; off lets it sleep while the Mac stays awake.
+    public var keepAwakeDisplayOn: Bool {
+        didSet { defaults.set(keepAwakeDisplayOn, forKey: Key.keepAwakeDisplayOn) }
+    }
+
+    /// The Keep Awake duration picked last, in minutes (0 = Indefinitely, nil = never picked);
+    /// a click on the panel's Keep Awake tile starts it again (KeepAwakeTile, D11).
+    public var keepAwakeLastMinutes: Int? {
+        didSet { defaults.set(keepAwakeLastMinutes, forKey: Key.keepAwakeLastMinutes) }
+    }
+
+    /// Smart read taps that showed the "hold to ask" notch tip, and whether the user ever held
+    /// the key (HoldTip, D17).
+    public var holdTipTaps: Int {
+        didSet { defaults.set(holdTipTaps, forKey: Key.holdTipTaps) }
+    }
+    public var holdTipHeld: Bool {
+        didSet { defaults.set(holdTipHeld, forKey: Key.holdTipHeld) }
+    }
+
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        launchAtLogin = defaults.bool(forKey: Key.launchAtLogin)
+        updateToNewestMain = defaults.bool(forKey: Key.updateToNewestMain)
+        voiceModel = defaults.string(forKey: Key.voiceModel) ?? ModelOptions.voice[0].id
+        smartReadModel = defaults.string(forKey: Key.smartReadModel) ?? ModelOptions.smartRead[0].id
+        smartReadSpeed = defaults.object(forKey: Key.smartReadSpeed) as? Double ?? 1.0
+        prompts = Self.prompts(in: defaults)
+        smartReadVoiceID = defaults.string(forKey: Key.smartReadVoiceID)
+        smartReadVoiceModel = defaults.string(forKey: Key.smartReadVoiceModel)
+        smartReadSpeaker = defaults.string(forKey: Key.smartReadSpeaker)
+        historyRetention = defaults.string(forKey: Key.historyRetention).flatMap(HistoryRetention.init(storageValue:)) ?? .default
+        transcriptionModel = defaults.string(forKey: Key.transcriptionModel) ?? ModelOptions.transcription[0].id
+        cleanupModel = defaults.string(forKey: Key.cleanupModel) ?? ModelOptions.cleanup[0].id
+        vocabulary = defaults.string(forKey: Key.vocabulary) ?? ""
+        microphoneUID = defaults.string(forKey: Key.microphoneUID)
+        speakerUID = defaults.string(forKey: Key.speakerUID)
+        worldClocks = defaults.data(forKey: Key.worldClocks)
+            .flatMap { try? JSONDecoder().decode([WorldClock].self, from: $0) } ?? [.berlin]
+        dictationSounds = defaults.object(forKey: Key.dictationSounds) as? Bool ?? true
+        notchIndicator = defaults.object(forKey: Key.notchIndicator) as? Bool ?? true
+        listeningStyle = defaults.string(forKey: Key.listeningStyle).flatMap(ListeningStyle.init(rawValue:)) ?? .dot
+        colorMode = defaults.string(forKey: Key.colorMode).flatMap(ColorMode.init(rawValue:)) ?? .system
+        meetingsEnabled = defaults.object(forKey: Key.meetingsEnabled) as? Bool ?? true
+        meetingsLeadMinutes = (defaults.object(forKey: Key.meetingsLeadMinutes) as? Int)
+            .flatMap { MeetingSchedule.leadTimes.contains($0) ? $0 : nil } ?? MeetingSchedule.defaultLeadMinutes
+        meetingsCalendars = defaults.stringArray(forKey: Key.meetingsCalendars)
+        focusPreset = defaults.string(forKey: Key.focusPreset).flatMap(FocusPreset.init(rawValue:)) ?? .classic
+        focusAutoAdvance = defaults.bool(forKey: Key.focusAutoAdvance)
+        let classic = FocusRhythm.classic
+        focusCustom = FocusRhythm(
+            focusMinutes: defaults.object(forKey: Key.focusCustomFocus) as? Int ?? classic.focusMinutes,
+            shortBreakMinutes: defaults.object(forKey: Key.focusCustomBreak) as? Int ?? classic.shortBreakMinutes,
+            longBreakMinutes: defaults.object(forKey: Key.focusCustomLongBreak) as? Int ?? classic.longBreakMinutes,
+            rounds: defaults.object(forKey: Key.focusCustomRounds) as? Int ?? classic.rounds
+        ).clamped
+        keepAwakeDisplayOn = defaults.object(forKey: Key.keepAwakeDisplayOn) as? Bool ?? true
+        keepAwakeLastMinutes = defaults.object(forKey: Key.keepAwakeLastMinutes) as? Int
+        holdTipTaps = defaults.integer(forKey: Key.holdTipTaps)
+        holdTipHeld = defaults.bool(forKey: Key.holdTipHeld)
+    }
+
+    public var vocabularyTerms: [String] { Self.parseVocabulary(vocabulary) }
+
+    /// One term per line or comma separated; blanks dropped.
+    public static func parseVocabulary(_ text: String) -> [String] {
+        text.split(whereSeparator: { $0 == "," || $0.isNewline })
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
+    /// The read session's configuration with the chosen smart read model.
+    public var sessionConfiguration: SessionConfiguration {
+        var config = SessionConfiguration()
+        config.smartReadModel = smartReadModel
+        config.smartReadSpeed = smartReadSpeed
+        config.prompts = prompts
+        config.terms = vocabularyTerms
+        config.smartReadVoiceID = smartReadVoiceID
+        return config
+    }
+
+    /// Also read by the vf-eval harness, so a prompt edit can be tried on the fixtures.
+    public nonisolated static func prompts(in defaults: UserDefaults) -> PromptLibrary {
+        defaults.data(forKey: Key.prompts).flatMap { try? JSONDecoder().decode(PromptLibrary.self, from: $0) } ?? PromptLibrary()
+    }
+}
