@@ -1,0 +1,14 @@
+---
+// The notch with Maagical's wings: an icon on the left, live bars on the right. The section
+// script sets data-f (read, smart or dict) to pick the icon and adds "on" to open the wings.
+interface Props { id: string; icons: ('read' | 'smart' | 'dict')[]; tint?: string }
+const { id, icons, tint } = Astro.props;
+---
+<div class="notch" id={id} style={tint ? `--tint: ${tint}` : undefined}>
+  <div class="slot l">
+    {icons.includes('read') && <svg class="ic i-read" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" /><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" /></svg>}
+    {icons.includes('smart') && <svg class="ic i-smart" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z" /><path d="M18.5 15l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" /></svg>}
+    {icons.includes('dict') && <svg class="ic i-dict" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>}
+  </div>
+  <div class="slot r"><div class="bars"><b></b><b></b><b></b><b></b><b></b></div></div>
+</div>

@@ -42,7 +42,7 @@ sparkle() {
   if [[ ! -x $bin/generate_keys ]]; then
     print "   Fetching Sparkle's tools…"
     (cd "$MAIN" && xcodegen generate >/dev/null && xcodebuild -resolvePackageDependencies \
-      -project VibeFlow.xcodeproj -scheme VibeFlow -derivedDataPath build/DerivedData -quiet)
+      -project Maagical.xcodeproj -scheme Maagical -derivedDataPath build/DerivedData -quiet)
   fi
   "$bin/generate_keys" --account vibeflow -x "$TMP/sparkle.key" >/dev/null
   local want="$(sed -nE 's/^ *SUPublicEDKey: *"?([^" ]+)"?.*/\1/p' "$MAIN/project.yml" | head -1)"

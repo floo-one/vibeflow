@@ -66,7 +66,7 @@ Why not a hand-rolled GitHub API check: replacing a running, notarized app safel
 As built (2026-10-29):
 
 - **Package:** Sparkle 2.10 via SPM, linked in both configurations. `Updater`
-  (`VibeFlow/Updater.swift`) is created only in Release (`AppContainer`, `#if !DEBUG`).
+  (`Maagical/Updater.swift`) is created only in Release (`AppContainer`, `#if !DEBUG`).
 - **When it installs** (decided with the user: silently, when idle): Sparkle downloads in the
   background (`SUAutomaticallyUpdate`), and `Updater` takes over `willInstallUpdateOnQuit`.
   It checks every minute and installs (relaunching VibeFlow) once nothing is reading or
@@ -104,7 +104,7 @@ As built (2026-10-29):
 
 As built (2026-10-29):
 
-- The newest-copy-wins check runs in `VibeFlowApp.init`, before `AppContainer`: the Keychain
+- The newest-copy-wins check runs in `MaagicalApp.init`, before `AppContainer`: the Keychain
   read there can block launch on an access dialog (P4), and a check in the app delegate never
   ran in that state. Until a copy has finished launching, SIGTERM ends it on the spot; after
   that it quits like the Quit menu item. The rule itself is `SingleInstance` in Core, tested.

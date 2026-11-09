@@ -1,0 +1,52 @@
+---
+import LegalPage from '../components/LegalPage.astro';
+import { PUBLISHER, REPO_URL, url } from '../data/site';
+---
+<LegalPage
+  title="Terms of Service"
+  description="The terms for using Maagical, the free, open source Mac menu bar app to read, explain and dictate."
+  path="terms/"
+  updated="November 5, 2026"
+>
+  <p>
+    These terms apply to Maagical, the macOS app and this website, published by {PUBLISHER}
+    ("we"). By downloading or using Maagical you agree to them.
+  </p>
+
+  <h2>The app</h2>
+  <p>
+    Maagical is free and open source under the
+    <a href={`${REPO_URL}/blob/main/LICENSE`}>MIT License</a>. The license governs your rights to
+    the source code; these terms cover using the app we distribute.
+  </p>
+
+  <h2>Third-party services</h2>
+  <p>
+    Some features use services you connect yourself: ElevenLabs, Groq, Anthropic and Google
+    Calendar. You are responsible for your accounts and API keys with those providers, for any
+    costs they charge, and for following their terms. Maagical shows estimated costs, but the
+    provider's bill is what counts.
+  </p>
+
+  <h2>Acceptable use</h2>
+  <p>
+    Use Maagical lawfully. Do not use it to record or transcribe people without the consent the
+    law requires where you are, or to break the terms of the services it connects to.
+  </p>
+
+  <h2>No warranty</h2>
+  <p>
+    Maagical is provided "as is", without warranty of any kind. Speech, transcription and AI
+    answers can be wrong; check anything important. To the extent the law allows, we are not
+    liable for any damages arising from using the app.
+  </p>
+
+  <h2>Privacy</h2>
+  <p>How the app handles your data is described in the <a href={url('privacy/')}>Privacy Policy</a>.</p>
+
+  <h2>Changes and contact</h2>
+  <p>
+    We may update these terms and will post the new version here with a new date. Questions:
+    open an issue at <a href={`${REPO_URL}/issues`}>github.com/floo-one/vibeflow</a>.
+  </p>
+</LegalPage>

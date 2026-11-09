@@ -35,7 +35,7 @@ show the next meeting there shortly before it starts, and give a one-click way i
 ## Architecture
 
 ```
-VibeFlowCore/Meetings/            pure, tested with Swift Testing (structure: R0 smaller arrangement)
+MaagicalCore/Meetings/            pure, tested with Swift Testing (structure: R0 smaller arrangement)
   Meetings.swift                  Meeting (id, title, start, end, calendarID, joinURL, organizer)
                                   JoinLink: conferenceData/hangoutLink first, then Zoom/Teams/Webex URL in location/description
                                   MeetingSchedule: (meetings, now, leadTime) -> .hidden / .soon(m, mins) / .now(m);
@@ -46,7 +46,7 @@ VibeFlowCore/Meetings/            pure, tested with Swift Testing (structure: R0
                                   MeetingsSync reducer: (state, fetch result + generation, now) -> state + status line;
                                   drops stale generations (R8); signed out / blocked / offline / keychain unavailable (R1, R4, R12)
 
-VibeFlow/                         app target
+Maagical/                         app target
   GoogleSignIn.swift              NWListener on 127.0.0.1, ephemeral port, one callback then close, 5 min timeout,
                                   a new Sign in cancels the old one; browser success/failure page (R3)
   MeetingsStore.swift             @Observable, thin: timers (5 min, wake, network back, settings change), one fetch in
@@ -54,7 +54,7 @@ VibeFlow/                         app target
                                   reads the Google token from the Keychain on demand (R12)
   MeetingsViews.swift             menu bar label + menu (Join, today's list, Open in Google Calendar)
   SettingsView.swift              8th tab "Meetings": sign in/out, status line, toggle, calendars, lead time (R1, R6)
-  VibeFlowApp.swift               third MenuBarExtra(isInserted:) driven by MeetingSchedule, ticked by MenuBarClock
+  MaagicalApp.swift               third MenuBarExtra(isInserted:) driven by MeetingSchedule, ticked by MenuBarClock
   Config/Google.xcconfig          gitignored GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET; .example committed;
                                   project.yml maps them into Info.plist; empty = "Not configured in this build" (R2)
 ```
@@ -255,9 +255,9 @@ History: none
 Section 1 dispositions: A1 → R1 approved B (D2); A2 → R2 approved A (D3); A3 → R3 approved A (D4).
 
 ### R4: Where the sync rules live (testability)
-Finding: C1 [INFORMATIONAL] (confidence: 8/10) upcoming-meetings.md "MeetingsStore.swift @Observable; refreshes every 5 min ... keeps last good list on failure" — Code quality, Claude. project.yml has one test target, `VibeFlowCore/VibeFlowCoreTests`; app-target code is untested. The sync rules (invalid_grant → signed out, admin_policy_enforced → blocked, network error → offline with last good list, status text from R1) would sit untested in the app.
+Finding: C1 [INFORMATIONAL] (confidence: 8/10) upcoming-meetings.md "MeetingsStore.swift @Observable; refreshes every 5 min ... keeps last good list on failure" — Code quality, Claude. project.yml has one test target, `MaagicalCore/MaagicalCoreTests`; app-target code is untested. The sync rules (invalid_grant → signed out, admin_policy_enforced → blocked, network error → offline with last good list, status text from R1) would sit untested in the app.
 Plan baseline: original proposal: rules inside app MeetingsStore.
-Runtime evidence: project.yml `test: targets: - package: VibeFlowCore/VibeFlowCoreTests` (read 2026-10-27).
+Runtime evidence: project.yml `test: targets: - package: MaagicalCore/MaagicalCoreTests` (read 2026-10-27).
 Comparison grid:
 | Choice | Current | A | B |
 |---|---|---|---|
@@ -353,7 +353,7 @@ Accepted scope: Store the signed-in email at sign-in (primary calendar id); decl
 History: none
 
 ### R10: The nudge can be hidden by a full menu bar
-Finding: O4 [CRITICAL] (confidence: 7/10) upcoming-meetings.md "a third menu bar item appears: `📅 Standup in 8m`" — Codex. The clocks label already grows per clock (VibeFlowApp.swift MenuBarExtra with ClockFormat.label); on a notched MacBook macOS hides overflowing items, even while reporting them visible. An untruncated title makes this likelier.
+Finding: O4 [CRITICAL] (confidence: 7/10) upcoming-meetings.md "a third menu bar item appears: `📅 Standup in 8m`" — Codex. The clocks label already grows per clock (MaagicalApp.swift MenuBarExtra with ClockFormat.label); on a notched MacBook macOS hides overflowing items, even while reporting them visible. An untruncated title makes this likelier.
 Plan baseline: separate third item, title untruncated. Runtime evidence: unknown on this Mac; Apple NSStatusItem.isVisible docs (cited).
 Comparison grid: | R10 | third item, full title | A: keep the third item, cap the title at 18 characters with "…", and check on this Mac with clocks on | A2: show the nudge inside the existing VibeFlow item (its icon becomes `📅 8m`), no third item | B | C | D |
 State: approved
@@ -399,7 +399,7 @@ Shared code: reuse the existing `HTTPClient` port and `URLSessionHTTPClient` (Po
 
 ### 3. Tests
 
-Framework: Swift Testing in VibeFlowCore (`cd VibeFlowCore && swift test`); the app target has no tests (project.yml test target is VibeFlowCore/VibeFlowCoreTests only). No LLM or prompt changes, so no eval scope.
+Framework: Swift Testing in MaagicalCore (`cd MaagicalCore && swift test`); the app target has no tests (project.yml test target is MaagicalCore/MaagicalCoreTests only). No LLM or prompt changes, so no eval scope.
 
 ```
 CODE PATHS (all proposed)                              USER FLOWS
@@ -434,9 +434,9 @@ COVERAGE: 0/40 paths tested today (feature not built)  |  every [GAP] above is r
 ```
 
 Proposed tests (all required by approved decisions, none new policy):
-- `VibeFlowCoreTests/MeetingsTests.swift` (unit): table-driven MeetingSchedule cases, filter cases incl. shared-calendar fixture, JoinLink cases, title cap.
+- `MaagicalCoreTests/MeetingsTests.swift` (unit): table-driven MeetingSchedule cases, filter cases incl. shared-calendar fixture, JoinLink cases, title cap.
   Value: protects=nudge timing and which events count; fails_when=a boundary is off by one or a filter rule flips; why_new=no meetings code exists; seam=none; no_claim=real Google payload shape (JSON fixtures)
-- `VibeFlowCoreTests/GoogleCalendarTests.swift` (unit, fake HTTPClient from Fakes.swift): OAuth URL/state/callback/exchange, refresh errors, paging, MeetingsSync transitions.
+- `MaagicalCoreTests/GoogleCalendarTests.swift` (unit, fake HTTPClient from Fakes.swift): OAuth URL/state/callback/exchange, refresh errors, paging, MeetingsSync transitions.
   Value: protects=sign-in safety, error mapping, complete snapshots, stale-result guard; fails_when=state unchecked, invalid_grant mislabeled, page two skipped, late fetch applied; why_new=no Google code exists; seam=none; no_claim=Google's live behavior and GLE policy (fake HTTP; the T1b spike covers live)
 - Manual (T7): run on this Mac with clocks on, confirm the item shows (R10); join a real Meet from the menu; revoke access at myaccount.google.com/permissions and check the status line.
 Tests to retire: none.
@@ -455,7 +455,7 @@ No issues found. Scale: one calendarList call plus one events.list per selected 
 ## What already exists
 - `HTTPClient` / `URLSessionHTTPClient` (Ports.swift:195, URLSessionClients.swift:30): reused for all Google requests, and its fakes for tests.
 - `SecretsStore` / `KeychainSecretsStore`: reused for storage; the Google token gets an on-demand read path (R12).
-- `MenuBarClock` and the `MenuBarExtra(isInserted:)` pattern from Clocks (VibeFlowApp.swift): reused for ticking and showing/hiding.
+- `MenuBarClock` and the `MenuBarExtra(isInserted:)` pattern from Clocks (MaagicalApp.swift): reused for ticking and showing/hiding.
 - ReadSession's (sessionID, attempt) guard (ReadSession.swift:58): the model for R8's generation number.
 - `Spike/` folder: home of the T1b spike.
 
@@ -477,12 +477,12 @@ Critical gaps (no test AND no handling AND silent): 0. Accepted silent risks: a 
 | Step | Modules touched | Depends on |
 |---|---|---|
 | T1/T1b console + spike | Config/, Spike/ | — |
-| T2 GoogleCalendar + tests | VibeFlowCore/Meetings, Tests | T1b (confirms the flow) |
-| T3 Meetings + tests | VibeFlowCore/Meetings, Tests | — |
-| T4-T6 app wiring | VibeFlow/, project.yml | T2, T3 |
+| T2 GoogleCalendar + tests | MaagicalCore/Meetings, Tests | T1b (confirms the flow) |
+| T3 Meetings + tests | MaagicalCore/Meetings, Tests | — |
+| T4-T6 app wiring | Maagical/, project.yml | T2, T3 |
 | T7 docs + verify | README, CHANGELOG | T4-T6 |
 
-Lane A: T1 → T1b → T2. Lane B: T3 (independent, pure). Launch A + B; merge both; then T4 → T5 → T6 → T7. Conflict flag: T2 and T3 both add files under VibeFlowCore/Meetings/ and Tests/ but touch different files.
+Lane A: T1 → T1b → T2. Lane B: T3 (independent, pure). Launch A + B; merge both; then T4 → T5 → T6 → T7. Conflict flag: T2 and T3 both add files under MaagicalCore/Meetings/ and Tests/ but touch different files.
 
 ## Implementation Tasks
 Synthesized from this review's findings. Each task derives from a specific finding above. Run with Claude Code or Codex; checkbox as you ship.
@@ -499,27 +499,27 @@ Synthesized from this review's findings. Each task derives from a specific findi
   - Done 2026-10-29: PASS on the work account. No admin block; code exchange, refresh, revoke OK; calendarList paged (11 calendars, 4 pages at size 3); filter dropped a workingLocation event and kept a 2-attendee meeting. Open: that meeting had no join link, so check where its link lives before T5 (the spike now prints hints).
 - [x] **T2 (P1, human: ~2d / CC: ~45min)** — Core — GoogleCalendar.swift: OAuth requests, callback parsing, paging client, MeetingsSync reducer
   - Surfaced by: R3, R4, R8, R11, R12
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Meetings/GoogleCalendar.swift, VibeFlowCore/Tests/VibeFlowCoreTests/GoogleCalendarTests.swift
-  - Verify: `cd VibeFlowCore && swift test`
+  - Files: MaagicalCore/Sources/MaagicalCore/Meetings/GoogleCalendar.swift, MaagicalCore/Tests/MaagicalCoreTests/GoogleCalendarTests.swift
+  - Verify: `cd MaagicalCore && swift test`
   - Done 2026-10-29: OAuth request building + callback parsing, GoogleCalendarClient (refresh, calendarList and events with paging, all-or-nothing fetch; `selected` nil = your own calendar), MeetingsSync reducer with status lines. 285 Core tests pass; app builds.
 - [x] **T3 (P1, human: ~1d / CC: ~20min)** — Core — Meetings.swift: Meeting, JoinLink, MeetingSchedule, filter, title cap
   - Surfaced by: R5, R9, R10
-  - Files: VibeFlowCore/Sources/VibeFlowCore/Meetings/Meetings.swift, VibeFlowCore/Tests/VibeFlowCoreTests/MeetingsTests.swift
-  - Verify: `cd VibeFlowCore && swift test`
+  - Files: MaagicalCore/Sources/MaagicalCore/Meetings/Meetings.swift, MaagicalCore/Tests/MaagicalCoreTests/MeetingsTests.swift
+  - Verify: `cd MaagicalCore && swift test`
   - Done 2026-10-29. Two rules the plan left open, decided in code: rooms (attendees with resource=true) do not count as other people; when two meetings are in the window, the next one to start wins over one already running. A meeting on two selected calendars shows once (same event id), your copy first. Events are fetched for today and tomorrow so a meeting just after midnight still nudges.
 - [x] **T4 (P1, human: ~1d / CC: ~30min)** — App — GoogleSignIn loopback listener, MeetingsStore timers + generation + on-demand Keychain read, SecretKey case
   - Surfaced by: R3, R8, R12
-  - Files: VibeFlow/GoogleSignIn.swift, VibeFlow/MeetingsStore.swift, VibeFlow/KeychainSecretsStore.swift, VibeFlowCore/Sources/VibeFlowCore/Ports.swift, VibeFlow/AppContainer.swift
+  - Files: Maagical/GoogleSignIn.swift, Maagical/MeetingsStore.swift, Maagical/KeychainSecretsStore.swift, MaagicalCore/Sources/MaagicalCore/Ports.swift, Maagical/AppContainer.swift
   - Verify: xcodebuild build; sign in from the app
-  - Done 2026-10-29 (code; sign-in from the app waits for the T6 tab): GoogleSignIn (NWListener 127.0.0.1, one callback, 5 min timeout, new sign-in cancels the old), MeetingsStore (5 min timer, wake, network back, one fetch in flight that waits for the cancelled one, generation via MeetingsSync, invalid_grant deletes the token), SecretKey.googleRefreshToken read on demand, meetings preferences (enabled, lead minutes, calendars). Pulled forward from T5: Config/VibeFlow.xcconfig with `#include? "Google.xcconfig"`, project.yml maps GoogleClientID/GoogleClientSecret into Info.plist; a build without the file works with empty values. The Google sign-in first shared the Keychain service with VibeFlow Dev, like the API keys; the review fixes moved it to a per-app service (`<bundle id>.google`), so Dev and the release keep separate sign-ins while API keys stay shared.
+  - Done 2026-10-29 (code; sign-in from the app waits for the T6 tab): GoogleSignIn (NWListener 127.0.0.1, one callback, 5 min timeout, new sign-in cancels the old), MeetingsStore (5 min timer, wake, network back, one fetch in flight that waits for the cancelled one, generation via MeetingsSync, invalid_grant deletes the token), SecretKey.googleRefreshToken read on demand, meetings preferences (enabled, lead minutes, calendars). Pulled forward from T5: Config/Maagical.xcconfig with `#include? "Google.xcconfig"`, project.yml maps GoogleClientID/GoogleClientSecret into Info.plist; a build without the file works with empty values. The Google sign-in first shared the Keychain service with VibeFlow Dev, like the API keys; the review fixes moved it to a per-app service (`<bundle id>.google`), so Dev and the release keep separate sign-ins while API keys stay shared.
 - [x] **T5 (P1, human: ~4h / CC: ~15min)** — App — menu bar item + menu, project.yml xcconfig wiring
   - Surfaced by: R2, R10
-  - Files: VibeFlow/MeetingsViews.swift, VibeFlow/VibeFlowApp.swift, project.yml
+  - Files: Maagical/MeetingsViews.swift, Maagical/MaagicalApp.swift, project.yml
   - Verify: `xcodegen generate` + xcodebuild; item shows with clocks on
   - Done 2026-10-29: third MenuBarExtra(isInserted:) from MeetingsStore.nudge on the minute tick; menu with the meeting, time, organizer, Join (or "no call link"), the rest of today (each opens its call or the event), Open in Google Calendar, Meetings Settings. xcconfig wiring landed in T4. Still to check by eye (T7): the item shows next to the clocks on this Mac.
 - [x] **T6 (P1, human: ~4h / CC: ~15min)** — Settings — Meetings tab with status line
   - Surfaced by: R1, R6
-  - Files: VibeFlow/SettingsView.swift, VibeFlowCore/Sources/VibeFlowCore/Settings/Preferences.swift
+  - Files: Maagical/SettingsView.swift, MaagicalCore/Sources/MaagicalCore/Settings/Preferences.swift
   - Verify: revoke access, status line says "Signed out"
   - Done 2026-10-29: Meetings tab between Clocks and Look & Feel: status line, Sign in / Sign out / Sync Now, sign-in error, on/off, lead time 5/10/15, a toggle per calendar (nil = your own). Signed in from the app on the GLE account; first sync 2 meetings; after a relaunch it synced from the stored token. Revoke check is in T7.
 - [ ] **T7 (P2, human: ~2h / CC: ~10min)** — Docs + verify — README, CHANGELOG, a day of real use

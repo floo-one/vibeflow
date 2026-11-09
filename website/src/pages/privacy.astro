@@ -1,0 +1,84 @@
+---
+import LegalPage from '../components/LegalPage.astro';
+import { PUBLISHER, REPO_URL, url } from '../data/site';
+---
+<LegalPage
+  title="Privacy Policy"
+  description="What Maagical, the Mac menu bar app, does with your data: it runs on your Mac, has no server and no account, and sends text only to the providers you choose."
+  path="privacy/"
+  updated="November 5, 2026"
+>
+  <p>
+    Maagical is a macOS menu bar app published by {PUBLISHER} ("we"). It runs entirely on your
+    Mac. We do not operate a server for it, there is no Maagical account, and we do not collect,
+    sell or share your data. This policy explains what the app touches and where it goes.
+  </p>
+
+  <h2>What stays on your Mac</h2>
+  <ul>
+    <li>Settings, reading and dictation history, focus logs and transcripts are stored locally in
+      your user Library (UserDefaults and Application Support/VibeFlow).</li>
+    <li>API keys you enter and your Google sign-in tokens are stored in the macOS Keychain.</li>
+    <li>Deleting the app and these files removes everything. We have no copy.</li>
+  </ul>
+
+  <h2>Text and audio you send to voice and AI providers</h2>
+  <p>
+    When you read text aloud, dictate, or use smart read, Maagical sends that text or audio
+    directly from your Mac to the provider you configured, using your own API key: ElevenLabs
+    (speech and transcription), Groq (dictation) or Anthropic (smart read and summaries). Apple's
+    built-in voices work offline and send nothing. Each provider handles that data under its own
+    privacy policy. We never see it.
+  </p>
+
+  <h2>Google Calendar (Meetings)</h2>
+  <p>
+    The optional Meetings feature shows your next meeting in the menu bar. If you choose
+    "Sign in with Google", Maagical asks for one permission, <strong>read-only access to your
+    calendars</strong> (<code>calendar.readonly</code>), and uses it only to:
+  </p>
+  <ul>
+    <li>list your calendars so you can pick which ones to watch, and</li>
+    <li>read today's and upcoming events (title, time, organizer, attendees' response, and the
+      Meet, Zoom or Teams link) to show the next meeting and a Join button.</li>
+  </ul>
+  <p>
+    Calendar data is requested directly from Google by the app on your Mac, held in memory while
+    the app runs, and never written to disk, sent to us, sent to any AI provider, or shared with
+    anyone. Maagical never creates, changes or deletes calendar events. Your sign-in tokens stay
+    in your Keychain. Signing out in Settings &gt; Meetings deletes them from your Mac; to also
+    remove Maagical's access on Google's side, visit
+    <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.
+  </p>
+  <p>
+    Maagical's use and transfer of information received from Google APIs adheres to the
+    <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API
+    Services User Data Policy</a>, including the Limited Use requirements. Google user data is
+    not used for advertising, not used to train AI or machine learning models, and not read by
+    any person.
+  </p>
+
+  <h2>Feedback and crash reports</h2>
+  <p>
+    If the app crashes, or you press Send Feedback, a report goes to Sentry (EU region), which we
+    use to fix bugs. Reports contain the app version, macOS version, technical logs and anything
+    you type into the feedback form. The app never logs the text you read or dictate, smart read
+    answers, or meeting titles, so they are not in these reports.
+  </p>
+
+  <h2>Updates and the website</h2>
+  <p>
+    The app checks GitHub for updates (Sparkle), which sends your app and macOS version. This
+    website is hosted on GitHub Pages, sets no cookies and runs no analytics.
+  </p>
+
+  <h2>Children</h2>
+  <p>Maagical is not directed at children under 13 and we do not knowingly collect their data.</p>
+
+  <h2>Changes and contact</h2>
+  <p>
+    We will post changes to this policy on this page and update the date above. Questions or
+    requests: open an issue at <a href={`${REPO_URL}/issues`}>github.com/floo-one/vibeflow</a>
+    or use Send Feedback in the app. See also the <a href={url('terms/')}>Terms of Service</a>.
+  </p>
+</LegalPage>

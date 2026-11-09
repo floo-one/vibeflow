@@ -1,6 +1,6 @@
 # XcodeGen spec. Regenerate the .xcodeproj with:  xcodegen generate
 # The .xcodeproj is a build artifact; this file is the source of truth.
-name: VibeFlow
+name: Maagical
 
 options:
   bundleIdPrefix: one.floo
@@ -36,8 +36,8 @@ settings:
       OTHER_CODE_SIGN_FLAGS: "--timestamp"
 
 packages:
-  VibeFlowCore:
-    path: VibeFlowCore
+  MaagicalCore:
+    path: MaagicalCore
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     from: 3.1.0
@@ -54,22 +54,22 @@ packages:
     from: 9.32.0
 
 targets:
-  VibeFlow:
+  Maagical:
     type: application
     platform: macOS
     sources:
-      - path: VibeFlow
+      - path: Maagical
         excludes:
           - "Info.plist"
     dependencies:
-      - package: VibeFlowCore
+      - package: MaagicalCore
       - package: KeyboardShortcuts
       - package: KeychainAccess
       - package: Sparkle
       - package: Sentry
         product: Sentry
     info:
-      path: VibeFlow/Info.plist
+      path: Maagical/Info.plist
       properties:
         CFBundleDisplayName: $(PRODUCT_NAME)
         CFBundleShortVersionString: $(MARKETING_VERSION)
@@ -78,15 +78,15 @@ targets:
         LSApplicationCategoryType: public.app-category.productivity
         LSMinimumSystemVersion: "15.0"
         NSHumanReadableCopyright: "MIT License"
-        NSMicrophoneUsageDescription: "VibeFlow records your voice while you hold the record shortcut and turns it into text."
-        NSSpeechRecognitionUsageDescription: "VibeFlow can transcribe dictation on this Mac with Apple's on-device speech recognition."
+        NSMicrophoneUsageDescription: "Maagical records your voice while you hold the record shortcut and turns it into text."
+        NSSpeechRecognitionUsageDescription: "Maagical can transcribe dictation on this Mac with Apple's on-device speech recognition."
         # Upcoming meetings: the desktop OAuth client from Config/Google.xcconfig (gitignored).
         GoogleClientID: $(GOOGLE_CLIENT_ID)
         GoogleClientSecret: $(GOOGLE_CLIENT_SECRET)
-        # Sentry's send-only address from Config/VibeFlow.xcconfig; empty turns feedback off.
+        # Sentry's send-only address from Config/Maagical.xcconfig; empty turns feedback off.
         SentryDSN: $(SENTRY_DSN)
         # Sparkle: the release checks every 6 hours, downloads in the background and installs
-        # when VibeFlow is idle (Updater.swift). VibeFlow Dev never creates an updater.
+        # when Maagical is idle (Updater.swift). Maagical Dev never creates an updater.
         # scripts/release.sh uploads appcast.xml with every release and refuses to sign with a
         # key that does not match SUPublicEDKey (login keychain, Sparkle account "vibeflow").
         SUFeedURL: https://github.com/floo-one/vibeflow/releases/latest/download/appcast.xml
@@ -94,23 +94,23 @@ targets:
         SUEnableAutomaticChecks: true
         SUAutomaticallyUpdate: true
         SUScheduledCheckInterval: 21600
-        # Branch, commit and build time of a VibeFlow Dev from scripts/dev.sh (BuildStamp).
+        # Branch, commit and build time of a Maagical Dev from scripts/dev.sh (BuildStamp).
         VFGitBranch: $(VF_GIT_BRANCH)
         VFGitCommit: $(VF_GIT_COMMIT)
         VFBuildDate: $(VF_BUILD_DATE)
     configFiles:
-      Debug: Config/VibeFlow.xcconfig
-      Release: Config/VibeFlow.xcconfig
+      Debug: Config/Maagical.xcconfig
+      Release: Config/Maagical.xcconfig
     entitlements:
-      path: VibeFlow/VibeFlow.entitlements
+      path: Maagical/Maagical.entitlements
       properties:
         # Hardened runtime blocks the microphone without this, even after the user allows it.
         com.apple.security.device.audio-input: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: one.floo.vibeflow
-        PRODUCT_NAME: VibeFlow
-        PRODUCT_MODULE_NAME: VibeFlow
+        PRODUCT_NAME: Maagical
+        PRODUCT_MODULE_NAME: Maagical
         # Release version. Bump both before scripts/release.sh --publish; the build number
         # must grow with every release (Sparkle compares it, release.sh checks it).
         MARKETING_VERSION: "1.5.0"
@@ -123,24 +123,24 @@ targets:
         VF_GIT_COMMIT: ""
         VF_BUILD_DATE: ""
       configs:
-        # Debug is a second app, "VibeFlow Dev", so it runs next to the installed release:
+        # Debug is a second app, "Maagical Dev", so it runs next to the installed release:
         # its own bundle id (own settings, own Accessibility and Microphone grants), an orange
         # DEV app icon, a DEV tag in the menu bar and Control added to every default shortcut.
         # API keys are shared.
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: one.floo.vibeflow.dev
-          PRODUCT_NAME: VibeFlow Dev
+          PRODUCT_NAME: Maagical Dev
           ASSETCATALOG_COMPILER_APPICON_NAME: AppIconDev
         # No App Sandbox: the Accessibility API cannot read other apps from inside the sandbox.
 
 schemes:
-  VibeFlow:
+  Maagical:
     build:
       targets:
-        VibeFlow: all
+        Maagical: all
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - package: VibeFlowCore/VibeFlowCoreTests
+        - package: MaagicalCore/MaagicalCoreTests

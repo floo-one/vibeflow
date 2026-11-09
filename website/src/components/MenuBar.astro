@@ -1,0 +1,170 @@
+---
+// The site's navigation as a macOS menu bar, on every page: Maagical, Voice, Tools and Help
+// menus, a German clock like the app's, and a Download pill that grows once the hero's own
+// button has scrolled away. Menus are disclosure buttons (aria-expanded), not ARIA menus.
+import AppIcon from './AppIcon.astro';
+import { CHANGELOG_URL, DMG_URL, REPO_URL, VERSION, url } from '../data/site';
+
+interface Props { current?: 'meetings' | 'clocks' }
+const { current } = Astro.props;
+const here = (page: 'meetings' | 'clocks') => (page === current ? 'page' : undefined);
+---
+<header class="mb" id="mb">
+  <nav aria-label="Main" class="mb-nav">
+    <div class="mwrap">
+      <button class="mt app" type="button" aria-expanded="false"><AppIcon size={22} /><span class="app-name">Maagical</span></button>
+      <ul class="dd">
+        <li class="about"><span><b>Maagical {VERSION}</b>Free, open source, MIT</span></li>
+        <li class="sep" role="separator"></li>
+        <li><a href={url()}>Home</a></li>
+        <li><a href={DMG_URL}>Download for Mac…</a></li>
+        <li><a href={CHANGELOG_URL}>What’s New</a></li>
+        <li><a href={REPO_URL}>Source on GitHub</a></li>
+      </ul>
+    </div>
+    <div class="mtitles">
+      <div class="mwrap">
+        <button class="mt" type="button" aria-expanded="false">Voice</button>
+        <ul class="dd">
+          <li><a href={url('#voice')} style="--c: var(--read)"><span class="dot"></span>Read<span class="sc">⌥ .</span></a></li>
+          <li><a href={url('#voice')} style="--c: var(--smart)"><span class="dot"></span>Smart read<span class="sc">⌥ ,</span></a></li>
+          <li><a href={url('#voice')} style="--c: var(--dictation)"><span class="dot"></span>Dictation<span class="sc">⌥ <span class="dk">-</span></span></a></li>
+          <li><a href={url('#ask')} style="--c: var(--smart)"><span class="dot"></span>Ask back<span class="sc">hold ⌥ ,</span></a></li>
+          <li class="sep" role="separator"></li>
+          <li><a href={url('#keys')}>All shortcuts</a></li>
+        </ul>
+      </div>
+      <div class="mwrap">
+        <button class="mt" type="button" aria-expanded="false">Tools</button>
+        <ul class="dd">
+          <li class="h">New in 1.5</li>
+          <li><a href={url('#show')}>Transcribe File</a></li>
+          <li><a href={url('#show')}>Pomodoro</a></li>
+          <li><a href={url('#show')}>Keep Awake</a></li>
+          <li class="sep" role="separator"></li>
+          <li><a href={url('meetings/')} aria-current={here('meetings')}>Meetings</a></li>
+          <li><a href={url('clocks/')} aria-current={here('clocks')}>Clocks</a></li>
+        </ul>
+      </div>
+      <div class="mwrap">
+        <button class="mt" type="button" aria-expanded="false">Help</button>
+        <ul class="dd">
+          <li><a href={url('#pricing')}>Pricing</a></li>
+          <li><a href={url('#privacy')}>Privacy</a></li>
+          <li><a href={url('#faq')}>Questions</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="mb-right">
+      <span class="mb-clock" id="mb-clock" aria-hidden="true">Do. 5. Nov. 09:41</span>
+      <a class="dlp" href={DMG_URL}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+        <span>Download<span class="more">&nbsp;for Mac</span></span>
+      </a>
+    </div>
+  </nav>
+</header>
+
+<style>
+  .mb {
+    position: fixed; z-index: 100; top: 0; left: 0; right: 0; height: var(--bar-h);
+    background: rgba(255, 255, 255, 0.62); backdrop-filter: blur(24px) saturate(1.8); -webkit-backdrop-filter: blur(24px) saturate(1.8);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05); transition: background 0.4s var(--ease), box-shadow 0.4s var(--ease);
+  }
+  .mb.scrolled { background: rgba(255, 255, 255, 0.8); box-shadow: 0 10px 30px -24px rgba(30, 20, 90, 0.5); }
+  .mb-nav { height: 100%; display: flex; align-items: center; gap: 2px; padding: 0 12px 0 14px; font-size: 14px; }
+  .mt {
+    position: relative; height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: none;
+    font: inherit; color: var(--text); cursor: default; display: flex; align-items: center; gap: 8px;
+  }
+  .mt:hover, .mt[aria-expanded="true"] { background: rgba(0, 0, 0, 0.07); }
+  .mt.app { font-weight: 700; padding-left: 6px; }
+  .app-name { display: inline-block; } /* the homepage slides it over while the hero icon docks */
+  .mt:focus-visible { outline-offset: 1px; }
+  .mwrap { position: relative; }
+  /* 44px hit areas without changing the look (the bar itself is 44px tall). */
+  .mt::after, .dlp::after { content: ""; position: absolute; inset: -7px -2px; }
+  .mtitles { display: contents; }
+  .dd {
+    position: absolute; left: 0; top: 36px; min-width: 250px; padding: 5px; border-radius: 11px; list-style: none; margin: 0;
+    background: rgba(250, 250, 253, 0.88); backdrop-filter: blur(40px) saturate(1.8); -webkit-backdrop-filter: blur(40px) saturate(1.8);
+    box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.2), 0 24px 50px -18px rgba(30, 20, 90, 0.4);
+    opacity: 0; visibility: hidden; transform: translateY(-4px) scale(0.98); transform-origin: top left; pointer-events: none;
+    transition: opacity 0.14s, transform 0.2s var(--ease), visibility 0s 0.2s;
+  }
+  .mt[aria-expanded="true"] + .dd { opacity: 1; visibility: visible; transform: none; pointer-events: auto; transition-delay: 0s; }
+  .dd a { display: flex; align-items: center; gap: 10px; padding: 5px 10px; border-radius: 6px; color: var(--text); text-decoration: none; white-space: nowrap; }
+  .dd a:hover, .dd a:focus-visible { background: var(--menu-blue); color: #FFFFFF; outline: none; }
+  .dd a[aria-current="page"] { font-weight: 700; }
+  .dd .sc { margin-left: auto; padding-left: 20px; color: rgba(0, 0, 0, 0.4); letter-spacing: 0.04em; }
+  .dd a:hover .sc, .dd a:focus-visible .sc { color: rgba(255, 255, 255, 0.8); }
+  .dd .dot { width: 7px; height: 7px; border-radius: 4px; background: var(--c); flex: none; }
+  .dd .h { padding: 6px 10px 2px; font-size: 11.5px; font-weight: 600; color: rgba(0, 0, 0, 0.42); }
+  .dd .sep { height: 1px; margin: 5px 10px; background: rgba(0, 0, 0, 0.09); }
+  .dd .about { padding: 10px; font-size: 13px; color: var(--text-3); }
+  .dd .about b { display: block; color: var(--text); font-size: 14px; }
+  @media (pointer: coarse) { .dd a { padding: 11px 12px; } }
+
+  .mb-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .mb-clock { padding: 0 8px; font-variant-numeric: tabular-nums; color: var(--text); }
+  .dlp {
+    position: relative; height: 32px; margin-left: 4px; padding: 0 14px 0 11px; border-radius: 999px; display: flex; align-items: center; gap: 7px;
+    background: var(--brand); color: #FFFFFF; font-weight: 600; font-size: 13.5px; text-decoration: none; white-space: nowrap;
+    transition: box-shadow 0.5s var(--ease), transform 0.2s var(--ease), background 0.2s;
+  }
+  .dlp:hover { color: #FFFFFF; background: var(--brand-pressed); transform: translateY(-1px); }
+  .dlp:focus-visible { outline-offset: 3px; }
+  .dlp .more { display: inline-block; max-width: 0; overflow: hidden; opacity: 0; vertical-align: bottom; transition: max-width 0.6s var(--ease), opacity 0.4s var(--ease); }
+  .mb.cta .dlp .more { max-width: 70px; opacity: 1; }
+  .mb.cta .dlp { box-shadow: 0 0 0 4px rgba(58, 47, 191, 0.2), 0 8px 20px -8px rgba(58, 47, 191, 0.6); }
+
+  @media (max-width: 760px) {
+    .mtitles, .mb-clock, .dlp .more { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .mb, .dd, .dlp, .dlp .more { transition: none; } }
+</style>
+
+<script>
+  // Click a title to open its menu; while one is open, pointing at another title switches to it,
+  // like macOS. Esc, a click elsewhere or choosing an item closes it.
+  const mb = document.getElementById('mb')!;
+  const titles = [...mb.querySelectorAll<HTMLButtonElement>('.mt')];
+  let open: HTMLButtonElement | null = null;
+  const set = (t: HTMLButtonElement | null) => {
+    titles.forEach((x) => x.setAttribute('aria-expanded', String(x === t)));
+    open = t;
+  };
+  titles.forEach((t) => {
+    t.addEventListener('click', (e) => { e.stopPropagation(); set(open === t ? null : t); });
+    t.addEventListener('mouseenter', () => { if (open && open !== t) set(t); });
+  });
+  mb.querySelectorAll('.dd a').forEach((a) => a.addEventListener('click', () => set(null)));
+  document.addEventListener('click', (e) => { if (open && !(e.target as Element).closest('.dd')) set(null); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && open) { const t = open; set(null); t.focus(); }
+  });
+
+  // The frosted bar firms up once the page scrolls; the Download pill grows once the hero's own
+  // button has scrolled away (on pages without one, it stays short).
+  const onScroll = () => mb.classList.toggle('scrolled', scrollY > 8);
+  addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+  const heroDl = document.getElementById('hero-dl');
+  if (heroDl) {
+    new IntersectionObserver(([e]) => mb.classList.toggle('cta', !e.isIntersecting && e.boundingClientRect.top < 0)).observe(heroDl);
+  }
+
+  // German clock, like the app's menu bar
+  const clock = document.getElementById('mb-clock')!;
+  const fmt = new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const tick = () => { clock.textContent = fmt.format(new Date()).replace(/,/g, ''); };
+  tick();
+  setInterval(tick, 15000);
+
+  // The dictation key: "-" on German keyboards, "/" elsewhere; the real layout when the browser
+  // tells us. Every element with class "dk" on the page shows it.
+  const setDk = (c: string) => document.querySelectorAll('.dk').forEach((k) => { k.textContent = c; });
+  if (!/^de\b/i.test(navigator.language)) setDk('/');
+  (navigator as Navigator & { keyboard?: { getLayoutMap?: () => Promise<Map<string, string>> } })
+    .keyboard?.getLayoutMap?.().then((m) => { const c = m.get('Slash'); if (c) setDk(c); }).catch(() => {});
+</script>

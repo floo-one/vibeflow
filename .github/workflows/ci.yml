@@ -18,13 +18,13 @@ jobs:
           xcodebuild -version
           major=$(xcodebuild -version | head -1 | sed -E 's/Xcode ([0-9]+).*/\1/')
           if [ "$major" -lt 26 ]; then
-            echo "::error::VibeFlow needs Xcode 26 or later (Swift 6, macOS 26 SDK); this runner has Xcode $major."
+            echo "::error::Maagical needs Xcode 26 or later (Swift 6, macOS 26 SDK); this runner has Xcode $major."
             exit 1
           fi
 
       # Live API evals run only with VIBEFLOW_RUN_EVALS=1 plus keys; CI sets neither.
       - name: Core tests
-        working-directory: VibeFlowCore
+        working-directory: MaagicalCore
         run: swift test
 
       - name: Generate the Xcode project
@@ -36,7 +36,7 @@ jobs:
       # personal team so the Accessibility grant survives rebuilds (see docs/DEVELOPMENT.md).
       - name: Build the app
         run: |
-          xcodebuild -project VibeFlow.xcodeproj -scheme VibeFlow -configuration Debug \
+          xcodebuild -project Maagical.xcodeproj -scheme Maagical -configuration Debug \
             -derivedDataPath build/DerivedData \
             CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= \
             build

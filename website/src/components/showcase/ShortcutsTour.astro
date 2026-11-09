@@ -1,0 +1,537 @@
+---
+// Shortcuts: a scroll-driven tour of every voice shortcut. Four coloured sections (Dictation,
+// Smart read, Read, Paste again); the step whose headline sits at the reading line lights its
+// keys on the bottom of a German MacBook keyboard, which pans and zooms to them and plays the
+// presses. Snapping is on only while the tour fills the screen. The page renders the keyboard
+// and every step, so it all reads without scripts; the script only plays it.
+import { FLAT, HOW, KEY_NAME, ROWS, SECTIONS, type Part } from '../../data/shortcuts';
+
+const isMod = (kind?: string) => kind === 'mod' || kind === 'mod r';
+const howOf = (parts: Part[]) => (parts.length > 1 ? 'Tap, then hold' : HOW[parts[0].how]);
+let i = 0;
+const sections = SECTIONS.map((sec) => ({ sec, steps: sec.steps.map((step) => ({ step, i: i++ })) }));
+const first = FLAT[0];
+---
+<section id="keys" class="kt" aria-labelledby="keys-title" style={`--kt-active: var(${first.sec.color})`}>
+  <div class="kt-wrap">
+    <div class="kt-head">
+      <p class="eyebrow">Shortcuts</p>
+      <h2 id="keys-title" class="kt-h2">Learn them<br />in one scroll.</h2>
+      <p class="lead">Hold Option and press the key right above it. Add Shift for the clipboard or hands-free.</p>
+    </div>
+    <div class="kt-body">
+      <div class="kt-stage">
+        <div class="kt-groups" id="kt-groups">
+          {SECTIONS.map((s, n) => (
+            <button type="button" data-g={s.id} class:list={{ on: n === 0 }} style={`--c: var(${s.color})`}><i></i>{s.title}</button>
+          ))}
+        </div>
+        <div class="kt-screen" id="kt-screen" data-state="live" style={`--c: var(${first.sec.color})`} aria-hidden="true">
+          <span class="kt-ico">
+            <span class="kt-eq"><span></span><span></span><span></span><span></span></span>
+            <svg class="kt-check" viewBox="0 0 12 12" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.3 5 8.7l4.5-5.2" /></svg>
+          </span>
+          <span class="kt-scr" id="kt-scr">{first.step.parts[0].live}</span>
+        </div>
+        <div class="kt-win" id="kt-win" aria-hidden="true">
+          <div class="kt-board" id="kt-board">
+            {ROWS.map((row, n) => (
+              <div class:list={['kt-row', { ctx: n === 0 }]}>
+                {row.map(([id, lab, w, sub, kind]) => (
+                  <div class:list={['kt-k', kind !== 'dk' && kind]} data-id={id} style={`--w: ${w}`}>
+                    {isMod(kind)
+                      ? <Fragment><i>{sub}</i>{lab}</Fragment>
+                      : <Fragment>{sub && <small>{sub}</small>}<span class:list={{ dk: kind === 'dk' }}>{lab}</span></Fragment>}
+                    <span class="fill"></span>
+                  </div>
+                ))}
+                {n === 2 && (
+                  <div class="kt-arrows"><div class="kt-k up">▲</div><div class="kt-k lr">◀</div><div class="kt-k lr">▼</div><div class="kt-k lr">▶</div></div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        <p class="visually-hidden" id="kt-now" aria-live="polite"></p>
+      </div>
+
+      <ol class="kt-secs" id="kt-secs">
+        {sections.map(({ sec, steps }) => (
+          <li class="kt-sec" data-sec={sec.id} style={`--c: var(${sec.color})`}>
+            <div class="kt-sh kt-snap-at">
+              <span class="lbl">{sec.key.map((k) => (k === 'slash' ? <kbd class="dk">-</kbd> : <kbd>{k}</kbd>))}</span>
+              <h3>{sec.title}</h3>
+              <p>{sec.blurb}</p>
+            </div>
+            <ol class="kt-subs">
+              {steps.map(({ step, i }, n) => (
+                <li class="kt-step" data-i={i}>
+                  <div class="kt-how"><em>{howOf(step.parts)}</em></div>
+                  <h4 class:list={{ 'kt-snap-at': n > 0 }}>{step.name}</h4>
+                  <div class="kt-combo">
+                    {step.parts.map((p, pn) => (
+                      <Fragment>
+                        {pn > 0 && p.how === 'hold' && <span class="then">then hold</span>}
+                        {p.keys.map((id, kn) => (
+                          <Fragment>
+                            {kn > 0 && <span>+</span>}
+                            <kbd class:list={{ key: kn === p.keys.length - 1, dk: id === 'slash' }}>{KEY_NAME[id]}</kbd>
+                          </Fragment>
+                        ))}
+                      </Fragment>
+                    ))}
+                  </div>
+                  <p>{step.text}</p>
+                </li>
+              ))}
+            </ol>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </div>
+  <p class="kt-foot">Voice shortcuts are shown with the right Shift and Option, paste with the left hand; either side works the same. Every shortcut can be changed in Settings.</p>
+</section>
+
+<style is:global>
+  /* Everything is prefixed kt- so it cannot meet the showcase's own .k, .bars or .steps. */
+  #keys {
+    --kt-page: color-mix(in srgb, var(--kt-active, var(--dictation)) 6%, var(--ground));
+    --kt-alu: #C9CACF; --kt-cap: #1C1C1E; --kt-cap-fg: #F5F5F7;
+    background: var(--kt-page); transition: background-color 0.6s var(--ease);
+    position: relative; isolation: isolate;
+  }
+  /* No hard edges: the tour's tint fades in from the page ground above it (the hero) and back out
+     into the ground below (the next section), whatever colour that is at the moment. */
+  #keys::before, #keys::after { content: ""; position: absolute; left: 0; right: 0; height: 220px; z-index: -1; pointer-events: none; }
+  #keys::before { top: 0; background: linear-gradient(to bottom, var(--page), color-mix(in srgb, var(--page) 0%, transparent)); }
+  #keys::after { bottom: 0; background: linear-gradient(to top, var(--page), color-mix(in srgb, var(--page) 0%, transparent)); }
+  .kt-wrap { max-width: 1120px; margin: 0 auto; padding: 88px 24px 40px; }
+  .kt-h2 { margin-top: 14px; font-weight: 800; font-size: clamp(36px, 4.4vw, 52px); line-height: 1.04; letter-spacing: -0.03em; color: var(--heading); }
+  .kt-head .lead { margin-top: 16px; max-width: 30rem; }
+  .kt-body { margin-top: 48px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 56px; align-items: start; }
+  .kt-stage { position: sticky; top: max(68px, calc(50vh - 190px)); container-type: inline-size; display: flex; flex-direction: column; gap: 16px; }
+  .kt-secs { list-style: none; margin: 0; padding: 0 0 24px; display: flex; flex-direction: column; gap: 28px; }
+
+  .kt-groups { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kt-groups button {
+    font: 600 13px var(--font); border: 0; border-radius: 999px; padding: 6px 12px 6px 10px; background: var(--ground); color: var(--text-3); cursor: pointer;
+    display: flex; align-items: center; gap: 7px; box-shadow: 0 0 0 1px var(--line); transition: background 0.3s, color 0.3s;
+  }
+  .kt-groups button i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+  .kt-groups button.on { background: var(--c); color: #FFFFFF; box-shadow: none; }
+  .kt-groups button.on i { background: #FFFFFF; }
+  @media (pointer: coarse) { .kt-groups button { min-height: 36px; } }
+
+  .kt-screen {
+    align-self: flex-start; max-width: 100%; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 18px 0 12px; border-radius: 999px;
+    background: rgba(22, 22, 26, 0.9); color: #FFFFFF; font-size: 14px; font-weight: 500; box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.45);
+  }
+  .kt-ico { width: 26px; height: 26px; border-radius: 50%; background: var(--c); display: grid; place-items: center; flex: none; transition: background 0.3s; }
+  .kt-eq { display: flex; gap: 2px; align-items: center; height: 12px; }
+  .kt-eq span { width: 2px; height: 4px; border-radius: 1px; background: #FFFFFF; }
+  .js .kt-screen[data-state="live"] .kt-eq span { animation: kt-eq 0.9s ease-in-out infinite; }
+  .kt-eq span:nth-child(2) { animation-delay: -0.6s !important; }
+  .kt-eq span:nth-child(3) { animation-delay: -0.3s !important; }
+  .kt-eq span:nth-child(4) { animation-delay: -0.75s !important; }
+  @keyframes kt-eq { 0%, 100% { height: 3px; } 50% { height: 12px; } }
+  .kt-check { display: none; width: 12px; height: 12px; }
+  .kt-screen[data-state="done"] .kt-eq { display: none; }
+  .kt-screen[data-state="done"] .kt-check { display: block; }
+  .kt-scr { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .kt-win { --u: min(46px, calc((100cqw - 4px) / 15.45)); position: relative; overflow: hidden; padding: 2px 0 8px; }
+  .kt-board {
+    position: relative; width: max-content; transform-origin: 0 0;
+    background: var(--kt-alu); border-radius: calc(var(--u) * 0.34); padding: calc(var(--u) * 0.24); display: flex; flex-direction: column; gap: calc(var(--u) * 0.1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 0 0 1px #B7B8BE, 0 30px 60px -30px rgba(0, 0, 0, 0.35);
+  }
+  .kt-row { display: flex; gap: calc(var(--u) * 0.1); }
+  .kt-k {
+    --c: var(--text-3); position: relative; width: calc(var(--u) * var(--w, 1) - var(--u) * 0.1); height: var(--u); flex: none; background: var(--kt-cap);
+    color: color-mix(in srgb, var(--kt-cap-fg) 38%, transparent); border-radius: calc(var(--u) * 0.14);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: calc(var(--u) * 0.34); line-height: 1.05; box-shadow: 0 calc(var(--u) * 0.05) 0 rgba(0, 0, 0, 0.35); user-select: none;
+    transition: background 0.25s, color 0.25s, transform 0.09s ease-out, box-shadow 0.09s;
+  }
+  .kt-k small { font-size: calc(var(--u) * 0.23); opacity: 0.55; }
+  .kt-k.mod { font-size: calc(var(--u) * 0.2); align-items: flex-start; justify-content: flex-end; padding: 0 0 calc(var(--u) * 0.1) calc(var(--u) * 0.13); }
+  .kt-k.mod.r { align-items: flex-end; padding: 0 calc(var(--u) * 0.13) calc(var(--u) * 0.1) 0; }
+  .kt-k.mod i { font-style: normal; font-size: calc(var(--u) * 0.27); position: absolute; top: calc(var(--u) * 0.08); right: calc(var(--u) * 0.13); opacity: 0.55; }
+  .kt-k.mod.r i { left: calc(var(--u) * 0.13); right: auto; }
+  .kt-k.ret2 { border-radius: 0 0 calc(var(--u) * 0.14) calc(var(--u) * 0.14); }
+  .kt-row.ctx .kt-k { opacity: 0.5; }
+  .kt-arrows { width: calc(var(--u) * 3 - var(--u) * 0.1); height: var(--u); display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: calc(var(--u) * 0.06); }
+  .kt-arrows .kt-k { width: auto; height: auto; font-size: calc(var(--u) * 0.18); }
+  .kt-arrows .lr { grid-row: 2; }
+  .kt-arrows .up { grid-column: 2; grid-row: 1; }
+  .kt-k.lit { background: var(--c); color: #FFFFFF; }
+  .kt-k.lit small, .kt-k.lit i { opacity: 0.8; }
+  .kt-k.down { transform: translateY(calc(var(--u) * 0.05)) scale(0.97); box-shadow: 0 0 0 calc(var(--u) * 0.08) color-mix(in srgb, var(--c) 30%, transparent); }
+  .kt-k .fill { position: absolute; inset: auto 0 0 0; height: 0; background: rgba(255, 255, 255, 0.28); border-radius: inherit; }
+  .kt-k.hold .fill { animation: kt-fill 1.6s linear forwards; }
+  @keyframes kt-fill { to { height: 100%; } }
+
+  .kt-sec { position: relative; background: var(--ground); border-radius: 22px; padding: 26px 24px 10px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent); transition: box-shadow 0.4s; }
+  .kt-sec.on { box-shadow: 0 0 0 2px var(--c), 0 20px 40px -28px var(--c); }
+  .kt-sh { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+  .kt-sh .lbl { display: flex; gap: 4px; }
+  .kt-sh .lbl kbd { font: 700 13px var(--font); background: var(--c); color: #FFFFFF; border-radius: 6px; min-width: 24px; height: 24px; padding: 0 7px; display: inline-grid; place-items: center; }
+  .kt-sh h3 { font-size: clamp(26px, 2.6vw, 32px); letter-spacing: -0.02em; line-height: 1.1; font-weight: 800; color: var(--c); margin: 4px 0 0; }
+  .kt-sh p { color: var(--text-2); font-size: 15px; line-height: 1.5; }
+  .kt-subs { list-style: none; margin: 8px 0 0; padding: 0 0 0 18px; border-left: 2px solid color-mix(in srgb, var(--c) 25%, transparent); }
+  .kt-step { position: relative; min-height: 18vh; display: flex; flex-direction: column; gap: 8px; padding: 18px 0 26px; transition: opacity 0.35s; }
+  .js .kt-step { opacity: 0.38; cursor: pointer; }
+  .kt-step::before {
+    content: ""; position: absolute; left: -25px; top: 58px; width: 12px; height: 12px; border-radius: 50%; background: var(--ground);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 40%, transparent); transition: background 0.3s, box-shadow 0.3s;
+  }
+  .js .kt-step.on { opacity: 1; }
+  .kt-step.on::before { background: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 22%, transparent); }
+  .kt-how { font-size: 12px; font-weight: 600; color: var(--text-3); }
+  .kt-how em { font-style: normal; border: 1px solid var(--line-2); border-radius: 999px; padding: 0 8px; }
+  .kt-step h4 { margin: 0; font-size: 19px; letter-spacing: -0.01em; line-height: 1.2; font-weight: 650; }
+  .kt-step p { color: var(--text-2); font-size: 15px; line-height: 1.5; max-width: 34ch; }
+  .kt-combo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .kt-combo kbd { font: 600 13px var(--font); background: var(--ground-2); color: var(--text); border-radius: 7px; padding: 4px 9px; box-shadow: inset 0 -1px 0 var(--line), 0 0 0 1px var(--line); }
+  .kt-combo kbd.key { background: var(--c); color: #FFFFFF; box-shadow: none; }
+  .kt-combo span { color: var(--text-3); font-size: 13px; }
+  .kt-combo span.then { font-weight: 600; color: var(--text-2); }
+  .kt-foot { max-width: 1120px; margin: 0 auto; padding: 0 24px 72px; font-size: 13.5px; line-height: 1.5; color: var(--text-3); }
+
+  /* Snap points: GSAP ScrollTrigger snaps each headline to the reading line while the tour fills
+     the screen; scroll-margin-top is how far below the line it rests (read by the script). */
+  .kt-snap-at { scroll-margin-top: var(--m); }
+  .kt-sh.kt-snap-at { --m: 48px; }
+  .kt-step h4.kt-snap-at { --m: 52px; }
+
+  /* Wide screens with scripts: one line down the middle, the sections alternate left and right
+     of it, and the keyboard holds the other half, leaving the screen to change sides. Without
+     scripts the plain two columns above stay. */
+  @media (min-width: 901px) {
+    .js .kt-body { --kt-gutter: 44px; grid-template-columns: 1fr; gap: 0; }
+    .js .kt-stage, .js .kt-secs { grid-area: 1 / 1; }
+    .js .kt-stage { z-index: 2; width: calc(50% - var(--kt-gutter)); justify-self: end; }
+    .js .kt-secs { position: relative; }
+    .js .kt-secs::before {
+      content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; border-radius: 1px;
+      background: linear-gradient(to bottom, transparent, var(--line-2) 64px, var(--line-2) calc(100% - 64px), transparent);
+    }
+    .js .kt-sec { width: calc(50% - var(--kt-gutter)); }
+    .js .kt-sec:nth-child(even) { margin-left: auto; }
+    /* Each section's node on the line, level with its title */
+    .js .kt-sec::after {
+      content: ""; position: absolute; top: 34px; width: 14px; height: 14px; border-radius: 50%;
+      background: var(--ground); box-shadow: 0 0 0 2px var(--c); transition: background 0.3s, box-shadow 0.3s;
+    }
+    .js .kt-sec:nth-child(odd)::after { right: calc(-1 * var(--kt-gutter) - 7px); }
+    .js .kt-sec:nth-child(even)::after { left: calc(-1 * var(--kt-gutter) - 7px); }
+    .js .kt-sec.on::after { background: var(--c); box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 22%, transparent); }
+  }
+
+  @media (max-width: 900px) {
+    .kt-wrap { padding: 64px 20px 24px; }
+    .kt-body { display: block; margin-top: 28px; }
+    .kt-stage {
+      top: var(--bar-h); z-index: 5; background: var(--kt-page); transition: background-color 0.6s var(--ease); gap: 10px;
+      margin: 0 -20px; padding: 12px 20px 10px; box-shadow: 0 12px 16px -14px rgba(0, 0, 0, 0.25);
+    }
+    .kt-win { --u: calc(100cqw / 9.4); }
+    .kt-screen { min-height: 36px; font-size: 13px; }
+    .kt-secs { padding-top: 12px; }
+    .kt-sec { padding: 20px 16px 6px; }
+    .kt-step { min-height: 20vh; }
+    .kt-sh.kt-snap-at { --m: 36px; }
+    .kt-foot { padding: 0 20px 56px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #keys, .kt-stage, .kt-k, .kt-step, .kt-sec, .kt-groups button { transition: none; }
+    .kt-screen .kt-eq span, .kt-k.hold .fill { animation: none !important; }
+  }
+</style>
+
+<script>
+  import { FLAT, KEY_NAME } from '../../data/shortcuts';
+  import { gsap, ScrollTrigger, EASE, MOTION } from '../../scripts/motion';
+
+  const $ = (id: string) => document.getElementById(id)!;
+  const section = $('keys'), board = $('kt-board'), win = $('kt-win'), secsEl = $('kt-secs'), groupsEl = $('kt-groups');
+  const screen = $('kt-screen'), scr = $('kt-scr'), now = $('kt-now');
+  const stage = section.querySelector<HTMLElement>('.kt-stage')!;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const keyOf = (id: string) => board.querySelector<HTMLElement>(`.kt-k[data-id="${id}"]`)!;
+  // The dictation key as the page currently shows it (the menu bar script sets it per layout).
+  const nameOf = (id: string) => (id === 'slash' ? keyOf('slash').textContent?.trim() || KEY_NAME[id] : KEY_NAME[id]);
+
+  const flat = FLAT.map((f, i) => {
+    const el = secsEl.querySelector<HTMLElement>(`.kt-step[data-i="${i}"]`)!;
+    const anchor = el.querySelector<HTMLElement>('h4.kt-snap-at') ?? el.closest('.kt-sec')!.querySelector<HTMLElement>('.kt-sh')!;
+    el.addEventListener('click', () => go(i));
+    return { ...f, el, anchor };
+  });
+  groupsEl.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+    b.addEventListener('click', () => go(flat.findIndex((f) => f.sec.id === b.dataset.g)));
+  });
+
+  // Reading line: under the fixed menu bar and level with the stage on wide screens. On phones it
+  // sits just under the sticky keyboard, or just under the menu bar in a section that drops the
+  // keyboard to the bottom (see Poses). Each headline rests its scroll-margin below it.
+  const BAR = 44;
+  const narrow = () => innerWidth <= 900;
+  const deskTop = () => Math.max(68, innerHeight / 2 - 190);
+  const lineFor = (_a: HTMLElement) => (narrow() ? BAR + stage.offsetHeight : deskTop());
+  const target = (a: HTMLElement) => lineFor(a) + parseFloat(getComputedStyle(a).scrollMarginTop || '0');
+  // Where the page is scrolled when a headline rests on the reading line.
+  const restAt = (a: HTMLElement) => a.getBoundingClientRect().top + scrollY - target(a);
+  // A step lights a little before its headline arrives, so scrolling feels answered at once.
+  const early = () => Math.min(160, innerHeight * 0.2);
+
+  let jumping = false;
+  function go(i: number) {
+    jumping = true;
+    const off = () => { jumping = false; };
+    gsap.to(window, { scrollTo: restAt(flat[i].anchor), duration: reduce ? 0 : 0.8, ease: 'power2.inOut', overwrite: true, onComplete: off, onInterrupt: off });
+  }
+
+  // Guided stop (wide screens): while the keyboard changes sides, the visitor's scrolling pauses
+  // and the page glides to the new step in the same beat, then hands control back.
+  // The blocking listeners exist only during a stop: non-passive wheel/touch listeners left on the
+  // window would make every scroll on the page wait for script.
+  let held = false;
+  const SCROLL_KEYS = new Set(['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', ' ', 'Home', 'End']);
+  const block = (e: Event) => e.preventDefault();
+  const blockKeys = (e: KeyboardEvent) => { if (SCROLL_KEYS.has(e.key)) e.preventDefault(); };
+  function guide(anchor: HTMLElement) {
+    if (!held) {
+      addEventListener('wheel', block, { passive: false });
+      addEventListener('touchmove', block, { passive: false });
+      addEventListener('keydown', blockKeys);
+    }
+    held = true;
+    const release = () => {
+      if (!held) return;
+      held = false;
+      removeEventListener('wheel', block);
+      removeEventListener('touchmove', block);
+      removeEventListener('keydown', blockKeys);
+    };
+    gsap.delayedCall(1.2, release); // never strands the visitor
+    gsap.to(window, { scrollTo: restAt(anchor), duration: 0.6, ease: 'power2.inOut', overwrite: true, onComplete: release, onInterrupt: release });
+  }
+
+  // Camera: zoom out only as far as needed to fit the active keys, then center them.
+  let framed: string[] = [];
+  function frame(keys: string[], animate = true) {
+    framed = keys;
+    const els = keys.map(keyOf), u = els[0].offsetHeight, pad = u * 0.7;
+    const minX = Math.min(...els.map((k) => k.offsetLeft)), maxX = Math.max(...els.map((k) => k.offsetLeft + k.offsetWidth));
+    const W = win.clientWidth, BW = board.offsetWidth, BH = board.offsetHeight;
+    const s = Math.min(1, W / (maxX - minX + 2 * pad));
+    let tx = BW * s <= W ? (W - BW * s) / 2 : W / 2 - ((minX + maxX) / 2) * s;
+    tx = Math.min(Math.max(tx, Math.min(0, W - BW * s)), Math.max(0, W - BW * s));
+    gsap.to(board, { x: tx, y: BH - BH * s, scale: s, duration: animate && !reduce ? 0.7 : 0, ease: EASE, overwrite: true });
+  }
+
+  const setScreen = (state: 'live' | 'done', text: string, c: string) => {
+    screen.dataset.state = state; scr.textContent = text; screen.style.setProperty('--c', `var(${c})`);
+  };
+  let active = -1, run = 0, inView = false;
+  function activate(i: number) {
+    if (i === active) return;
+    active = i;
+    const { step, sec } = flat[i];
+    section.style.setProperty('--kt-active', `var(${sec.color})`);
+    pose(secIds.indexOf(sec.id));
+    flat.forEach((f, n) => f.el.classList.toggle('on', n === i));
+    secsEl.querySelectorAll<HTMLElement>('.kt-sec').forEach((el) => el.classList.toggle('on', el.dataset.sec === sec.id));
+    groupsEl.querySelectorAll<HTMLElement>('button').forEach((b) => b.classList.toggle('on', b.dataset.g === sec.id));
+    board.querySelectorAll<HTMLElement>('.kt-k').forEach((k) => { k.classList.remove('lit', 'down', 'hold'); k.style.removeProperty('--c'); });
+    const keys = [...new Set(step.parts.flatMap((p) => p.keys))];
+    keys.forEach((id) => { const k = keyOf(id); k.classList.add('lit'); k.style.setProperty('--c', `var(${sec.color})`); });
+    frame(keys);
+    now.textContent = `${step.name}: ${keys.map(nameOf).join(' + ')}`;
+    play(step, sec.color);
+  }
+
+  // Poses: each section puts the keyboard somewhere new, so the long tour keeps changing shape.
+  // Wide screens: the sections alternate left and right of the center line and the keyboard holds
+  // the other half; to change sides it leaves the screen on its side and comes back in from the
+  // opposite edge. Phones: every section swipes the keyboard in from the side, and Smart read
+  // drops it to the bottom of the screen.
+  const secIds = [...new Set(flat.map((f) => f.sec.id))];
+  const body = section.querySelector<HTMLElement>('.kt-body')!;
+  let mode: 'off' | 'desk' | 'phone' = 'off', posed = -1;
+  let poseTl: gsap.core.Timeline | null = null;
+
+  function pose(n: number, now = false) {
+    if (mode === 'off' || n === posed) return;
+    const first = posed < 0, from = posed;
+    posed = n;
+    poseTl?.kill();
+    const instant = now || first || reduce;
+    if (mode === 'desk') {
+      // Even sections sit left of the line, so the keyboard takes the right (x 0, its CSS place).
+      const tx = n % 2 === 0 ? 0 : -(body.clientWidth - stage.offsetWidth);
+      const cx = gsap.getProperty(stage, 'x') as number;
+      if (instant || Math.abs(cx - tx) < 1) { gsap.set(stage, { x: tx }); avoid(true); return; }
+      // One keyboard crosses over: it lifts a touch (scales down mid-way) and glides above the
+      // line and the cards to the other side, visible the whole way; its height eases to the free
+      // spot on the new side at the same time.
+      poseTl = gsap.timeline()
+        .to(stage, { x: tx, duration: 0.7, ease: 'power3.inOut' }, 0)
+        .to(stage, { scale: 0.94, duration: 0.35, ease: 'power2.out', transformOrigin: '50% 50%' }, 0)
+        .to(stage, { scale: 1, duration: 0.35, ease: 'power2.in' }, 0.35);
+      avoid();
+      // Only for the visitor's own scrolling: not during another scripted scroll (a Voice click,
+      // a pill) and not when a jump (a menu link) flies past the tour from far away.
+      if (!jumping && active >= 0 && !gsap.isTweening(window) && Math.abs(restAt(flat[active].anchor) - scrollY) < innerHeight * 0.5) guide(flat[active].anchor);
+    } else {
+      // Phones: the sticky bar never moves (one steady reading line under it); only the keyboard
+      // inside it swipes, forward from the right, back from the left.
+      if (instant) { gsap.set(win, { x: 0, autoAlpha: 1 }); return; }
+      const dir = n > from ? 1 : -1, w = win.offsetWidth;
+      poseTl = gsap.timeline()
+        .to(win, { x: -dir * w * 0.2, autoAlpha: 0, duration: 0.18, ease: 'power2.in' })
+        .set(win, { x: dir * w * 0.2 })
+        .to(win, { x: 0, autoAlpha: 1, duration: 0.35, ease: 'power3.out' });
+    }
+  }
+
+  // Wide screens: the keyboard does not have to sit on the reading line. On its side of the line
+  // it keeps clear of the cards: a card coming up from below nudges it up, and after a swap it
+  // starts just below the card that is leaving and glides back to its place as that card goes.
+  const secEls = [...secsEl.querySelectorAll<HTMLElement>(':scope > .kt-sec')];
+  const CLEAR = 24;
+  let yTo: ((v: number) => void) | null = null;
+  function avoid(now = false) {
+    if (mode !== 'desk' || posed < 0) return;
+    const H = stage.offsetHeight, cur = gsap.getProperty(stage, 'y') as number;
+    const base = stage.getBoundingClientRect().top - cur; // where the stage sits untransformed
+    const right = posed % 2 === 0; // even sections sit left, so the keyboard is right
+    let top = base;
+    for (const [i, c] of secEls.entries()) {
+      if ((i % 2 === 1) !== right) continue; // only cards on the keyboard's side
+      const r = c.getBoundingClientRect();
+      if (r.bottom + CLEAR <= top || r.top - CLEAR >= top + H) continue;
+      top = r.top + r.height / 2 > base + H / 2 ? r.top - CLEAR - H : r.bottom + CLEAR;
+    }
+    if (now) { gsap.set(stage, { y: top - base }); return; }
+    (yTo ??= gsap.quickTo(stage, 'y', { duration: 0.3, ease: 'power3.out' }))(top - base);
+  }
+
+  const mm = gsap.matchMedia();
+  const enter = (m: 'desk' | 'phone') => {
+    mode = m; posed = -1;
+    if (active >= 0) pose(secIds.indexOf(flat[active].sec.id), true);
+    const onRefresh = () => { const n = posed; posed = -1; if (n >= 0) pose(n, true); };
+    ScrollTrigger.addEventListener('refresh', onRefresh);
+    return () => {
+      mode = 'off'; posed = -1; poseTl?.kill();
+      ScrollTrigger.removeEventListener('refresh', onRefresh);
+      gsap.set([stage, secsEl, win], { clearProps: 'transform,opacity,visibility' });
+    };
+  };
+  mm.add('(min-width: 901px)', () => enter('desk'));
+  mm.add('(max-width: 900px)', () => enter('phone'));
+
+  // Key presses: modifiers go down one after another, then the action key taps, holds or toggles.
+  async function play(s: (typeof FLAT)[number]['step'], c: string) {
+    const id = ++run, alive = () => id === run && inView;
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const first = s.parts[0], last = s.parts[s.parts.length - 1];
+    if (reduce) { setScreen(last.done ? 'done' : 'live', last.done || last.live || '', c); return; }
+    setScreen(first.live ? 'live' : 'done', first.live || first.done || '', c);
+    let quick = true;
+    while (alive()) {
+      for (const p of s.parts) {
+        if (!alive()) return;
+        const ks = p.keys.map(keyOf), mods = ks.slice(0, -1), act = ks[ks.length - 1];
+        const down = async () => { for (const k of mods) { k.classList.add('down'); await wait(quick ? 70 : 150); } };
+        const up = () => mods.forEach((k) => k.classList.remove('down'));
+        const tap = async () => { act.classList.add('down'); await wait(170); act.classList.remove('down'); };
+        await down(); if (!alive()) return up();
+        if (p.how === 'tap') {
+          await tap(); setScreen(p.live ? 'live' : 'done', p.live || p.done || '', c); await wait(220); up(); await wait(2100);
+        } else if (p.how === 'hold') {
+          act.classList.add('down', 'hold'); setScreen('live', p.live || '', c); await wait(1700);
+          act.classList.remove('down', 'hold'); up(); if (!alive()) return;
+          setScreen('done', p.done || '', c); await wait(1700);
+        } else {
+          await tap(); await wait(120); up(); setScreen('live', p.live || '', c); await wait(2200); if (!alive()) return;
+          await down(); await tap(); await wait(120); up(); setScreen('done', p.done || '', c); await wait(1700);
+        }
+      }
+      quick = false; await wait(500);
+    }
+  }
+
+  // Just enough room below the last step for it to reach the reading line while the keyboard
+  // stays put; anything more is empty page. Runs before ScrollTrigger measures.
+  const lastSec = secsEl.lastElementChild as HTMLElement;
+  function pad() {
+    // Center line: sections are spaced by more than the keyboard's height, so it always has a gap
+    // to change sides in.
+    const a = flat[flat.length - 1].anchor;
+    const stageTop = narrow() ? BAR : deskTop();
+    const listEndAtLine = target(a) + (lastSec.getBoundingClientRect().bottom - a.getBoundingClientRect().top);
+    secsEl.style.paddingBottom = Math.max(24, Math.ceil(stageTop + stage.offsetHeight - listEndAtLine + 24)) + 'px';
+  }
+  pad();
+  ScrollTrigger.addEventListener('refreshInit', pad);
+  ScrollTrigger.addEventListener('refresh', () => { if (framed.length) frame(framed, false); });
+
+  // The key presses play only while the tour is on screen; coming back restarts the loop.
+  ScrollTrigger.create({
+    trigger: section, start: 'top bottom', end: 'bottom top',
+    onUpdate: () => avoid(),
+    onToggle: (self) => {
+      inView = self.isActive;
+      if (!inView) { run++; return; }
+      const back = Math.max(active, 0);
+      active = -1; activate(back);
+    },
+  });
+
+  const lead = (_i: number) => early();
+
+  // Each step owns the stretch from its headline to the next one's, measured at the reading line.
+  flat.forEach((f, i) => {
+    const next = flat[i + 1]?.anchor;
+    ScrollTrigger.create({
+      trigger: f.anchor,
+      start: () => `top ${target(f.anchor) + lead(i)}px`,
+      endTrigger: next ?? section,
+      end: next ? () => `top ${target(next) + lead(i + 1)}px` : 'bottom top',
+      onToggle: (self) => { if (self.isActive) activate(i); },
+      onLeaveBack: () => { if (i === 0) activate(0); },
+    });
+  });
+
+  // Snap: while the tour fills the screen, scrolling settles with a headline on the reading line,
+  // one step per gesture. Outside the tour the page scrolls freely. Wide screens only: on phones a
+  // snap after a flick fights the finger's momentum, and reduced motion gets none.
+  gsap.matchMedia().add(`${MOTION} and (min-width: 901px)`, () => {
+    let points: number[] = [];
+    const first = flat[0].anchor, last = flat[flat.length - 1].anchor;
+    ScrollTrigger.create({
+      trigger: first,
+      start: () => `top ${target(first)}px`,
+      endTrigger: last,
+      end: () => `top ${target(last)}px`,
+      onRefresh: (self) => {
+        const span = self.end - self.start || 1;
+        points = flat.map((f) => gsap.utils.clamp(0, 1, (restAt(f.anchor) - self.start) / span));
+      },
+      snap: {
+        snapTo: (value: number) => gsap.utils.snap(points, value),
+        directional: true,
+        duration: { min: 0.25, max: 0.7 },
+        delay: 0.08,
+        ease: 'power2.inOut',
+      },
+    });
+  });
+
+  inView = section.getBoundingClientRect().top < innerHeight;
+  activate(0);
+</script>

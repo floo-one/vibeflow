@@ -1,0 +1,600 @@
+import AppKit
+import Foundation
+import KeyboardShortcuts
+import Observation
+import MaagicalCore
+import ServiceManagement
+import OSLog
+import SwiftUI
+
+private let log = Logger(subsystem: "one.floo.vibeflow", category: "shortcuts")
+
+/// Composition root: stores, live services, the session, global shortcuts.
+@MainActor
+@Observable
+final class AppContainer {
+    let preferences: Preferences
+    let presets: AppPresetStore
+    let secrets: KeychainSecretsStore
+    let voices: SystemVoiceCatalog
+    let session: ReadSession
+    let dictation: DictationSession
+    let onDeviceModel: OnDeviceModelStatus
+    /// Reads and answered questions, on this Mac only (Application Support/VibeFlow/history.json).
+    let history: HistoryStore
+    /// What the paid APIs cost, per day and model (Settings > Usage); counts only, never text.
+    let usage: UsageLog
+    /// The entry the History window shows; set by the menu's History submenu.
+    var historySelection: HistoryEntry.ID?
+    /// Transcribe File (docs/designs/file-transcription.md).
+    let files: FileTranscriptions
+    /// SwiftUI's window opener, handed over by the always-visible menu bar label, so a
+    /// notification click can open a window while no menu is showing.
+    @ObservationIgnored var openWindow: OpenWindowAction?
+    /// SwiftUI's Settings opener, handed over by SceneAnchor at launch: the menu bar panel is
+    /// AppKit-hosted and cannot rely on its own environment for it.
+    @ObservationIgnored var openSettings: OpenSettingsAction?
+    /// Closes the menu bar panel (StatusItemController); every shortcut calls it first (D13).
+    @ObservationIgnored var closePanel: (() -> Void)?
+    /// The version Sparkle downloaded and holds until idle, for the panel's update pill (D7).
+    var updateWaiting: String?
+    /// The "hold to ask" tip under the notch on the first smart read taps (D17).
+    let holdTip = HoldTipModel()
+    @ObservationIgnored private var holdTipClear: Task<Void, Never>?
+    @ObservationIgnored private var appNames: [String: String] = [:]
+    let accessibility = LiveAccessibility()
+    private let clipboardSource = LiveClipboardSource()
+    private let player = PCMStreamPlayer()
+    private let recorder = LiveAudioRecorder()
+    @ObservationIgnored private var notch: NotchIndicator?
+    /// Tap the smart read shortcut to smart read, hold it to ask a follow-up question.
+    @ObservationIgnored private var smartReadPress: PressClassifier?
+    /// The question being answered, from the release of a hold until its transcript arrives.
+    @ObservationIgnored private var pendingQuestion: SessionID?
+    private let elevenLabs: ElevenLabsProvider
+    let catalogs: RemoteCatalogs
+    let meetings: MeetingsStore
+    /// The focus timer; also installs the notification delegate, so it starts with the app.
+    let focus: FocusTimer
+    /// Keeps the Mac awake (the Amphetamine replacement); its own menu bar item while on.
+    let keepAwake: KeepAwake
+    /// Desktop Roles: the morning walk, the role tag and the desktop tints.
+    let desktops: DesktopsController
+    /// Which settings tab is showing; "Add key" buttons jump to Keys.
+    var settingsTab: SettingsTab = .general
+    /// The page the Context window shows.
+    var contextPage: ContextPage = .feature(.brief)
+    /// True after the record shortcut, false after a read: which session the menu's status
+    /// line and icon describe.
+    private(set) var showsDictation = false
+    /// The release's self-updater; nil in Maagical Dev, which never checks for updates.
+    @ObservationIgnored private(set) var updater: Updater?
+    /// Microphone access as last checked (refreshPermissions); the menu links to System
+    /// Settings while it is denied.
+    private(set) var microphonePermission: MicrophonePermission = .undetermined
+    @ObservationIgnored private var permissionWatch: Task<Void, Never>?
+    /// Whether Escape is registered as the cancel-dictation hotkey right now.
+    @ObservationIgnored private var escapeRegistered = false
+    /// The one-time "VibeFlow is now Maagical" card in the panel (RenameNotice).
+    private(set) var showsRenameNotice = false
+
+    init() {
+        LegacyMigration.runIfNeeded()
+        ShortcutMigration.runIfNeeded()
+        showsRenameNotice = RenameNotice.decideAtLaunch()
+        SystemVoiceCatalog.preload()
+        let preferences = Preferences()
+        let presets = AppPresetStore()
+        let secrets = KeychainSecretsStore()
+        self.preferences = preferences
+        self.presets = presets
+        self.secrets = secrets
+        voices = SystemVoiceCatalog()
+        catalogs = RemoteCatalogs(secrets: secrets)
+        catalogs.refresh()
+        keepAwake = KeepAwake(assertion: LivePowerAssertion(), keepsDisplayOn: preferences.keepAwakeDisplayOn)
+
+        let clock = ContinuousSessionClock()
+        let pasteboard = LivePasteboard()
+        // Every client that can reach a paid API goes through a meter (UsageMeter). Maagical
+        // Dev keeps its own file, like history-dev.json.
+        #if DEBUG
+        let usage = UsageLog(fileURL: UsageLog.defaultFileURL.deletingLastPathComponent().appending(path: "usage-dev.json"))
+        #else
+        let usage = UsageLog(fileURL: UsageLog.defaultFileURL)
+        #endif
+        self.usage = usage
+        let meter = usage.sink()
+        let http = MeteredHTTPClient(URLSessionHTTPClient(), record: meter)
+        let stream = MeteredByteStreamClient(URLSessionByteStreamClient(), record: meter)
+        focus = FocusTimer(preferences: preferences)
+        meetings = MeetingsStore(config: GoogleOAuthConfig(infoDictionary: Bundle.main.infoDictionary),
+                                 secrets: secrets, preferences: preferences, http: http)
+        let elevenLabs = ElevenLabsProvider(client: stream, webSocket: MeteredWebSocketClient(URLSessionWebSocketClient(), record: meter),
+                                            player: player, secrets: secrets)
+        self.elevenLabs = elevenLabs
+        let session = ReadSession(
+            accessibility: accessibility,
+            clipboardSource: clipboardSource,
+            capture: SelectionCapture(accessibility: accessibility, pasteboard: pasteboard, clock: clock),
+            presets: presets,
+            elevenLabs: elevenLabs,
+            apple: AppleSpeechProvider(catalog: voices),
+            smartRead: AnthropicClient(http: http, stream: stream, secrets: secrets),
+            secrets: secrets,
+            clock: clock,
+            configuration: preferences.sessionConfiguration,
+            answerVoice: elevenLabs
+        )
+        // Maagical Dev shares Application Support with the release, so it keeps its own History
+        // and transcripts, like focus-dev.json: an older release that meets a transcription row
+        // in history.json cannot read the file and would empty it on its next save.
+        #if DEBUG
+        let historyURL = HistoryStore.defaultFileURL.deletingLastPathComponent().appending(path: "history-dev.json")
+        let transcripts = TranscriptStore(directory: TranscriptStore.defaultDirectory.deletingLastPathComponent()
+            .appending(path: "Transcripts-dev"))
+        #else
+        let historyURL = HistoryStore.defaultFileURL
+        let transcripts = TranscriptStore()
+        #endif
+        // A quit or crash mid-job leaves decoded audio in the temp folder; no job runs yet.
+        AudioFileDecoder.removeLeftovers()
+        let history = HistoryStore(fileURL: historyURL, retention: preferences.historyRetention,
+                                   transcripts: transcripts)
+        history.adoptOrphanTranscripts() // eng review R5
+        session.onRecord = { history.add($0) }
+        self.history = history
+        self.session = session
+        files = FileTranscriptions(secrets: secrets, preferences: preferences, history: history, store: transcripts,
+                                   http: http, awake: LivePowerAssertion(name: "Maagical file transcription"))
+
+        let onDevice: (any Transcriber)? = AppleTranscriber.isAvailable ? AppleTranscriber() : nil
+        let sounds = DictationSounds()
+        dictation = DictationSession(
+            recorder: recorder,
+            accessibility: accessibility,
+            presets: presets,
+            pasteboard: pasteboard,
+            clock: clock,
+            setup: {
+                // D7, resolved per dictation so plugging in AirPods takes effect at once.
+                let microphone = MicrophoneSelection.deviceUID(
+                    choice: preferences.microphoneUID,
+                    inputs: AudioDevices.inputs(),
+                    outputIsBluetooth: AudioDevices.defaultOutputIsBluetooth(),
+                    defaultInputUID: AudioDevices.defaultInputUID()
+                )
+                return DictationSetupFactory.make(vocabulary: preferences.vocabularyTerms,
+                                                  transcriptionModel: preferences.transcriptionModel,
+                                                  cleanupModel: preferences.cleanupModel,
+                                                  secrets: secrets, http: http, onDevice: onDevice, microphoneUID: microphone,
+                                                  prompts: preferences.prompts)
+            },
+            stopReading: { session.stop() }, // D3
+            readIsCapturing: { session.state == .capturing },
+            cue: { if preferences.dictationSounds { sounds.play($0) } }
+        )
+        // The walk refuses to start while a read or dictation runs, since it changes which app is
+        // frontmost (eng review D8a); the other direction is blockedByDesktopWalk.
+        desktops = DesktopsController(preferences: preferences, isBusy: { [session, dictation] in
+            session.state != .idle || dictation.state.isBusy
+        })
+        notch = NotchIndicator(dictation: dictation, reading: session, preferences: preferences, holdTip: holdTip,
+                               level: { [recorder] in recorder.level })
+        onDeviceModel = OnDeviceModelStatus(store: LiveOnDeviceModelStore())
+        onDeviceModel.prepare(language: presets.defaultPreset.languageOverride) // D9
+
+        KeyboardShortcuts.onKeyUp(for: .read) { [weak self] in self?.hotkey(.read) }
+        smartReadPress = PressClassifier(
+            clock: clock,
+            onTap: { [weak self] in
+                log.notice("Smart read shortcut: tap")
+                self?.hotkey(.smartRead)
+                self?.showHoldTipIfDue()
+            },
+            onHoldStart: { [weak self] in
+                log.notice("Smart read shortcut: hold")
+                self?.preferences.holdTipHeld = true
+                self?.holdTip.text = nil
+                self?.questionHoldStarted()
+            },
+            onHoldEnd: { [weak self] in self?.questionHoldEnded() }
+        )
+        KeyboardShortcuts.onKeyDown(for: .smartRead) { [weak self] in
+            self?.closePanel?()
+            self?.smartReadPress?.keyDown()
+        }
+        KeyboardShortcuts.onKeyUp(for: .smartRead) { [weak self] in self?.smartReadPress?.keyUp() }
+        KeyboardShortcuts.onKeyUp(for: .readClipboard) { [weak self] in self?.clipboardHotkey(.read) }
+        KeyboardShortcuts.onKeyUp(for: .smartReadClipboard) { [weak self] in self?.clipboardHotkey(.smartRead) }
+        KeyboardShortcuts.onKeyDown(for: .record) { [weak self] in self?.recordKeyDown() }
+        KeyboardShortcuts.onKeyUp(for: .record) { [weak self] in self?.dictation.recordKeyUp() }
+        KeyboardShortcuts.onKeyDown(for: .recordToggle) { [weak self] in self?.toggleRecording() }
+        KeyboardShortcuts.onKeyUp(for: .pasteLastDictation) { [weak self] in
+            self?.closePanel?()
+            self?.pasteLastDictation()
+        }
+        KeyboardShortcuts.onKeyUp(for: .pasteLastAnswer) { [weak self] in
+            self?.closePanel?()
+            self?.pasteLastAnswer()
+        }
+        KeyboardShortcuts.onKeyUp(for: .focusToggle) { [weak self] in self?.focus.toggle() }
+        KeyboardShortcuts.onKeyUp(for: .setUpDesktops) { [weak self] in self?.desktops.setUpOrStop() }
+        desktops.openSettings = { [weak self] in self?.presentSettings(tab: .desktops) }
+        desktops.appName = { [weak self] in self?.appName(for: $0) ?? ($0 ?? "") }
+        watchDictationForEscape()
+
+        wireFileTranscription()
+        applyColorMode()
+        refreshPermissions()
+        // Every menu that opens re-checks, so a grant taken away later shows up as well (the
+        // menu bar panel calls refreshPermissions itself when it opens).
+        _ = NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshPermissions() }
+        }
+
+        #if !DEBUG
+        updater = Updater(
+            isBusy: { [weak self] in self?.isRunning ?? false },
+            followsMain: { [weak self] in self?.preferences.updateToNewestMain ?? false }
+        )
+        updater?.onUpdateWaiting = { [weak self] version in self?.updateWaiting = version }
+        #endif
+
+        warmConnections()
+        meetings.start()
+    }
+
+    // MARK: File transcription (D10)
+
+    private func wireFileTranscription() {
+        let notifications = focus.notifications
+        files.onStarted = { notifications.requestPermissionForTranscripts() }
+        // The user started the job, so the result opens by itself (a notification may be off or
+        // missed); a failure says why in a dialog. The notification is an extra.
+        files.onFinished = { [weak self] state in
+            switch state {
+            case .finished(let f):
+                let t = f.transcript
+                var body = "\(t.sourceFileName) · \(Transcript.clock(t.duration))"
+                if !t.speakers.isEmpty { body += " · \(t.speakers.count) speaker\(t.speakers.count == 1 ? "" : "s")" }
+                if let note = t.completion.note { body += "\n\(note)" } else if let error = f.summaryError { body += "\n\(error)" }
+                notifications.postTranscriptReady(id: t.id, title: t.completion == .complete ? "Transcript ready" : "Transcript partly ready", body: body)
+                self?.openTranscript(t.id)
+            case .failed(let file, let message):
+                notifications.postTranscriptionFailed(file: file, message: message)
+                NSApp.activate()
+                let alert = NSAlert()
+                alert.messageText = "Couldn't transcribe \(file)"
+                alert.informativeText = message
+                alert.runModal()
+            default:
+                break
+            }
+        }
+        notifications.onOpenTranscript = { [weak self] id in self?.openTranscript(id) }
+    }
+
+    /// Opens a transcript from anywhere (a notification click).
+    func openTranscript(_ id: UUID) {
+        guard let openWindow else { return }
+        TranscriptWindow.present(openWindow, container: self, transcript: id)
+    }
+
+    private func recordKeyDown() {
+        closePanel?()
+        if blockedByDesktopWalk() { return }
+        showsDictation = true
+        dictation.recordKeyDown()
+    }
+
+    /// Shortcut and menu "Start dictation".
+    func toggleRecording() {
+        closePanel?()
+        if blockedByDesktopWalk() { return }
+        showsDictation = true
+        dictation.toggleRecording()
+    }
+
+    /// Shortcut and menu "Paste last dictation".
+    func pasteLastDictation() { pasteAgain(dictation.lastText) }
+
+    /// Shortcut and menu "Paste last smart read": the last smart read result.
+    func pasteLastAnswer() { pasteAgain(session.lastAnswer) }
+
+    private func pasteAgain(_ text: String?) {
+        guard let text, !blockedByDesktopWalk() else { return }
+        showsDictation = true
+        Task { await dictation.pasteAgain(text) }
+    }
+
+    // MARK: Follow-up questions (docs/designs/smart-read-follow-up.md)
+
+    /// Held past the threshold: stop any read (the dictation side does it, D3) and record.
+    private func questionHoldStarted() {
+        if blockedByDesktopWalk() || dictationCancelledByRead() { return }
+        applyReadSettings(smart: true)
+        showsDictation = true // microphone problems show as dictation errors
+        dictation.startQuestion { [weak self] result in self?.questionTranscribed(result) }
+    }
+
+    /// Released: the read session captures the selection while the question is transcribed.
+    private func questionHoldEnded() {
+        guard dictation.isAskingQuestion else { return }
+        showsDictation = false
+        pendingQuestion = session.beginQuestion()
+        dictation.finishQuestion()
+    }
+
+    private func questionTranscribed(_ result: QuestionTranscript) {
+        guard let id = pendingQuestion else { return }
+        pendingQuestion = nil
+        switch result {
+        case .text(let question): session.ask(question, for: id)
+        case .failed(let message, let spoken): session.questionFailed(message, spoken: spoken, for: id)
+        }
+    }
+
+    /// History: read an entry aloud again (the answer, for a question).
+    func readAgain(_ entry: HistoryEntry) {
+        if blockedByDesktopWalk() || dictationCancelledByRead() { return }
+        applyReadSettings(smart: entry.kind == .question)
+        session.readAgain(entry.text)
+    }
+
+    func copy(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    /// "Safari" for com.apple.Safari, "Clipboard" for clipboard reads. Looked up once per app.
+    func appName(for bundleID: String?) -> String {
+        guard let bundleID else { return "Clipboard" }
+        if let name = appNames[bundleID] { return name }
+        let name = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+            .map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") } ?? bundleID
+        appNames[bundleID] = name
+        return name
+    }
+
+    /// While the desktop walk runs it brings apps to the front, so a read or a dictation could
+    /// capture from or paste into the wrong app: those keys only beep until it is done (D8a).
+    private func blockedByDesktopWalk() -> Bool {
+        guard desktops.isWalking else { return false }
+        NSSound.beep()
+        return true
+    }
+
+    /// A read shortcut while dictating cancels the dictation and does nothing else. While a
+    /// paste owns the clipboard it is ignored, so a read's Copy cannot snapshot the pasted text.
+    private func dictationCancelledByRead() -> Bool {
+        if dictation.state == .pasting { return true }
+        if dictation.cancel() { return true }
+        showsDictation = false
+        return false
+    }
+
+    /// Menu "Stop": whichever session is running.
+    func stopAll() {
+        if !cancelDictation() { session.stop() }
+    }
+
+    // MARK: Menu bar panel
+
+    /// Everything PanelState decides from (docs/designs/menu-bar-popover.md, R2).
+    var panelInput: PanelState.Input {
+        // One short label that never truncates: a release shows its version, a nightly or Dev
+        // build only the commit it was built from (the full line is in Settings > General).
+        let stamp = BuildStamp(info: Bundle.main.infoDictionary ?? [:])
+        #if DEBUG
+        let build = PanelState.Build.debug
+        let version = stamp?.commit ?? "Dev"
+        #else
+        let build: PanelState.Build = Updater.isNightly ? .nightly : .release
+        let release = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let version = stamp?.commit ?? "Maagical \(release)"
+        #endif
+        return PanelState.Input(
+            readState: session.state, readStatus: session.status, readError: session.lastError,
+            dictationState: dictation.state, dictationStatus: dictation.status, dictationError: dictation.lastError,
+            showsDictation: showsDictation,
+            accessibilityTrusted: session.accessibilityTrusted,
+            microphoneDenied: microphonePermission == .denied,
+            feedbackEnabled: FeedbackSender.isEnabled,
+            updateWaiting: updateWaiting, build: build, version: version,
+            showsRenameNotice: showsRenameNotice)
+    }
+
+    /// OK on the rename card: never again, on this Mac.
+    func dismissRenameNotice() {
+        showsRenameNotice = false
+        RenameNotice.markSeen()
+    }
+
+    /// Opens Settings (optionally on a tab) with the opener SceneAnchor handed over.
+    func presentSettings(tab: SettingsTab?) {
+        log.notice("Settings requested, tab=\(tab.map { "\($0)" } ?? "last", privacy: .public)")
+        guard let openSettings else { return }
+        SettingsWindow.present(openSettings, container: self, tab: tab)
+    }
+
+    /// Right-click on a menu bar item: Settings opens, or closes when it is already open (R3).
+    func toggleSettings(tab: SettingsTab?) {
+        if SettingsWindow.isVisible {
+            SettingsWindow.close()
+        } else {
+            presentSettings(tab: tab)
+        }
+    }
+
+    /// D17: the first three smart read taps teach that holding the key asks a question.
+    private func showHoldTipIfDue() {
+        guard HoldTip.shows(tapsSoFar: preferences.holdTipTaps, hasHeld: preferences.holdTipHeld) else { return }
+        preferences.holdTipTaps += 1
+        let key = KeyboardShortcuts.getShortcut(for: .smartRead).map { "\($0)" } ?? "the Smart read key"
+        holdTip.text = "Hold \(key) next time to ask a question"
+        holdTipClear?.cancel()
+        holdTipClear = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard !Task.isCancelled else { return }
+            self?.holdTip.text = nil
+        }
+    }
+
+    /// Escape and menu Stop. A follow-up question still being transcribed also drops the smart
+    /// read waiting for it. Returns whether a dictation was cancelled.
+    @discardableResult
+    private func cancelDictation() -> Bool {
+        guard dictation.cancel() else { return false }
+        if pendingQuestion != nil {
+            pendingQuestion = nil
+            session.stop()
+        }
+        return true
+    }
+
+    // MARK: Escape cancels dictation
+
+    /// Re-arms on every dictation state change: Escape is a global hotkey only while a
+    /// dictation can be cancelled, and goes back to the frontmost app right after.
+    private func watchDictationForEscape() {
+        let cancellable = withObservationTracking {
+            dictation.state.isCancellable
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.watchDictationForEscape() }
+        }
+        escapeCancels(cancellable)
+    }
+
+    private func escapeCancels(_ on: Bool) {
+        guard on != escapeRegistered else { return }
+        escapeRegistered = on
+        guard on else {
+            KeyboardShortcuts.removeHandler(for: .cancelDictation)
+            KeyboardShortcuts.removeHandler(for: .cancelDictationHeld)
+            return
+        }
+        // Push-to-talk keeps its modifiers down, so Escape arrives as Option-Escape then.
+        let held = KeyboardShortcuts.getShortcut(for: .record)?.modifiers ?? []
+        KeyboardShortcuts.setShortcut(held.isEmpty ? nil : .init(.escape, modifiers: held), for: .cancelDictationHeld)
+        for name in [KeyboardShortcuts.Name.cancelDictation, .cancelDictationHeld] {
+            KeyboardShortcuts.onKeyDown(for: name) { [weak self] in
+                guard let self, self.cancelDictation() else { return }
+                log.notice("Dictation cancelled with Escape")
+            }
+        }
+    }
+
+    var isRunning: Bool { session.state != .idle || dictation.state.isBusy }
+
+    var iconSymbol: String {
+        switch dictation.state {
+        case .recording: return "mic.fill"
+        case .transcribing, .cleaning, .pasting: return "ellipsis.circle"
+        case .idle: break
+        }
+        if dictation.justCancelled, session.state == .idle { return "mic.slash" }
+        if showsDictation, session.state == .idle, dictation.lastError != nil { return IconState.error.symbolName }
+        // A file being transcribed shows in the menu bar the whole time, not only in the menu.
+        if files.job.isRunning, session.state == .idle { return "ellipsis.circle" }
+        return session.iconState.symbolName
+    }
+
+    /// Menu "Allow Display Sleep": remembered for the next session, applied to the running one.
+    func setKeepAwakeDisplayOn(_ on: Bool) {
+        preferences.keepAwakeDisplayOn = on
+        keepAwake.keepsDisplayOn = on
+    }
+
+    /// The models and speaker chosen in Settings, applied right before each read. A smart read
+    /// uses Smart Read's own voice model and speaker when they are set.
+    private func applyReadSettings(smart: Bool) {
+        session.configuration = preferences.sessionConfiguration
+        elevenLabs.model = smart ? (preferences.smartReadVoiceModel ?? preferences.voiceModel) : preferences.voiceModel
+        player.outputDeviceUID = smart ? preferences.smartReadOutputDeviceUID : preferences.speakerUID
+    }
+
+    /// Shortcut and menu "Read selection": the menu does not take focus, so the selection
+    /// is still the frontmost app's.
+    func hotkey(_ kind: ReadKind) {
+        closePanel?()
+        if blockedByDesktopWalk() || dictationCancelledByRead() { return }
+        applyReadSettings(smart: kind == .smartRead)
+        session.hotkey(kind)
+    }
+
+    private func clipboardHotkey(_ kind: ReadKind) {
+        closePanel?()
+        if blockedByDesktopWalk() || dictationCancelledByRead() { return }
+        applyReadSettings(smart: kind == .smartRead)
+        session.clipboardHotkey(kind, text: NSPasteboard.general.string(forType: .string) ?? "")
+    }
+
+    /// Menu reads use the clipboard text and the default preset.
+    func menuRead(_ kind: ReadKind) {
+        if blockedByDesktopWalk() || dictationCancelledByRead() { return }
+        applyReadSettings(smart: kind == .smartRead)
+        let text = NSPasteboard.general.string(forType: .string) ?? ""
+        session.menuRead(kind, text: text)
+    }
+
+    /// Perf note P2: a first TLS handshake at launch so the first real read and the first
+    /// dictation are warm. Groq only when a Groq key is set.
+    private func warmConnections() {
+        var hosts = ["https://api.elevenlabs.io/"]
+        if secrets.read(.groq) != nil { hosts.append("https://api.groq.com/") }
+        for host in hosts {
+            Task.detached(priority: .utility) {
+                var request = URLRequest(url: URL(string: host)!)
+                request.httpMethod = "HEAD"
+                request.timeoutInterval = 10
+                _ = try? await URLSession.shared.data(for: request)
+            }
+        }
+    }
+
+    // MARK: Permissions (docs/designs/dev-prod-channels.md, P4)
+
+    /// Re-reads Accessibility and Microphone access, at launch and whenever a menu opens.
+    /// While one is missing in a way only System Settings can fix, it also checks every 2 s, so
+    /// the menu and the icon catch up right after it is granted there. An undetermined
+    /// microphone is not missing: the first dictation asks for it.
+    func refreshPermissions() {
+        session.refreshAccessibility()
+        microphonePermission = recorder.permission
+        guard permissionWatch == nil, needsSystemSettings else { return }
+        permissionWatch = Task { [weak self] in
+            while let self, self.needsSystemSettings {
+                try? await Task.sleep(for: .seconds(2))
+                self.session.refreshAccessibility()
+                self.microphonePermission = self.recorder.permission
+            }
+            self?.permissionWatch = nil
+        }
+    }
+
+    private var needsSystemSettings: Bool {
+        !session.accessibilityTrusted || microphonePermission == .denied
+    }
+
+    /// nil appearance lets every window follow macOS again.
+    func applyColorMode() {
+        switch preferences.colorMode {
+        case .system: NSApplication.shared.appearance = nil
+        case .light: NSApplication.shared.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
+        }
+    }
+
+    func applyLaunchAtLogin() {
+        do {
+            if preferences.launchAtLogin {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            NSLog("Launch at login change failed: \(error)")
+        }
+    }
+}

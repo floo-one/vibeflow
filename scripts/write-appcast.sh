@@ -1,12 +1,12 @@
 #!/bin/zsh
 # Print the Sparkle update feed for one release. scripts/release.sh writes it to
-# build/release/appcast.xml and uploads it next to VibeFlow.dmg, and the release reads it from
+# build/release/appcast.xml and uploads it next to Maagical.dmg, and the release reads it from
 # https://github.com/floo-one/vibeflow/releases/latest/download/appcast.xml (SUFeedURL).
 # One item is enough: Sparkle offers it to every older version.
 #
 # Usage:  scripts/write-appcast.sh [--url <dmg-url>] <dmg> <version> <build> <notes.md> [<ed-key-file>]
 #
-# The DMG's download URL defaults to the release's VibeFlow.dmg (.../download/v<version>/);
+# The DMG's download URL defaults to the release's Maagical.dmg (.../download/v<version>/);
 # the nightly build passes its own with --url.
 # The DMG is signed with Sparkle's sign_update, by default with the key of account "vibeflow"
 # in the login keychain; an ed-key-file signs with a throwaway key instead, for testing.
@@ -17,7 +17,7 @@ URL=""
 if [[ ${1:-} == --url ]]; then URL=$2; shift 2; fi
 (( $# >= 4 )) || { print -u2 "Usage: $0 [--url <dmg-url>] <dmg> <version> <build> <notes.md> [<ed-key-file>]"; exit 2 }
 DMG=$1 VERSION=$2 BUILD=$3 NOTES=$4 KEY_FILE=${5:-}
-: ${URL:=https://github.com/floo-one/vibeflow/releases/download/v$VERSION/VibeFlow.dmg}
+: ${URL:=https://github.com/floo-one/vibeflow/releases/download/v$VERSION/Maagical.dmg}
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SIGN_UPDATE="$ROOT/build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update"
@@ -51,9 +51,9 @@ cat <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
-    <title>VibeFlow</title>
+    <title>Maagical</title>
     <item>
-      <title>VibeFlow $VERSION</title>
+      <title>Maagical $VERSION</title>
       <pubDate>$(LC_ALL=C date -u "+%a, %d %b %Y %H:%M:%S +0000")</pubDate>
       <sparkle:version>$BUILD</sparkle:version>
       <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>

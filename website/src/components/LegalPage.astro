@@ -1,0 +1,24 @@
+---
+import Base from '../layouts/Base.astro';
+
+interface Props { title: string; description: string; path: string; updated: string }
+const { title, description, path, updated } = Astro.props;
+---
+<Base title={`${title} · Maagical`} description={description} path={path}>
+  <article class="wrap legal">
+    <p class="eyebrow">Last updated {updated}</p>
+    <h1 class="h2">{title}</h1>
+    <slot />
+  </article>
+</Base>
+
+<style>
+  .legal { max-width: 46rem; padding-top: 96px; padding-bottom: 120px; }
+  .legal :global(h2) { font-size: 22px; font-weight: 700; margin: 40px 0 10px; letter-spacing: -0.01em; }
+  .legal :global(p), .legal :global(li) { font-size: 17px; line-height: 1.6; color: var(--text-2); }
+  .legal :global(p) { margin: 0 0 14px; }
+  .legal :global(ul) { margin: 0 0 14px; padding-left: 22px; }
+  .legal :global(li) { margin-bottom: 6px; }
+  .legal :global(strong) { color: var(--text); }
+  .h2 { margin: 10px 0 24px; }
+</style>

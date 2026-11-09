@@ -9,12 +9,14 @@ const links = [
   page !== 'clocks' && { href: url('clocks/'), label: 'Clocks' },
   { href: REPO_URL, label: 'GitHub' },
   { href: CHANGELOG_URL, label: 'Changelog' },
+  { href: url('privacy/'), label: 'Privacy' },
+  { href: url('terms/'), label: 'Terms' },
 ].filter((l): l is { href: string; label: string } => l !== false);
 ---
 <footer class="foot">
   <div class="wrap row-f">
     <span class="by">
-      VibeFlow by {PUBLISHER} · MIT licensed{page === 'clocks' && ' · Time zone data from vvo/tzdb'}
+      Maagical by {PUBLISHER} · MIT licensed{page === 'clocks' && ' · Time zone data from vvo/tzdb'}
     </span>
     {links.map((l) => <a href={l.href}>{l.label}</a>)}
   </div>
