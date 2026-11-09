@@ -66,10 +66,41 @@ struct TilesView: View {
     @Environment(AppContainer.self) private var container
 
     var body: some View {
-        HStack(spacing: 8) {
-            keepAwake
-            pomodoro
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                keepAwake
+                pomodoro
+            }
+            if !container.desktops.roles.isEmpty {
+                desktops
+            }
         }
+    }
+
+    /// Desktop Roles, full width under the two toggles (only once a role exists): the badge
+    /// takes the color of the focused desktop's role, a click sets up every role or stops the
+    /// walk, the chevron sets up single roles and shows the last report.
+    private var desktops: some View {
+        let desktops = container.desktops
+        let subtitle: String
+        if desktops.isPaused {
+            subtitle = "Paused: the installed VibeFlow handles them"
+        } else if desktops.isWalking {
+            subtitle = "Setting up…"
+        } else if let role = desktops.currentRole {
+            subtitle = "On \(role.name) · set up all"
+        } else {
+            subtitle = "Set up \(desktops.roles.count) role\(desktops.roles.count == 1 ? "" : "s")"
+        }
+        let fill: Color? = desktops.isWalking ? Palette.tools
+            : desktops.currentRole.map { Color(nsColor: NSColor(hex: $0.colorHex)) }
+        return Tile(symbol: "rectangle.3.group", fill: fill, title: "Desktops", subtitle: subtitle,
+                    action: {
+                        guard !desktops.isPaused else { return }
+                        container.closePanel?()
+                        desktops.setUpOrStop()
+                    },
+                    menu: { DesktopsMenuItems() })
     }
 
     private var keepAwake: some View {

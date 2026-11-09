@@ -72,6 +72,8 @@ public final class Preferences {
         static let focusCustomLongBreak = "focus.custom.longBreak"
         static let focusCustomRounds = "focus.custom.rounds"
         static let keepAwakeDisplayOn = "keepAwake.displayOn"
+        static let desktopRoles = "desktops.roles"
+        static let desktopRoleTag = "desktops.menuBarTag"
         static let keepAwakeLastMinutes = "keepAwake.lastMinutes"
         static let holdTipTaps = "smartRead.holdTipTaps"
         static let holdTipHeld = "smartRead.holdTipHeld"
@@ -199,6 +201,15 @@ public final class Preferences {
     public var keepAwakeDisplayOn: Bool {
         didSet { defaults.set(keepAwakeDisplayOn, forKey: Key.keepAwakeDisplayOn) }
     }
+    /// Desktop Roles, in desktop order; empty means the feature is off.
+    public var desktopRoles: [DesktopRole] {
+        didSet { defaults.set(try? JSONEncoder().encode(desktopRoles), forKey: Key.desktopRoles) }
+    }
+    /// The focused desktop's role as a tag in the menu bar. Off by default: macOS shows a menu bar
+    /// item the same on every screen, so the wallpaper carries the name instead.
+    public var desktopRoleTag: Bool {
+        didSet { defaults.set(desktopRoleTag, forKey: Key.desktopRoleTag) }
+    }
 
     /// The Keep Awake duration picked last, in minutes (0 = Indefinitely, nil = never picked);
     /// a click on the panel's Keep Awake tile starts it again (KeepAwakeTile, D11).
@@ -252,6 +263,9 @@ public final class Preferences {
             rounds: defaults.object(forKey: Key.focusCustomRounds) as? Int ?? classic.rounds
         ).clamped
         keepAwakeDisplayOn = defaults.object(forKey: Key.keepAwakeDisplayOn) as? Bool ?? true
+        desktopRoles = defaults.data(forKey: Key.desktopRoles)
+            .flatMap { try? JSONDecoder().decode([DesktopRole].self, from: $0) } ?? []
+        desktopRoleTag = defaults.bool(forKey: Key.desktopRoleTag)
         keepAwakeLastMinutes = defaults.object(forKey: Key.keepAwakeLastMinutes) as? Int
         holdTipTaps = defaults.integer(forKey: Key.holdTipTaps)
         holdTipHeld = defaults.bool(forKey: Key.holdTipHeld)

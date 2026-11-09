@@ -5,8 +5,9 @@ import MaagicalCore
 
 /// The Maagical menu bar panel (docs/designs/menu-bar-popover.md; prototype in
 /// docs/designs/menu-bar-popover-prototype.dc.html). From the top: what Maagical is doing or
-/// the most important problem (PanelState), Keep Awake and Pomodoro tiles, the next meeting,
-/// History, the transcription drop zone, and the footer. Shortcuts are not listed: they are
+/// the most important problem (PanelState), Keep Awake and Pomodoro tiles (Desktops under them
+/// once a role exists), the next meeting, History, the transcription drop zone, and the footer.
+/// Shortcuts are not listed: they are
 /// learned in Settings, the notch tip and the empty History hint (D16).
 /// Fixed 330 pt wide; every text is one truncated line, so the width never changes.
 struct PopoverView: View {

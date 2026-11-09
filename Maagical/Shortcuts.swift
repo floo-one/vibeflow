@@ -43,6 +43,9 @@ extension KeyboardShortcuts.Name {
     static let pasteLastAnswer = Self("pasteLastAnswer", default: .init(.v, modifiers: pasteModifiers.union(.shift)))
     /// Start, pause or resume focus. No default: recorded in Settings > Focus.
     static let focusToggle = Self("focusToggle")
+    /// Set up desktops (Desktop Roles); pressed again while it runs, stops it. No default:
+    /// recorded in Settings > Desktops.
+    static let setUpDesktops = Self("setUpDesktops")
     /// Escape cancels a running dictation. Not recordable, and registered only while a
     /// dictation can be cancelled (AppContainer.escapeCancels), so Escape belongs to the
     /// frontmost app the rest of the time.
